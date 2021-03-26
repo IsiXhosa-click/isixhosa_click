@@ -1,0 +1,8 @@
+body {
+  background-color: powderblue;
+}
+
+.field_column_list {
+  display: flex;
+  flex-direction: column;
+}

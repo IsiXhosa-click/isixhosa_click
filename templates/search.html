@@ -1,0 +1,37 @@
+<!-- TODO better with aksama header stuff? -->
+
+{%- import "search_box.html" as searchbox -%}
+
+<!DOCTYPE html>
+
+<html lang="en-ZA">
+<head>
+    <title>IsiXhosa Live Dictionary</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta name="og:type" content="website"/>
+    <meta name="og:title" content="Live Dictionary"/>
+    <meta name="og:url" content="https://isixhosa.xyz/search"/>
+    <meta name="og:site_name" content="IsiXhosa.xyz"/>
+</head>
+
+<body>
+    <h1>IsiXhosa Live Dictionary</h1>
+    <h2>Search for a word:</h2>
+
+    {%- call searchbox::searchbox() -%}
+
+    <div id="hits">
+        <ol>
+            <!-- TODO aksama macro for nounclass pls -->
+            {% for hit in hits %}
+            <li>
+                {{ hit.document.english }} - {{ hit.document.xhosa }}
+                ({{ hit.document.part_of_speech }}{% match hit.document.noun_class %}{% when Some with (class) %} - Class {{ class }}{% when None %}{% endmatch %})
+            </li>
+            {% endfor %}
+        </ol>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,7 @@
+/target
+.idea/
+*.iml
+data.ms/
+isixhosa_xyz.db
+typesense.env
+typesense/

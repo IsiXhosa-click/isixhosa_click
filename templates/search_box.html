@@ -1,0 +1,22 @@
+{%- macro searchbox() -%}
+
+<div>
+    <div id="searchbox"></div>
+    <div id="hits"></div>
+</div>
+
+<script type="module">
+    import { LiveSearch } from "/live_search.js";
+    new LiveSearch(document.getElementById("searchbox"), document.getElementById("hits"));
+</script>
+
+<noscript>
+    <form id="search" action="/search" method="GET">
+        <label for="query">Search for a word:</label>
+
+        <input type="search" id="query" name="query" autofocus>
+        <button type="submit">Search</button>
+    </form>
+</noscript>
+
+{%- endmacro -%}

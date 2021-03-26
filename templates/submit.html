@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <title>Submit a word</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta name="og:type" content="website"/>
+    <meta name="og:title" content="Submit a word"/>
+    <meta name="og:url" content="https://isixhosa.xyz/submit"/>
+    <meta name="og:site_name" content="IsiXhosa.xyz"/>
+</head>
+
+<body>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- TODO add required fields -->
+    <!-- TODO explain fields and give examples -->
+    <!-- TODO "calcpad" for the tone markers -->
+    <h2>Submit a word:</h2>
+    <form id="submit_word" action="/submit" method="post" enctype="application/x-www-form-urlencoded">
+        <fieldset class="field_column_list">
+            <legend>Translation</legend>
+
+            <label for="english">English:
+                <input type="text" id="english" name="english" autocomplete="off" data-lpignore="true">
+            </label>
+
+            <label for="xhosa">Xhosa:<input type="text" id="xhosa" name="xhosa" autocomplete="off"></label>
+
+            <label for="xhosa_tone_markings">Xhosa with tone markings:
+                <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off">
+            </label>
+
+            <label for="note">Note (extra information): <input type="text" id="note" name="note"></label>
+        </fieldset>
+
+        <fieldset class="field_column_list">
+            <legend>Part of speech</legend>
+            <label for="part_of_speech">Part of speech:
+                <select id="part_of_speech" name="part_of_speech">
+                    <option value=1>Verb</option>
+                    <option value=2>Noun</option>
+                    <option value=4>Adverb</option>
+                    <option value=5>Relative (adjective)</option>
+                    <option value=6>Interjection</option>
+                    <option value=7>Conjunction</option>
+                    <option value=8>Preposition</option>
+                </select>
+            </label>
+
+            <!-- Noun options -->
+
+            <div class="noun_option">
+                <label for="is_plural">Plural?</label>
+                <input type="checkbox" id="is_plural" name="is_plural">
+            </div>
+
+            <div class="noun_option">
+                <label for="noun_class">Noun class:</label>
+                <select id="noun_class" name="noun_class">
+                    <option value=1>um (aba)</option>
+                    <option value=2>aba</option>
+                    <option value=3>u</option>
+                    <option value=4>oo</option>
+                    <option value=5>um (imi)</option>
+                    <option value=6>imi</option>
+                    <option value=7>i(li)</option>
+                    <option value=8>ama</option>
+                    <option value=9>isi</option>
+                    <option value=10>izi</option>
+                    <option value=11>in</option>
+                    <option value=12>izin</option>
+                    <option value=13>ulu</option>
+                    <option value=14>ubu</option>
+                    <option value=15>uku</option>
+                </select>
+            </div>
+
+            <!-- Verb options -->
+
+            <div class="verb_option">
+                <label for="infinitive">Infinitive form:</label>
+                <input type="text" id="infinitive" name="infinitive" autocomplete="off">
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>Example sentences</legend>
+
+            <table id="examples">
+                <tr>
+                    <td>
+                        <button type="button" id="example-0" onclick="removeExample(this.id)">Delete</button>
+                    </td>
+
+                    <td class="field_column_list">
+                        <label for="english_example">English:
+                            <input type="text" id="english_example" name="english_example" autocomplete="off">
+                        </label>
+
+                        <label for="xhosa_example">Xhosa:
+                            <input type="text" id="xhosa_example" name="xhosa_example" autocomplete="off">
+                        </label>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td><button type="button" onclick="addExample()">Add another</button></td>
+                </tr>
+            </table>
+        </fieldset>
+
+        <button type="submit">Submit word</button>
+    </form>
+
+    <script>
+        let current_example_id = 1;
+
+        function setAllVisible(class_name, visible) {
+            let optional_list = document.getElementsByClassName(class_name);
+
+            for (let i = 0; i < optional_list.length; i++) {
+                let option = optional_list.item(i);
+                option.hidden = !visible;
+            }
+        }
+
+        setAllVisible("noun_option", false);
+        setAllVisible("verb_option", true); // verb is default
+
+        let input_list = document.getElementsByTagName("input");
+
+        for (let i = 0; i < input_list.length; i++) {
+            let input = input_list.item(i);
+
+            if (input.type === "text") {
+                input.setAttribute("data-lpignore", "true");
+            }
+        }
+
+        document.getElementById("part_of_speech").onchange = function () {
+            let part_of_speech = document.getElementById("part_of_speech").value;
+
+            if (part_of_speech === "1") { // Verb
+                setAllVisible("verb_option", true);
+                setAllVisible("noun_option", false);
+            } else if (part_of_speech === "2") { // Noun
+                setAllVisible("noun_option", true);
+                setAllVisible("verb_option", false);
+            } else {
+                setAllVisible("noun_option", false);
+                setAllVisible("verb_option", false);
+            }
+        };
+
+        function textField(name, label_txt) {
+            let para = document.createElement("p");
+            let label = document.createElement("label");
+            let input = document.createElement("input");
+
+            label.innerText = label_txt;
+            input.type = "text";
+            input.name = "name";
+            input.autocomplete = "off";
+            input.setAttribute("data-lpignore", "true");
+
+            label.appendChild(input);
+            para.appendChild(label);
+            return para;
+        }
+
+        function addExample() {
+            current_example_id += 1;
+            let table = document.getElementById("examples");
+            let row = table.insertRow(table.rows.length - 1);
+
+            let delete_cell = row.insertCell();
+            let delete_button = document.createElement("button");
+            delete_button.type = "button";
+            delete_button.innerText = "Delete";
+            delete_button.onclick = function() { removeExample(this.id) };
+            delete_button.id = `example-${current_example_id}`;
+            delete_cell.appendChild(delete_button);
+
+            let sentence = row.insertCell();
+            sentence.appendChild(textField("english_example", "English example:"));
+            sentence.appendChild(textField("xhosa_example", "Xhosa example:"));
+        }
+
+        function removeExample(button_id) {
+            let button = document.getElementById(button_id);
+            let cell = button.parentElement;
+            let row = cell.parentElement;
+            row.remove();
+        }
+    </script>
+
+    {% match success %}
+    {% when Some with (true) %}
+    <p>Word successfully submitted!</p>
+    {% when Some with (false) %}
+    <p>There was an error submitting the word.</p>
+    {% when None %}
+    {% endmatch %}
+</body>
+
+</html>

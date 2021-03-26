@@ -1,0 +1,31 @@
+{
+  "name": "words",
+  "fields": [
+    {
+      "name": "english",
+      "type": "string",
+      "facet": true
+    },
+    {
+      "name": "xhosa",
+      "type": "string",
+      "facet": true
+    },
+    {
+      "name": "part_of_speech",
+      "type": "int32",
+      "optional": false
+    },
+    {
+      "name": "is_plural",
+      "type": "bool",
+      "optional": true
+    },
+    {
+      "name": "noun_class",
+      "type": "int32",
+      "optional": true
+    }
+  ],
+  "default_sorting_field": "part_of_speech"
+}
