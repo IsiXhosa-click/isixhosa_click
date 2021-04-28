@@ -1,0 +1,47 @@
+body {
+    background-color: powderblue;
+}
+
+.column_list {
+    display: flex;
+    flex-direction: column;
+}
+
+.select_popover {
+    position: absolute;
+    box-sizing: border-box;
+    border: 1px solid black;
+    background: powderblue;
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+}
+
+.select_popover:empty {
+    border: none;
+}
+
+.select_popover_container {
+    z-index: 1;
+    position: relative;
+}
+
+.word_select_container {
+    display: flex;
+    width: 350px;
+    flex-direction: column;
+}
+
+.word_select_search {
+    flex-grow: 1;
+}
+
+.select_list_option:active {
+    border: solid 1px grey;
+    padding: 0;
+}
+
+.select_list_option {
+    border: solid 1px grey;
+    width: 100%;
+}

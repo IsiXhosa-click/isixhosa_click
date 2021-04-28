@@ -7,6 +7,9 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::convert::TryInto;
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
+use serde::de::IntoDeserializer;
+use std::str::FromStr;
+use std::num::ParseIntError;
 
 #[derive(Debug, Clone)]
 struct DiscrimOutOfRange(i64, &'static str);
@@ -78,9 +81,16 @@ impl ToSql for PartOfSpeech {
     }
 }
 
+impl PartOfSpeech {
+    /// Used in askama templates
+    pub fn to_u8(&self) -> u8 {
+        *self as u8
+    }
+}
+
 impl Display for PartOfSpeech {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(self, f)
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
     }
 }
 
@@ -139,10 +149,62 @@ impl NounClass {
             NounClass::Uku => "uku",
         }
     }
+
+    /// Used in askama templates
+    pub fn to_u8(&self) -> u8 {
+        *self as u8
+    }
 }
 
 impl Display for NounClass {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str(self.to_disambiguated_prefix()) // TODO highlight?
+    }
+}
+
+#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug)]
+#[repr(u8)]
+#[serde(rename_all = "snake_case")]
+pub enum WordLinkType {
+    PluralOrSingular = 1,
+    Synonym = 2,
+    Antonym = 3,
+    Related = 4,
+    Confusable = 5,
+}
+
+impl WordLinkType {
+    fn to_str(&self) -> &'static str {
+        match self {
+            WordLinkType::PluralOrSingular => "Plural or singular form",
+            WordLinkType::Synonym => "Synonym",
+            WordLinkType::Antonym => "Antonym",
+            WordLinkType::Related => "Related",
+            WordLinkType::Confusable => "Confusable",
+        }
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        *self as u8
+    }
+}
+
+impl FromSql for WordLinkType {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        let v = value.as_i64()?;
+        let err = || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, "WordLinkType")));
+        Self::try_from_primitive(v.try_into().map_err(|_| err())?).map_err(|_| err())
+    }
+}
+
+impl ToSql for WordLinkType {
+    fn to_sql(&self) -> Result<ToSqlOutput<'_>, rusqlite::Error> {
+        Ok(ToSqlOutput::Owned(Value::Integer(*self as u8 as i64)))
+    }
+}
+
+impl Display for WordLinkType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
     }
 }

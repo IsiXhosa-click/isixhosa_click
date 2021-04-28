@@ -1,6 +1,5 @@
-<!-- TODO better with aksama header stuff? -->
-
 {%- import "search_box.html" as searchbox -%}
+{%- import "macros.html" as macros -%}
 
 <!DOCTYPE html>
 
@@ -23,13 +22,17 @@
 
     <div id="hits">
         <ol>
-            <!-- TODO aksama macro for nounclass pls -->
-            {% for hit in hits %}
+            {%- for hit in hits -%}
+            <!-- TODO(accept) test -->
             <li>
                 {{ hit.document.english }} - {{ hit.document.xhosa }}
-                ({{ hit.document.part_of_speech }}{% match hit.document.noun_class %}{% when Some with (class) %} - Class {{ class }}{% when None %}{% endmatch %})
+                (
+                    {{- hit.document.part_of_speech -}}
+                    {%- call macros::plural(hit.document.is_plural) -%}
+                    {%- call macros::noun_class(hit.document.noun_class) -%}
+                )
             </li>
-            {% endfor %}
+            {%- endfor -%}
         </ol>
     </div>
 </body>

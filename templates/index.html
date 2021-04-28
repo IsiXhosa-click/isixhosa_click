@@ -10,50 +10,12 @@
     <meta name="og:title" content="Live Dictionary"/>
     <meta name="og:url" content="https://isixhosa.xyz/"/>
     <meta name="og:site_name" content="IsiXhosa.xyz"/>
-
-    <style>
-        .popover {
-            width: 100%;
-            border: 1px solid black;
-        }
-    </style>
 </head>
 
 <body>
     <h1>IsiXhosa Live Dictionary</h1>
     <h2>Search for a word:</h2>
     {%- call searchbox::searchbox() -%}
-
-    <form>
-        <label for="word_select">Test</label>
-        <div class="container">
-            <p><input id="word_select" type="text" onfocusout="selectFocusOut()"/></p>
-
-            <div class="popover" id="popover" hidden>
-                <p>Hey!</p>
-                <button class="select_list_option" type="button" onfocusout="selectFocusOut()">Aa</button>
-            </div>
-        </div>
-    </form>
-
-    <script>
-        // function selectFocusOut() {
-        //     setTimeout(function() {
-        //         if (!popover.contains(document.activeElement)) {
-        //             popover.hidden = true;
-        //         }
-        //     }, 50);
-        // }
-
-        function selectFocusOut(){}
-
-        let selector = document.getElementById("word_select");
-        let popover = document.getElementById("popover");
-
-        selector.onfocus = function () {
-            popover.hidden = false;
-        }
-    </script>
 </body>
 
 </html>

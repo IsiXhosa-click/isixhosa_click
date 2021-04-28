@@ -1,0 +1,11 @@
+{%- macro noun_class(noun_class) -%}
+    {%- match noun_class -%}
+        {%- when Some with (class) %}
+            - class {{ class }}
+        {%- when None -%}
+    {%- endmatch -%}
+{%- endmacro -%}
+
+{%- macro plural(plural) -%}
+    {%- if plural.clone() %} plural {% else %} not plural {% endif -%}
+{%- endmacro -%}

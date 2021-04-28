@@ -3,8 +3,8 @@ use futures::FutureExt;
 use rand::RngCore;
 use unicode_normalization::UnicodeNormalization;
 
-use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 
 pub const MAX_TOKEN_LENGTH: usize = 45;
 pub const MAX_PASSWORD_LEN: usize = 512;
@@ -72,7 +72,7 @@ fn hash(pass: String) -> impl Future<Output = (String, HashSchemeVersion)> {
 
         (hash, HashSchemeVersion::Argon2V1)
     })
-        .map(|r| r.expect("Error in tokio password hashing task"))
+    .map(|r| r.expect("Error in tokio password hashing task"))
 }
 
 fn verify_credentials(
@@ -88,11 +88,11 @@ fn verify_credentials(
                 .expect("Error verifying password hash"),
         }
     })
-        .map(|r| r.expect("Error in tokio password verifying task"))
+    .map(|r| r.expect("Error in tokio password verifying task"))
 }
 
 // pub async fn verify_user(username: String, db: Pool<SqliteConnectionManager>, password: String) -> bool {
 //     let conn = db.get().unwrap();
-//     conn.prepare("SELECT (password, "); // TODO
+//     conn.prepare("SELECT password, "); // TODO
 //     verify_credentials(password, user.password_hash, user.hash_scheme_version).await
 // }

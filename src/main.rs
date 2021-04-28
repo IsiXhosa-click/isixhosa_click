@@ -1,8 +1,10 @@
 #![feature(associated_type_bounds)]
 
-// TODO error handling - dont crash always probably
+// TODO error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // TODO ratelimiting
 // TODO CSS & styling
+// TODO html/css/js min
+// TODO attributions - editing users & links & so on?
 
 use crate::typesense::{ShortWordSearchResults, TypesenseClient};
 use arcstr::ArcStr;
@@ -12,22 +14,23 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Deserialize;
 use tokio::task;
-use warp::{Filter, Rejection, path};
+use warp::{path, Filter, Rejection};
 
+mod auth;
 mod language;
 mod session;
 mod submit;
 mod typesense;
-mod auth;
+mod accept;
+mod database;
 
 use crate::session::{LiveSearchSession, WsMessage};
 use futures::StreamExt;
 use submit::submit;
+use accept::accept;
 use warp::reject::Reject;
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-
-const CREATE_TABLE: &str = include_str!("sql/words.sql");
 
 #[derive(Debug)]
 struct TemplateError(askama::Error);
@@ -36,6 +39,7 @@ impl Reject for TemplateError {}
 
 #[tokio::main]
 async fn main() {
+    pretty_env_logger::init();
     let manager = SqliteConnectionManager::file("isixhosa_xyz.db");
     let pool = Pool::new(manager).unwrap();
     let pool_clone = pool.clone();
@@ -44,11 +48,13 @@ async fn main() {
     };
 
     task::spawn_blocking(move || {
-        pool_clone
-            .get()
-            .unwrap()
-            .execute(CREATE_TABLE, params![])
-            .unwrap()
+        let conn = pool_clone.get().unwrap();
+        conn.execute(include_str!("sql/words.sql"), params![]).unwrap();
+        conn.execute(include_str!("sql/examples.sql"), params![]).unwrap();
+        conn.execute(include_str!("sql/linked_words.sql"), params![]).unwrap();
+        conn.execute(include_str!("sql/example_suggestions.sql"), params![]).unwrap();
+        conn.execute(include_str!("sql/linked_word_suggestions.sql"), params![]).unwrap();
+        conn.execute(include_str!("sql/word_suggestions.sql"), params![]).unwrap();
     })
     .await
     .unwrap();
@@ -68,15 +74,19 @@ async fn main() {
         .and(typesense_filter.clone())
         .and_then(query_search);
     let live_search = warp::ws().and(typesense_filter).map(live_search);
-    let search = warp::path("search").and(path::end()).and(live_search.or(query_search).or(search_page));
+    let search = warp::path("search")
+        .and(path::end())
+        .and(live_search.or(query_search).or(search_page));
 
     let routes = warp::fs::dir("static")
         .or(search)
-        .or(submit(pool, typesense))
+        .or(submit(pool.clone(), typesense))
+        .or(accept(pool))
         .or(warp::get().and(path::end()).map(|| MainPage))
         .or(warp::fs::file("pages/404.html"));
 
-    warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
+    println!("Visit http://127.0.0.1:8080/submit");
+    warp::serve(routes.with(warp::log("isixhosa"))).run(([0, 0, 0, 0], 8080)).await;
 }
 
 #[derive(Deserialize, Clone)]

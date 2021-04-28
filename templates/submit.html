@@ -1,45 +1,62 @@
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
-    <title>Submit a word</title>
+    <title>Submit a word - IsiXhosa.xyz</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width">
     <meta name="og:type" content="website"/>
-    <meta name="og:title" content="Submit a word"/>
+    <meta name="og:title" content="Submit a word - IsiXhosa.xyz"/>
     <meta name="og:url" content="https://isixhosa.xyz/submit"/>
     <meta name="og:site_name" content="IsiXhosa.xyz"/>
+    <link rel="stylesheet" href="/submit.css">
 </head>
 
 <body>
-    <link rel="stylesheet" href="style.css">
-
     <!-- TODO add required fields -->
     <!-- TODO explain fields and give examples -->
     <!-- TODO "calcpad" for the tone markers -->
     <h2>Submit a word:</h2>
-    <form id="submit_word" action="/submit" method="post" enctype="application/x-www-form-urlencoded">
-        <fieldset class="field_column_list">
+
+    <noscript>
+        <strong>Javascript is required for this page to work properly due to the complex nature of the form.
+            It may work regardless, but adding examples and linked words will certainly not. Apologies!</strong>
+    </noscript>
+
+    <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded">
+        <fieldset class="column_list">
             <legend>Translation</legend>
 
             <label for="english">English:
-                <input type="text" id="english" name="english" autocomplete="off" data-lpignore="true">
+                <input type="text" id="english" name="english" autocomplete="off" value="{{ word.english }}">
             </label>
 
-            <label for="xhosa">Xhosa:<input type="text" id="xhosa" name="xhosa" autocomplete="off"></label>
+            <label for="xhosa">Xhosa:<input type="text" id="xhosa" name="xhosa" autocomplete="off" value="{{ word.xhosa }}"></label>
 
             <label for="xhosa_tone_markings">Xhosa with tone markings:
-                <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off">
+                <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off" value="{{ word.xhosa_tone_markings }}">
             </label>
 
-            <label for="note">Note (extra information): <input type="text" id="note" name="note"></label>
+            <label for="note">Note (extra information): <input type="text" id="note" name="note" autocomplete="off" value="{{ word.note }}"></label>
         </fieldset>
 
-        <fieldset class="field_column_list">
+        <fieldset class="column_list">
+            {%- match word.part_of_speech -%}
+                {% when Some with (part) %}
+                    <script type="module">
+                        window.addEventListener("load", function () {
+                            let select = document.getElementById("part_of_speech");
+                            select.options[{{ part.to_u8() }}].selected = true;
+                        });
+                    </script>
+                {% when None %}
+            {%- endmatch -%}
+
             <legend>Part of speech</legend>
             <label for="part_of_speech">Part of speech:
                 <select id="part_of_speech" name="part_of_speech">
+                    <option value="">Choose a part of speech</option>
                     <option value=1>Verb</option>
-                    <option value=2>Noun</option>
+                    <option value=2 id="noun_selected">Noun</option>
                     <option value=4>Adverb</option>
                     <option value=5>Relative (adjective)</option>
                     <option value=6>Interjection</option>
@@ -50,14 +67,26 @@
 
             <!-- Noun options -->
 
-            <div class="noun_option">
+            <div class="noun_option" hidden>
                 <label for="is_plural">Plural?</label>
-                <input type="checkbox" id="is_plural" name="is_plural">
+                <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked{%- endif -%}>
             </div>
 
-            <div class="noun_option">
+            {%- match word.noun_class -%}
+                {%- when Some with (class) -%}
+                    <script type="module">
+                        window.addEventListener("load", function () {
+                            let select = document.getElementById("noun_class");
+                            select.options[{{ class.to_u8() }}].selected = true;
+                        });
+                    </script>
+                {%- when None -%}
+            {%- endmatch -%}
+
+            <div class="noun_option" hidden>
                 <label for="noun_class">Noun class:</label>
                 <select id="noun_class" name="noun_class">
+                    <option value="">Choose a noun class</option>
                     <option value=1>um (aba)</option>
                     <option value=2>aba</option>
                     <option value=3>u</option>
@@ -68,8 +97,8 @@
                     <option value=8>ama</option>
                     <option value=9>isi</option>
                     <option value=10>izi</option>
-                    <option value=11>in</option>
-                    <option value=12>izin</option>
+                    <option value=11>i(n)</option>
+                    <option value=12>i(z)i(n)</option>
                     <option value=13>ulu</option>
                     <option value=14>ubu</option>
                     <option value=15>uku</option>
@@ -78,34 +107,29 @@
 
             <!-- Verb options -->
 
-            <div class="verb_option">
+            <div class="verb_option" hidden>
                 <label for="infinitive">Infinitive form:</label>
-                <input type="text" id="infinitive" name="infinitive" autocomplete="off">
+                <input type="text" id="infinitive" name="infinitive" autocomplete="off" value="{{ word.infinitive }}">
             </div>
         </fieldset>
 
+        <!-- TODO(edit) add from template -->
         <fieldset>
             <legend>Example sentences</legend>
 
             <table id="examples">
                 <tr>
-                    <td>
-                        <button type="button" id="example-0" onclick="removeExample(this.id)">Delete</button>
-                    </td>
-
-                    <td class="field_column_list">
-                        <label for="english_example">English:
-                            <input type="text" id="english_example" name="english_example" autocomplete="off">
-                        </label>
-
-                        <label for="xhosa_example">Xhosa:
-                            <input type="text" id="xhosa_example" name="xhosa_example" autocomplete="off">
-                        </label>
-                    </td>
+                    <td><button id="add_example" type="button">Add another</button></td>
                 </tr>
+            </table>
+        </fieldset>
 
+        <fieldset>
+            <legend>Linked words</legend>
+
+            <table id="linked_words">
                 <tr>
-                    <td><button type="button" onclick="addExample()">Add another</button></td>
+                    <td><button id="add_linked_word" type="button">Add another</button></td>
                 </tr>
             </table>
         </fieldset>
@@ -113,20 +137,10 @@
         <button type="submit">Submit word</button>
     </form>
 
-    <script>
-        let current_example_id = 1;
-
-        function setAllVisible(class_name, visible) {
-            let optional_list = document.getElementsByClassName(class_name);
-
-            for (let i = 0; i < optional_list.length; i++) {
-                let option = optional_list.item(i);
-                option.hidden = !visible;
-            }
-        }
-
-        setAllVisible("noun_option", false);
-        setAllVisible("verb_option", true); // verb is default
+    <script type="module">
+        import { addExample, addExamples } from "/submit/example.js";
+        import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
+        import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
 
         let input_list = document.getElementsByTagName("input");
 
@@ -138,70 +152,41 @@
             }
         }
 
-        document.getElementById("part_of_speech").onchange = function () {
-            let part_of_speech = document.getElementById("part_of_speech").value;
+        function htmlDecode(input) {
+            let doc = new DOMParser().parseFromString(input, "text/html");
+            return doc.documentElement.textContent;
+        }
 
-            if (part_of_speech === "1") { // Verb
-                setAllVisible("verb_option", true);
-                setAllVisible("noun_option", false);
-            } else if (part_of_speech === "2") { // Noun
-                setAllVisible("noun_option", true);
-                setAllVisible("verb_option", false);
-            } else {
-                setAllVisible("noun_option", false);
-                setAllVisible("verb_option", false);
+        let examples_str = htmlDecode("{{ serde_json::to_string(word.examples).unwrap() }}");
+        let linked_words_str = htmlDecode("{{ serde_json::to_string(word.linked_words).unwrap() }}");
+        addExamples(JSON.parse(examples_str));
+        addLinkedWords(JSON.parse(linked_words_str));
+        partOfSpeechChange(); // Refresh part of speech sections
+
+        document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
+        document.getElementById("add_example").addEventListener("click", function() { addExample() });
+        document.getElementById("add_linked_word").addEventListener("click", function() { addLinkedWord() });
+        document.getElementById("submit_word").addEventListener("submit", function() {
+            let linked_words = document.getElementsByClassName("word_select_search");
+
+            for (let i = 0; i < linked_words.length; i++) {
+                let word = linked_words.item(i);
+                word.value = word.getAttribute("data-selected_word_id");
             }
-        };
 
-        function textField(name, label_txt) {
-            let para = document.createElement("p");
-            let label = document.createElement("label");
-            let input = document.createElement("input");
-
-            label.innerText = label_txt;
-            input.type = "text";
-            input.name = "name";
-            input.autocomplete = "off";
-            input.setAttribute("data-lpignore", "true");
-
-            label.appendChild(input);
-            para.appendChild(label);
-            return para;
-        }
-
-        function addExample() {
-            current_example_id += 1;
-            let table = document.getElementById("examples");
-            let row = table.insertRow(table.rows.length - 1);
-
-            let delete_cell = row.insertCell();
-            let delete_button = document.createElement("button");
-            delete_button.type = "button";
-            delete_button.innerText = "Delete";
-            delete_button.onclick = function() { removeExample(this.id) };
-            delete_button.id = `example-${current_example_id}`;
-            delete_cell.appendChild(delete_button);
-
-            let sentence = row.insertCell();
-            sentence.appendChild(textField("english_example", "English example:"));
-            sentence.appendChild(textField("xhosa_example", "Xhosa example:"));
-        }
-
-        function removeExample(button_id) {
-            let button = document.getElementById(button_id);
-            let cell = button.parentElement;
-            let row = cell.parentElement;
-            row.remove();
-        }
+            if (!document.getElementById("noun_selected").selected) {
+                document.getElementById("is_plural").checked = false;
+            }
+        });
     </script>
 
-    {% match success %}
-    {% when Some with (true) %}
-    <p>Word successfully submitted!</p>
-    {% when Some with (false) %}
-    <p>There was an error submitting the word.</p>
-    {% when None %}
-    {% endmatch %}
+    {%- match previous_success -%}
+        {%- when Some with (true) -%}
+            <p>Word successfully submitted!</p>
+        {%- when Some with (false) -%}
+            <p>There was an error submitting the word.</p>
+        {%- when None -%}
+    {%- endmatch -%}
 </body>
 
 </html>

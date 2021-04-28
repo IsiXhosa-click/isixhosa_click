@@ -247,7 +247,10 @@ impl TypesenseClient {
 
                 let words: Vec<WordDocument> = records.map(Result::unwrap).collect();
                 let len = words.len();
-                futures::executor::block_on(this.import_words(words)).unwrap();
+
+                if len > 0 {
+                    futures::executor::block_on(this.import_words(words)).unwrap();
+                }
 
                 if len < 40 {
                     break;

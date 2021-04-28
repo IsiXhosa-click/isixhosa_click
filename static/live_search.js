@@ -1,13 +1,15 @@
 export class LiveSearch {
-    constructor(search_container, results_container) {
-        let input = document.createElement("input");
-        input.setAttribute("type", "search");
-        search_container.appendChild(input);
-        input.focus();
-
+    constructor(
+        input,
+        results_container,
+        create_container = function() { return document.createElement("ol"); },
+        create_item = function() { return document.createElement("li"); }
+    ) {
         this.last_value = "";
         this.hits = results_container;
         this.ws = new WebSocket("ws://" + location.host + "/search");
+        this.create_container = create_container;
+        this.create_item = create_item;
 
         let search = this;
 
@@ -16,7 +18,7 @@ export class LiveSearch {
             search.ping_task = setInterval(function() { search.ws.send(""); }, 10000);
 
             search.refresh_task = setInterval(function() {
-                if (search.last_value !== input.value) {
+                if (input === document.activeElement && search.last_value !== input.value) {
                     search.ws.send(input.value);
                     search.last_value = input.value;
                 }
@@ -26,6 +28,8 @@ export class LiveSearch {
                 }
             }, 250);
         };
+
+        this.ws.onerror = console.error;
 
         this.ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
@@ -38,23 +42,25 @@ export class LiveSearch {
 
                 search.hits.appendChild(p);
             } else {
-                let list = document.createElement("ol");
+                let container = search.create_container();
 
                 data.hits.forEach(function (hit) {
                     let result = hit.document;
-                    let item = document.createElement("li");
-
-                    let noun_class = "";
-                    if (result.noun_class != null) {
-                        noun_class = ` - Class ${result.noun_class}`;
-                    }
-
-                    const text = document.createTextNode(`${result.english} - ${result.xhosa} (${result.part_of_speech}${noun_class})`);
+                    let str = formatResult(result);
+                    let text = document.createTextNode(str);
+                    let item = search.create_item(str, result.id);
                     item.appendChild(text);
-                    list.appendChild(item)
+
+                    if (container != null) {
+                        container.appendChild(item);
+                    } else {
+                        search.hits.appendChild(item);
+                    }
                 });
 
-                search.hits.appendChild(list);
+                if (container != null) {
+                    search.hits.appendChild(container);
+                }
             }
         };
     }
@@ -64,4 +70,18 @@ export class LiveSearch {
         clearInterval(this.ping_task);
         this.ws.close();
     }
+}
+
+export function formatResult(result) {
+    let noun_class = "";
+    if (result.noun_class != null) {
+        noun_class = ` - class ${result.noun_class}`;
+    }
+
+    let plural = "";
+    if (result.is_plural) {
+        plural = " plural ";
+    }
+
+    return `${result.english} - ${result.xhosa} (${result.part_of_speech}${plural}${noun_class})`;
 }

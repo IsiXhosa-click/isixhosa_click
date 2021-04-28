@@ -1,0 +1,122 @@
+{%- import "macros.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <title>Accept Words - IsiXhosa.xyz</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta name="og:type" content="website"/>
+    <meta name="og:title" content="Live Dictionary"/>
+    <meta name="og:url" content="https://isixhosa.xyz/"/>
+    <meta name="og:site_name" content="IsiXhosa.xyz"/>
+</head>
+
+<body>
+<h1>Suggested words:</h1>
+
+{%- macro maybe_edited(maybe_edited) -%}
+    {%- match maybe_edited -%}
+        {%- when MaybeEdited::New with (val) -%}
+            <ins>{{ val }}</ins>
+
+        {%- when MaybeEdited::Old with (val) -%}
+            {{ val }}}
+
+        {%- when MaybeEdited::Edited with { old, new } -%}
+            {%- if !format!("{}", new).is_empty() -%}
+                <ins>{{ new }}</ins> <del>{{ old }}</del>
+            {%- else -%}
+                <ins><strong>[Removed]</strong></ins> <del>{{ old }}</del>
+            {%- endif -%}
+    {%- endmatch -%}
+{%- endmacro -%}
+
+{%- macro noun_class_edited(noun_class) -%}
+    {%- match noun_class -%}
+        {%- when MaybeEdited::New with (class) -%}
+            <ins>{%- call macros::noun_class(class) -%}</ins>
+        {%- when MaybeEdited::Old with (class) -%}
+            {%- call macros::noun_class(class) -%}
+        {%- when MaybeEdited::Edited with { old, new } -%}
+            <ins>{%- call macros::noun_class(new) -%}</ins> <del> {%- call macros::noun_class(old) -%}</del>
+    {%- endmatch -%}
+{%- endmacro -%}
+
+{%- macro plural_edited(plural) -%}
+    {%- match plural -%}
+        {%- when MaybeEdited::New with (p) -%}
+            <ins>{%- call macros::plural(p.clone()) -%}</ins>
+        {%- when MaybeEdited::Old with (p) -%}
+            {%- call macros::plural(p.clone()) -%}
+        {%- when MaybeEdited::Edited with { old, new } -%}
+            <ins>{%- call macros::plural(new.clone()) -%}</ins> <del>{%- call macros::plural(old.clone()) -%}</del>
+    {%- endmatch -%}
+{%- endmacro -%}
+
+<div id="suggestions">
+    <ol>
+        {% for s in suggestions %}
+        <li>
+            <p>
+                {% call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
+                - (
+                    {%- call maybe_edited(s.part_of_speech) -%}
+                    {%- call plural_edited(s.is_plural) -%}
+                    {%- call noun_class_edited(s.noun_class) -%}
+                )
+            </p>
+
+            <table>
+                <tr>
+                    <td>Change type</td>
+                    <td>
+                        {%- if s.word_id.is_none() -%}
+                            Word added
+                        {%- else if s.deletion -%}
+                            Word deleted
+                        {%- else -%}
+                            Word edited
+                        {%- endif -%}
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Changes summary</td>
+                    <td>{{ s.changes_summary }}</td>
+                </tr>
+
+                {% if !s.xhosa_tone_markings.is_empty() %}
+                    <tr>
+                        <td>Xhosa with tone markings</td>
+                        <td>{%- call maybe_edited(s.xhosa_tone_markings) -%}</td>
+                    </tr>
+                {% endif %}
+
+                {% if !s.infinitive.is_empty() %}
+                    <tr>
+                        <td>Infinitive form</td>
+                        <td>{%- call maybe_edited(s.infinitive) -%}</td>
+                    </tr>
+                {% endif %}
+
+                {% if !s.note.is_empty() %}
+                    <tr>
+                        <td>Note</td>
+                        <td>{%- call maybe_edited(s.note) -%}</td>
+                    </tr>
+                {% endif %}
+            </table>
+
+            <form action="/accept" method="post" enctype="application/x-www-form-urlencoded">
+                <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
+                <button type="submit">Edit submission</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ol>
+</div>
+
+</body>
+
+</html>

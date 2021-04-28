@@ -7,7 +7,13 @@
 
 <script type="module">
     import { LiveSearch } from "/live_search.js";
-    new LiveSearch(document.getElementById("searchbox"), document.getElementById("hits"));
+
+    let input = document.createElement("input");
+    input.setAttribute("type", "search");
+    document.getElementById("searchbox").appendChild(input);
+    input.focus();
+
+    new LiveSearch(input, document.getElementById("hits"));
 </script>
 
 <noscript>

@@ -4,11 +4,9 @@ CREATE TABLE IF NOT EXISTS words (
     xhosa                TEXT NOT NULL,
     part_of_speech       INTEGER NOT NULL,
 
-    xhosa_tone_markings  TEXT,
-    infinitive           TEXT,
-    is_plural            BOOLEAN,
+    xhosa_tone_markings  TEXT NOT NULL,
+    infinitive           TEXT NOT NULL,
+    is_plural            BOOLEAN NOT NULL,
     noun_class           INTEGER,
-    example_english      TEXT,
-    example_xhosa        TEXT,
-    note                 TEXT
+    note                 TEXT NOT NULL
 );
