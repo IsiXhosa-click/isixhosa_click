@@ -13,6 +13,8 @@ use rusqlite::{OptionalExtension, Row, params, Statement};
 use serde::Deserialize;
 use crate::submit::edit_suggestion;
 use std::convert::{TryFrom, TryInto};
+use crate::typesense::WordHit;
+use crate::database::get_word_hit_from_db;
 
 struct ExistingWord {
     word_id: i32,
@@ -208,10 +210,16 @@ pub struct SuggestedLinkedWord {
     pub first_existing_word_id: i32,
     pub second: WordOrSuggestedId,
     pub link_type: MaybeEdited<WordLinkType>,
+
+    pub other: WordHit,
 }
 
 impl SuggestedLinkedWord {
-    fn from_row(row: &Row<'_>, select_original: &mut Statement<'_>) -> Self {
+    fn from_row_populate_other(
+        row: &Row<'_>,
+        db: Pool<SqliteConnectionManager>,
+        select_original: &mut Statement<'_>
+    ) -> Self {
         let e = if let Some(example) = row.get::<&str, Option<i32>>("existing_linked_word_id").unwrap() {
             Some(select_original
                 .query_row(params![example], |row| ExistingLinkedWord::try_from(row))
@@ -222,14 +230,18 @@ impl SuggestedLinkedWord {
 
         let e = e.as_ref();
 
+        let first_existing_word_id = row.get("first_existing_word_id").unwrap();
+        let other = get_word_hit_from_db(db, first_existing_word_id).unwrap();
+
         SuggestedLinkedWord {
             deletion: row.get("deletion").unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
             suggestion_id: row.get("suggestion_id").unwrap(),
 
-            first_existing_word_id: row.get("first_existing_word_id").unwrap(),
+            first_existing_word_id,
             second: WordOrSuggestedId::try_from_row(row, "second_existing_word_id", "suggested_word_id").unwrap(),
-            link_type: MaybeEdited::from_row("link_type", row, e.map(|e| e.link_type))
+            link_type: MaybeEdited::from_row("link_type", row, e.map(|e| e.link_type)),
+            other,
         }
     }
 }
@@ -412,7 +424,7 @@ fn get_linked_words_for_suggestion(db: Pool<SqliteConnectionManager>, suggested_
     let mut select_original = conn.prepare(SELECT_ORIGINAL).unwrap();
     let examples = query.query(params![suggested_word_id]).unwrap();
 
-    examples.map(|row| Ok(SuggestedLinkedWord::from_row(row, &mut select_original))).collect().unwrap()
+    examples.map(|row| Ok(SuggestedLinkedWord::from_row_populate_other(row, db.clone(),&mut select_original))).collect().unwrap()
 }
 
 async fn suggested_words(
@@ -432,8 +444,11 @@ async fn suggested_words(
         let mut select_original = conn.prepare(SELECT_ORIGINAL).unwrap();
 
         suggestions.map(|row| {
-            // TODO(editing): support suggestions & examples
-            Ok(SuggestedWord::from_row(row, &mut select_original))
+            let mut word = SuggestedWord::from_row(row, &mut select_original);
+            word.examples = get_examples_for_suggestion(db.clone(), word.suggestion_id);
+            word.linked_words = get_linked_words_for_suggestion(db.clone(), word.suggestion_id);
+
+            Ok(word)
         })
         .collect()
         .unwrap()

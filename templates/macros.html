@@ -7,5 +7,14 @@
 {%- endmacro -%}
 
 {%- macro plural(plural) -%}
-    {%- if plural.clone() %} plural {% else %} not plural {% endif -%}
+    {%- if plural.clone() %} plural {%- endif -%}
+{%- endmacro -%}
+
+{%- macro format_result(word) -%}
+    {{- word.english }} - {{ word.xhosa }}
+    (
+        {{- word.part_of_speech -}}
+        {%- call plural(word.is_plural) -%}
+        {%- call noun_class(word.noun_class) -%}
+    )
 {%- endmacro -%}

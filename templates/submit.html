@@ -9,6 +9,7 @@
     <meta name="og:url" content="https://isixhosa.xyz/submit"/>
     <meta name="og:site_name" content="IsiXhosa.xyz"/>
     <link rel="stylesheet" href="/submit.css">
+    <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
@@ -69,7 +70,7 @@
 
             <div class="noun_option" hidden>
                 <label for="is_plural">Plural?</label>
-                <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked{%- endif -%}>
+                <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked {%- endif -%}>
             </div>
 
             {%- match word.noun_class -%}
@@ -113,7 +114,6 @@
             </div>
         </fieldset>
 
-        <!-- TODO(edit) add from template -->
         <fieldset>
             <legend>Example sentences</legend>
 
@@ -157,8 +157,8 @@
             return doc.documentElement.textContent;
         }
 
-        let examples_str = htmlDecode("{{ serde_json::to_string(word.examples).unwrap() }}");
-        let linked_words_str = htmlDecode("{{ serde_json::to_string(word.linked_words).unwrap() }}");
+        let examples_str = htmlDecode("{{ word.examples|json }}");
+        let linked_words_str = htmlDecode("{{ word.linked_words|json }}");
         addExamples(JSON.parse(examples_str));
         addLinkedWords(JSON.parse(linked_words_str));
         partOfSpeechChange(); // Refresh part of speech sections
@@ -187,6 +187,15 @@
             <p>There was an error submitting the word.</p>
         {%- when None -%}
     {%- endmatch -%}
+
+    {%- if previous_success.is_some() -%}
+        <script>
+            // HACK(restioson): stop F5 from resubmitting form
+            if (window.history.replaceState) {
+                window.history.replaceState(null, null, window.location.href);
+            }
+        </script>
+    {%- endif -%}
 </body>
 
 </html>

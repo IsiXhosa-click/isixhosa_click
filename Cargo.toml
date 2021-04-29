@@ -13,7 +13,7 @@ fallible-iterator = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 futures = "0.3"
 warp = "0.3"
-askama = { version = "0.10", features = ["with-warp"] }
+askama = { version = "0.10", features = ["with-warp", "serde-json"] }
 askama_warp = "0.11.0"
 rusqlite = "0.24"
 pretty_env_logger = "0.4"

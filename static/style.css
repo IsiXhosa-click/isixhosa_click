@@ -1,0 +1,12 @@
+body {
+    background-color: powderblue;
+}
+
+.column_list {
+    display: flex;
+    flex-direction: column;
+}
+
+.spaced_list {
+    gap: 1.25em;
+}

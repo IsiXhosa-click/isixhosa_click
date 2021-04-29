@@ -231,8 +231,8 @@ struct WordFormTemplate {
     linked_words: Vec<LinkedWordTemplate>,
 }
 
-impl WordFormTemplate {
-    fn from_suggested(w: SuggestedWord, db: Pool<SqliteConnectionManager>) -> Self {
+impl From<SuggestedWord> for WordFormTemplate {
+    fn from(w: SuggestedWord) -> Self {
         WordFormTemplate {
             english: w.english.current().clone(),
             xhosa: w.xhosa.current().clone(),
@@ -243,7 +243,7 @@ impl WordFormTemplate {
             noun_class: *w.noun_class.current(),
             note: w.note.current().clone(),
             examples: w.examples.into_iter().map(Into::into).collect(),
-            linked_words: w.linked_words.into_iter().map(move |s| LinkedWordTemplate::from_suggestion(s, db.clone())).collect(),
+            linked_words: w.linked_words.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -269,13 +269,11 @@ struct LinkedWordTemplate {
     other: WordHit,
 }
 
-impl LinkedWordTemplate {
-    fn from_suggestion(suggestion: SuggestedLinkedWord, db: Pool<SqliteConnectionManager>) -> Self {
-        let other = get_word_hit_from_db(db, suggestion.first_existing_word_id).unwrap();
-
+impl From<SuggestedLinkedWord> for LinkedWordTemplate {
+    fn from(suggestion: SuggestedLinkedWord) -> Self {
         LinkedWordTemplate {
             link_type: *suggestion.link_type.current(),
-            other,
+            other: suggestion.other,
         }
     }
 }
@@ -289,7 +287,7 @@ async fn submit_word_page(
         tokio::task::spawn_blocking(move || {
             // TODO handle examples and linked words
             let suggested_word = get_full_suggested_word(db.clone(), id)?;
-            Some(WordFormTemplate::from_suggested(suggested_word, db))
+            Some(WordFormTemplate::from(suggested_word))
         }).await.unwrap().unwrap_or_default()
     } else {
         WordFormTemplate::default()
@@ -368,6 +366,10 @@ async fn submit_word_form(
         }
 
         for e in w.examples {
+            if e.english.is_empty() && e.xhosa.is_empty() {
+                continue;
+            }
+
             conn.prepare(INSERT_EXAMPLE_SUGGESTION)
                 .unwrap()
                 .execute(params!["Example added", false, suggestion_id, e.english, e.xhosa])

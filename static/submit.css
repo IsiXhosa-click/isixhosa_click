@@ -1,12 +1,3 @@
-body {
-    background-color: powderblue;
-}
-
-.column_list {
-    display: flex;
-    flex-direction: column;
-}
-
 .select_popover {
     position: absolute;
     box-sizing: border-box;

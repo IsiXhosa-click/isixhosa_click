@@ -205,6 +205,6 @@ impl ToSql for WordLinkType {
 
 impl Display for WordLinkType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Debug::fmt(self, f)
+        write!(f, "{}", self.to_str())
     }
 }

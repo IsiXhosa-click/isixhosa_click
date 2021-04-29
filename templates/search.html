@@ -23,15 +23,8 @@
     <div id="hits">
         <ol>
             {%- for hit in hits -%}
-            <!-- TODO(accept) test -->
-            <li>
-                {{ hit.document.english }} - {{ hit.document.xhosa }}
-                (
-                    {{- hit.document.part_of_speech -}}
-                    {%- call macros::plural(hit.document.is_plural) -%}
-                    {%- call macros::noun_class(hit.document.noun_class) -%}
-                )
-            </li>
+                <!-- TODO(accept) test -->
+                <li>{%- call macros::format_result(hit.document) -%}</li>
             {%- endfor -%}
         </ol>
     </div>
