@@ -17,7 +17,7 @@ use crate::typesense::WordHit;
 use crate::database::get_word_hit_from_db;
 
 struct ExistingWord {
-    word_id: i32,
+    word_id: i64,
 
     english: String,
     xhosa: String,
@@ -53,7 +53,7 @@ impl ExistingWord {
 }
 
 struct ExistingExample {
-    example_id: i32,
+    example_id: i64,
     word_or_suggested_id: WordOrSuggestedId,
 
     english: String,
@@ -74,9 +74,9 @@ impl TryFrom<&Row<'_>> for ExistingExample {
 }
 
 struct ExistingLinkedWord {
-    link_id: i32,
-    first_word_id: i32,
-    second_word_id: i32,
+    link_id: i64,
+    first_word_id: i64,
+    second_word_id: i64,
     link_type: WordLinkType,
 }
 
@@ -102,8 +102,8 @@ struct SuggestedWords {
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
-    pub suggestion_id: i32,
-    pub word_id: Option<i32>,
+    pub suggestion_id: i64,
+    pub word_id: Option<i64>,
 
     pub changes_summary: String,
     pub deletion: bool,
@@ -124,7 +124,7 @@ pub struct SuggestedWord {
 
 impl SuggestedWord {
     fn from_row(row: &Row<'_>, select_original: &mut Statement<'_>) -> Self {
-        let e = if let Some(word) = row.get::<&str, Option<i32>>("existing_word_id").unwrap() {
+        let e = if let Some(word) = row.get::<&str, Option<i64>>("existing_word_id").unwrap() {
             Some(select_original
                 .query_row(params![word], ExistingWord::try_from_row)
                 .unwrap())
@@ -169,8 +169,8 @@ pub struct SuggestedExample {
     pub deletion: bool,
     pub changes_summary: String,
 
-    pub suggestion_id: i32,
-    pub existing_example_id: Option<i32>,
+    pub suggestion_id: i64,
+    pub existing_example_id: Option<i64>,
     pub word_or_suggested_id: WordOrSuggestedId,
 
     pub english: MaybeEdited<String>,
@@ -179,7 +179,7 @@ pub struct SuggestedExample {
 
 impl SuggestedExample {
     fn from_row(row: &Row<'_>, select_original: &mut Statement<'_>) -> Self {
-        let e = if let Some(example) = row.get::<&str, Option<i32>>("existing_example_id").unwrap() {
+        let e = if let Some(example) = row.get::<&str, Option<i64>>("existing_example_id").unwrap() {
             Some(select_original
                 .query_row(params![example], ExistingWord::try_from_row)
                 .unwrap())
@@ -205,9 +205,9 @@ impl SuggestedExample {
 pub struct SuggestedLinkedWord {
     pub deletion: bool,
     pub changes_summary: String,
-    pub suggestion_id: i32,
+    pub suggestion_id: i64,
 
-    pub first_existing_word_id: i32,
+    pub first_existing_word_id: i64,
     pub second: WordOrSuggestedId,
     pub link_type: MaybeEdited<WordLinkType>,
 
@@ -220,7 +220,7 @@ impl SuggestedLinkedWord {
         db: Pool<SqliteConnectionManager>,
         select_original: &mut Statement<'_>
     ) -> Self {
-        let e = if let Some(example) = row.get::<&str, Option<i32>>("existing_linked_word_id").unwrap() {
+        let e = if let Some(example) = row.get::<&str, Option<i64>>("existing_linked_word_id").unwrap() {
             Some(select_original
                 .query_row(params![example], |row| ExistingLinkedWord::try_from(row))
                 .unwrap())
@@ -284,7 +284,7 @@ impl<T: FromSql> MaybeEdited<T> {
             (None, Some(old)) => MaybeEdited::Old(old),
             (None, None) => panic!(
                 "Field in suggestion unfilled; this is an error! Suggestion id: {:?}. Index: {}",
-                row.get::<&str, i32>("suggestion_id"),
+                row.get::<&str, i64>("suggestion_id"),
                 idx,
             ),
         }
@@ -293,8 +293,8 @@ impl<T: FromSql> MaybeEdited<T> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum WordOrSuggestedId {
-    ExistingWord(i32),
-    Suggested(i32),
+    ExistingWord(i64),
+    Suggested(i64),
 }
 
 impl WordOrSuggestedId {
@@ -303,8 +303,8 @@ impl WordOrSuggestedId {
         existing_idx: &str,
         suggested_idx: &str
     ) -> Result<WordOrSuggestedId, rusqlite::Error> {
-        let existing_word_id: Option<i32> = row.get(existing_idx).unwrap();
-        let suggested_word_id: Option<i32> = row.get(suggested_idx).unwrap();
+        let existing_word_id: Option<i64> = row.get(existing_idx).unwrap();
+        let suggested_word_id: Option<i64> = row.get(suggested_idx).unwrap();
         match (existing_word_id, suggested_word_id) {
             (Some(existing), None) => Ok(WordOrSuggestedId::ExistingWord(existing)),
             (None, Some(suggested)) => Ok(WordOrSuggestedId::Suggested(suggested)),
@@ -336,7 +336,7 @@ pub fn accept(
 ) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
     #[derive(Deserialize)]
     struct Params {
-        suggestion: i32,
+        suggestion: i64,
     }
 
     let db = warp::any().map(move || db.clone());
@@ -348,7 +348,7 @@ pub fn accept(
     let edit_one = warp::post()
         .and(db)
         .and(warp::body::form::<Params>())
-        .and_then(|db, params: Params| edit_suggestion(db, params.suggestion, "/accept".to_string()));
+        .and_then(|db, params: Params| edit_suggestion(db, params.suggestion));
 
     // TODO accept form submit too
 
@@ -362,7 +362,7 @@ const SELECT_ORIGINAL: &str = "
     from words WHERE word_id = ?1;";
 
 /// Returns the suggested word without examples and linked words populated.
-pub fn get_suggested_word_alone(db: Pool<SqliteConnectionManager>, id: i32) -> Option<SuggestedWord> {
+pub fn get_suggested_word_alone(db: Pool<SqliteConnectionManager>, id: i64) -> Option<SuggestedWord> {
     const SELECT_SUGGESTION: &str = "SELECT
             suggestion_id, existing_word_id, changes_summary, deletion,
             english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -384,17 +384,17 @@ pub fn get_suggested_word_alone(db: Pool<SqliteConnectionManager>, id: i32) -> O
 }
 
 /// Returns the suggested word with examples and linked words populated.
-pub fn get_full_suggested_word(db: Pool<SqliteConnectionManager>, id: i32) -> Option<SuggestedWord> {
+pub fn get_full_suggested_word(db: Pool<SqliteConnectionManager>, id: i64) -> Option<SuggestedWord> {
     let mut word = get_suggested_word_alone(db.clone(), id);
     if let Some(word) = word.as_mut() {
         word.examples = get_examples_for_suggestion(db.clone(), id);
         word.linked_words = get_linked_words_for_suggestion(db, id);
     }
 
-    dbg!(word)
+    word
 }
 
-fn get_examples_for_suggestion(db: Pool<SqliteConnectionManager>, suggested_word_id: i32) -> Vec<SuggestedExample> {
+pub fn get_examples_for_suggestion(db: Pool<SqliteConnectionManager>, suggested_word_id: i64) -> Vec<SuggestedExample> {
     const SELECT_SUGGESTION: &str = "
         SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id, deletion, changes_summary, xhosa, english
             FROM example_suggestions WHERE suggested_word_id = ?1;";
@@ -410,7 +410,7 @@ fn get_examples_for_suggestion(db: Pool<SqliteConnectionManager>, suggested_word
     examples.map(|row| Ok(SuggestedExample::from_row(row, &mut select_original))).collect().unwrap()
 }
 
-fn get_linked_words_for_suggestion(db: Pool<SqliteConnectionManager>, suggested_word_id: i32) -> Vec<SuggestedLinkedWord> {
+pub fn get_linked_words_for_suggestion(db: Pool<SqliteConnectionManager>, suggested_word_id: i64) -> Vec<SuggestedLinkedWord> {
     const SELECT_SUGGESTION: &str = "
         SELECT suggestion_id, link_type, deletion, changes_summary, existing_linked_word_id,
             first_existing_word_id, second_existing_word_id, suggested_word_id

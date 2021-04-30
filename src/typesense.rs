@@ -235,7 +235,7 @@ impl TypesenseClient {
                 let records = stmt
                     .query_map(params![IMPORT_DOCUMENTS_LIMIT, offset], |row| {
                         Ok(WordDocument {
-                            id: row.get::<&str, i32>("word_id")?.to_string(),
+                            id: row.get::<&str, i64>("word_id")?.to_string(),
                             english: row.get("english")?,
                             xhosa: row.get("xhosa")?,
                             part_of_speech: row.get("part_of_speech")?,

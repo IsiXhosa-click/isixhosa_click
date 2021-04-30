@@ -47,7 +47,7 @@ function createLinkedWordSearch(preset_word) {
         input.value = last_choice;
         input.setAttribute("data-last_search", preset_word.xhosa);
         input.setAttribute("data-last_choice", last_choice);
-        input.setAttribute("data-last_selected_word_id", preset_word.id);
+        input.setAttribute("data-selected_word_id", preset_word.id);
     }
 
     function createLinkedWordButton(word, word_id) {
@@ -92,7 +92,7 @@ function createLinkedWordSearch(preset_word) {
     return { input: input, popover: popover_container, search: new LiveSearch(input, popover, function() {}, createLinkedWordButton) };
 }
 
-export function addLinkedWord(link_type, other) {
+export function addLinkedWord(link_type, other, suggestion_id) {
     current_linked_word_id += 1;
     let table = document.getElementById("linked_words");
     let row = table.insertRow(table.rows.length - 1);
@@ -131,6 +131,18 @@ export function addLinkedWord(link_type, other) {
 
     type_cell.appendChild(type_select);
 
+    if (suggestion_id != null) {
+        let suggestion = document.createElement("select");
+        suggestion.name = `linked_words[${current_linked_word_id}][suggestion_id]`;
+        suggestion.hidden = true;
+        
+        let option = document.createElement("option");
+        option.value = suggestion_id;
+        suggestion.add(option);
+        
+        type_cell.appendChild(suggestion);
+    }
+
     let linked_word = row.insertCell();
     linked_word.className = "word_select_container";
     let { input, popover, search } = createLinkedWordSearch(other);
@@ -141,7 +153,7 @@ export function addLinkedWord(link_type, other) {
 
 export function addLinkedWords(linked_words) {
     for (let linked_word of linked_words) {
-        addLinkedWord(linked_word.link_type, linked_word.other)
+        addLinkedWord(linked_word.link_type, linked_word.other, linked_word.suggestion_id)
     }
 
     if (linked_words.length === 0) {

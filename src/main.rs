@@ -80,7 +80,7 @@ async fn main() {
 
     let routes = warp::fs::dir("static")
         .or(search)
-        .or(submit(pool.clone(), typesense))
+        .or(submit(pool.clone()))
         .or(accept(pool))
         .or(warp::get().and(path::end()).map(|| MainPage))
         .or(warp::fs::file("pages/404.html"));

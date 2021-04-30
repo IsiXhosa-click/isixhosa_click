@@ -6,7 +6,7 @@ use r2d2::Pool;
 use crate::language::SerializeDisplay;
 use rusqlite::{params, OptionalExtension};
 
-pub fn get_word_hit_from_db(db: Pool<SqliteConnectionManager>, id: i32) -> Option<WordHit> {
+pub fn get_word_hit_from_db(db: Pool<SqliteConnectionManager>, id: i64) -> Option<WordHit> {
     const SELECT: &str =
         "SELECT english, xhosa, part_of_speech, is_plural, noun_class from words
             WHERE word_id = ?1;";

@@ -23,7 +23,13 @@
             It may work regardless, but adding examples and linked words will certainly not. Apologies!</strong>
     </noscript>
 
-    <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded">
+    <form id="submit_word" action="/submit" method="post" enctype="application/x-www-form-urlencoded">
+        {%- match word.suggestion_id -%}
+            {%- when Some with (id) -%}
+                <select name="suggestion_id" hidden><option value="{{ id }}"></select>
+            {%- when None -%}
+        {%- endmatch -%}
+
         <fieldset class="column_list">
             <legend>Translation</legend>
 
@@ -41,17 +47,6 @@
         </fieldset>
 
         <fieldset class="column_list">
-            {%- match word.part_of_speech -%}
-                {% when Some with (part) %}
-                    <script type="module">
-                        window.addEventListener("load", function () {
-                            let select = document.getElementById("part_of_speech");
-                            select.options[{{ part.to_u8() }}].selected = true;
-                        });
-                    </script>
-                {% when None %}
-            {%- endmatch -%}
-
             <legend>Part of speech</legend>
             <label for="part_of_speech">Part of speech:
                 <select id="part_of_speech" name="part_of_speech">
@@ -66,6 +61,17 @@
                 </select>
             </label>
 
+            {%- match word.part_of_speech -%}
+                {% when Some with (part) %}
+                    <script type="module">
+                        window.addEventListener("DOMContentLoaded", function () {
+                            let select = document.getElementById("part_of_speech");
+                            select.options[{{ part.to_u8() }}].selected = true;
+                        });
+                    </script>
+                {% when None %}
+            {%- endmatch -%}
+
             <!-- Noun options -->
 
             <div class="noun_option" hidden>
@@ -76,7 +82,7 @@
             {%- match word.noun_class -%}
                 {%- when Some with (class) -%}
                     <script type="module">
-                        window.addEventListener("load", function () {
+                        window.addEventListener("DOMContentLoaded", function () {
                             let select = document.getElementById("noun_class");
                             select.options[{{ class.to_u8() }}].selected = true;
                         });
@@ -142,42 +148,44 @@
         import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
         import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
 
-        let input_list = document.getElementsByTagName("input");
+        window.addEventListener("load", function() {
+            let input_list = document.getElementsByTagName("input");
 
-        for (let i = 0; i < input_list.length; i++) {
-            let input = input_list.item(i);
+            for (let i = 0; i < input_list.length; i++) {
+                let input = input_list.item(i);
 
-            if (input.type === "text") {
-                input.setAttribute("data-lpignore", "true");
-            }
-        }
-
-        function htmlDecode(input) {
-            let doc = new DOMParser().parseFromString(input, "text/html");
-            return doc.documentElement.textContent;
-        }
-
-        let examples_str = htmlDecode("{{ word.examples|json }}");
-        let linked_words_str = htmlDecode("{{ word.linked_words|json }}");
-        addExamples(JSON.parse(examples_str));
-        addLinkedWords(JSON.parse(linked_words_str));
-        partOfSpeechChange(); // Refresh part of speech sections
-
-        document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
-        document.getElementById("add_example").addEventListener("click", function() { addExample() });
-        document.getElementById("add_linked_word").addEventListener("click", function() { addLinkedWord() });
-        document.getElementById("submit_word").addEventListener("submit", function() {
-            let linked_words = document.getElementsByClassName("word_select_search");
-
-            for (let i = 0; i < linked_words.length; i++) {
-                let word = linked_words.item(i);
-                word.value = word.getAttribute("data-selected_word_id");
+                if (input.type === "text") {
+                    input.setAttribute("data-lpignore", "true");
+                }
             }
 
-            if (!document.getElementById("noun_selected").selected) {
-                document.getElementById("is_plural").checked = false;
+            function htmlDecode(input) {
+                let doc = new DOMParser().parseFromString(input, "text/html");
+                return doc.documentElement.textContent;
             }
-        });
+
+            let examples_str = htmlDecode("{{ serde_json::to_string(word.examples).unwrap() }}");
+            let linked_words_str = htmlDecode("{{ serde_json::to_string(word.linked_words).unwrap() }}");
+            addExamples(JSON.parse(examples_str));
+            addLinkedWords(JSON.parse(linked_words_str));
+            partOfSpeechChange(); // Refresh part of speech sections
+
+            document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
+            document.getElementById("add_example").addEventListener("click", function() { addExample() });
+            document.getElementById("add_linked_word").addEventListener("click", function() { addLinkedWord() });
+            document.getElementById("submit_word").addEventListener("submit", function() {
+                let linked_words = document.getElementsByClassName("word_select_search");
+
+                for (let i = 0; i < linked_words.length; i++) {
+                    let word = linked_words.item(i);
+                    word.value = word.getAttribute("data-selected_word_id");
+                }
+
+                if (!document.getElementById("noun_selected").selected) {
+                    document.getElementById("is_plural").checked = false;
+                }
+            });
+        })
     </script>
 
     {%- match previous_success -%}

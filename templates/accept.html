@@ -41,7 +41,13 @@
         {%- when MaybeEdited::Old with (class) -%}
             {%- call macros::noun_class(class) -%}
         {%- when MaybeEdited::Edited with { old, new } -%}
-            <ins>{%- call macros::noun_class(new) -%}</ins> <del> {%- call macros::noun_class(old) -%}</del>
+            <ins>
+                {%- call macros::noun_class(new) -%}
+                {%- if new.is_none() -%}
+                    <strong>[Removed]</strong>
+                {%- endif -%}
+            </ins>
+            <del>{%- call macros::noun_class(old) -%}</del>
     {%- endmatch -%}
 {%- endmacro -%}
 
@@ -51,8 +57,21 @@
             <ins>{%- call macros::plural(p.clone()) -%}</ins>
         {%- when MaybeEdited::Old with (p) -%}
             {%- call macros::plural(p.clone()) -%}
-        {%- when MaybeEdited::Edited with { old, new } -%}
-            <ins>{%- call macros::plural(new.clone()) -%}</ins> <del>{%- call macros::plural(old.clone()) -%}</del>
+        {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
+            <ins>
+                {%- if old_is_plural.clone() %}
+                    plural
+                {%- else %}
+                    [singular]
+                {%- endif -%}
+            </ins>
+            <del>
+                {%- if new_is_plural.clone() %}
+                    plural
+                {%- else %}
+                    [singular]
+                {%- endif -%}
+            </del>
     {%- endmatch -%}
 {%- endmacro -%}
 

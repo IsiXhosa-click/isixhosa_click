@@ -20,19 +20,18 @@ use serde_with::rust::string_empty_as_none;
 use std::fmt::Debug;
 use num_enum::TryFromPrimitive;
 use rusqlite::types::ToSqlOutput;
-use crate::accept::{SuggestedWord, get_suggested_word_alone, MaybeEdited, SuggestedExample, SuggestedLinkedWord, get_full_suggested_word};
+use crate::accept::{SuggestedWord, get_suggested_word_alone, MaybeEdited, SuggestedExample, SuggestedLinkedWord, get_full_suggested_word, get_linked_words_for_suggestion, get_examples_for_suggestion};
 use crate::database::get_word_hit_from_db;
 
 #[derive(Template, Debug)]
 #[template(path = "submit.html")]
 struct SubmitTemplate {
     previous_success: Option<bool>,
-    route: String,
     word: WordFormTemplate,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-struct WordId(i32);
+struct WordId(i64);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 enum FormOption<T> {
@@ -72,24 +71,26 @@ impl<'de> Deserialize<'de> for LinkedWordList {
     fn deserialize<D>(deser: D) -> Result<Self, D::Error> where
         D: Deserializer<'de>
     {
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Debug)]
         struct Raw {
+            suggestion_id: Option<String>,
             link_type: String,
             other: String,
         }
 
-        let raw = Vec::<Raw>::deserialize(deser)?;
+        let raw = dbg!(Vec::<Raw>::deserialize(deser))?;
 
         Ok(LinkedWordList(raw.into_iter().filter_map(|raw| {
-            if raw.link_type.is_empty() {
+            if dbg!(raw.link_type.is_empty()) {
                 return None;
             }
 
-            let type_int = raw.link_type.parse::<u8>().ok()?;
-            let link_type = WordLinkType::try_from_primitive(type_int).ok()?;
-            let other = raw.other.parse::<i32>().ok().map(WordId)?;
+            let type_int = dbg!(raw.link_type).parse::<u8>().ok()?;
+            let link_type = dbg!(WordLinkType::try_from_primitive(type_int)).ok()?;
+            let other = dbg!(raw.other).parse::<i64>().ok().map(WordId)?;
+            let suggestion_id = dbg!(raw.suggestion_id).and_then(|x| x.parse::<i64>().ok());
 
-            Some(LinkedWord { link_type, other })
+            Some(dbg!(LinkedWord { suggestion_id, link_type, other }))
         }).collect()))
     }
 }
@@ -100,6 +101,7 @@ struct WordSubmission {
     english: String,
     xhosa: String,
     part_of_speech: PartOfSpeech,
+    suggestion_id: Option<i64>,
 
     xhosa_tone_markings: String,
     infinitive: String,
@@ -116,6 +118,7 @@ struct WordSubmission {
 
 #[derive(Deserialize, Clone, Debug)]
 struct Example {
+    suggestion_id: Option<i64>,
     english: String,
     xhosa: String,
 }
@@ -123,6 +126,7 @@ struct Example {
 #[serde_as]
 #[derive(Deserialize, Clone, Debug)]
 struct LinkedWord {
+    suggestion_id: Option<i64>,
     link_type: WordLinkType,
     other: WordId,
 }
@@ -167,27 +171,15 @@ fn qs_form<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Error = 
         })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct SubmitParams {
-    suggestion: Option<i32>,
-    route: String,
-}
-
-impl Default for SubmitParams {
-    fn default() -> Self {
-        SubmitParams {
-            suggestion: None,
-            route: "/submit".to_string(),
-        }
-    }
+    suggestion: Option<i64>,
 }
 
 pub fn submit(
     db: Pool<SqliteConnectionManager>,
-    typesense: TypesenseClient,
 ) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
     let db = warp::any().map(move || db.clone());
-    let typesense = warp::any().map(move || typesense.clone());
 
     let submit_page = warp::get()
         .and(db.clone())
@@ -198,7 +190,6 @@ pub fn submit(
     let submit_form = body::content_length_limit(2 * 1024)
         .and(qs_form())
         .and(db.clone())
-        .and(typesense)
         .and_then(submit_word_form);
 
     let failed_to_submit = warp::any()
@@ -213,12 +204,13 @@ pub fn submit(
     warp::path("submit").and(path::end()).and(submit_routes)
 }
 
-pub async fn edit_suggestion(db: Pool<SqliteConnectionManager>, id: i32, route: String) -> Result<impl Reply, Rejection> {
-    submit_word_page(db, None, SubmitParams { suggestion: Some(id), route }).await
+pub async fn edit_suggestion(db: Pool<SqliteConnectionManager>, id: i64) -> Result<impl Reply, Rejection> {
+    submit_word_page(db, None, SubmitParams { suggestion: Some(id) }).await
 }
 
 #[derive(Default, Debug)]
 struct WordFormTemplate {
+    suggestion_id: Option<i64>,
     english: String,
     xhosa: String,
     part_of_speech: Option<PartOfSpeech>,
@@ -234,6 +226,7 @@ struct WordFormTemplate {
 impl From<SuggestedWord> for WordFormTemplate {
     fn from(w: SuggestedWord) -> Self {
         WordFormTemplate {
+            suggestion_id: Some(w.suggestion_id),
             english: w.english.current().clone(),
             xhosa: w.xhosa.current().clone(),
             part_of_speech: Some(*w.part_of_speech.current()),
@@ -250,6 +243,7 @@ impl From<SuggestedWord> for WordFormTemplate {
 
 #[derive(Debug, Serialize)]
 struct ExampleTemplate {
+    suggestion_id: i64,
     english: String,
     xhosa: String,
 }
@@ -257,6 +251,7 @@ struct ExampleTemplate {
 impl From<SuggestedExample> for ExampleTemplate {
     fn from(ex: SuggestedExample) -> Self {
         ExampleTemplate {
+            suggestion_id: ex.suggestion_id,
             english: ex.english.current().clone(),
             xhosa: ex.xhosa.current().clone(),
         }
@@ -265,6 +260,7 @@ impl From<SuggestedExample> for ExampleTemplate {
 
 #[derive(Debug, Serialize)]
 struct LinkedWordTemplate {
+    suggestion_id: i64,
     link_type: WordLinkType,
     other: WordHit,
 }
@@ -272,6 +268,7 @@ struct LinkedWordTemplate {
 impl From<SuggestedLinkedWord> for LinkedWordTemplate {
     fn from(suggestion: SuggestedLinkedWord) -> Self {
         LinkedWordTemplate {
+            suggestion_id: suggestion.suggestion_id,
             link_type: *suggestion.link_type.current(),
             other: suggestion.other,
         }
@@ -295,7 +292,6 @@ async fn submit_word_page(
 
     Ok(dbg!(SubmitTemplate {
         previous_success,
-        route: params.route,
         word,
     }))
 }
@@ -303,26 +299,55 @@ async fn submit_word_page(
 async fn submit_word_form(
     word: WordSubmission,
     db: Pool<SqliteConnectionManager>,
-    typesense: TypesenseClient,
 ) -> Result<impl warp::Reply, Rejection> {
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
-            changes_summary, deletion, english, xhosa, part_of_speech,
+            suggestion_id, changes_summary, deletion, english, xhosa, part_of_speech,
             xhosa_tone_markings, infinitive, is_plural, noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)";
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+            ON CONFLICT(suggestion_id) DO UPDATE SET
+                changes_summary = excluded.changes_summary,
+                english = excluded.english,
+                xhosa = excluded.xhosa,
+                part_of_speech = excluded.part_of_speech,
+                xhosa_tone_markings = excluded.xhosa_tone_markings,
+                infinitive = excluded.infinitive,
+                is_plural = excluded.is_plural,
+                noun_class = excluded.noun_class,
+                note = excluded.note
+            RETURNING suggestion_id;
+        ";
 
     const INSERT_LINKED_WORD_SUGGESTION: &str = "
         INSERT INTO linked_word_suggestions (
-            changes_summary, deletion, suggested_word_id, link_type, first_existing_word_id
-        ) VALUES (?1, ?2, ?3, ?4, ?5)";
+            suggestion_id, changes_summary, deletion, suggested_word_id, link_type, first_existing_word_id
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            ON CONFLICT(suggestion_id) DO UPDATE SET
+                changes_summary = excluded.changes_summary,
+                suggested_word_id = excluded.suggested_word_id,
+                link_type = excluded.link_type,
+                first_existing_word_id = excluded.first_existing_word_id;
+        ";
+
+    const DELETE_LINKED_WORD_SUGGESTION: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1;";
 
     const INSERT_EXAMPLE_SUGGESTION: &str = "
         INSERT INTO example_suggestions (
-            changes_summary, deletion, suggested_word_id, english, xhosa
-        ) VALUES (?1, ?2, ?3, ?4, ?5)";
+            suggestion_id, changes_summary, deletion, suggested_word_id, english, xhosa
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            ON CONFLICT(suggestion_id) DO UPDATE SET
+                changes_summary = excluded.changes_summary,
+                suggested_word_id = excluded.suggested_word_id,
+                english = excluded.english,
+                xhosa = excluded.xhosa;
+        ";
+
+    const DELETE_EXAMPLE_SUGGESTION: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1;";
+
+    // TODO support update (upsert)
 
     let db_clone = db.clone();
-    let w = word.clone();
+    let mut w = word;
 
     dbg!(&w);
 
@@ -340,39 +365,81 @@ async fn submit_word_form(
             no_noun_class
         };
 
-        conn.prepare(INSERT_SUGGESTION)
+        let params = params![
+            w.suggestion_id,
+            "Word added",
+            false,
+            w.english,
+            w.xhosa,
+            w.part_of_speech,
+            w.xhosa_tone_markings,
+            w.infinitive,
+            w.is_plural,
+            noun_class,
+            w.note
+        ];
+
+        let suggestion_id: i64 = conn.prepare(INSERT_SUGGESTION)
             .unwrap()
-            .execute(params![
-                "Word added",
-                false,
-                w.english,
-                w.xhosa,
-                w.part_of_speech,
-                w.xhosa_tone_markings,
-                w.infinitive,
-                w.is_plural,
-                noun_class,
-                w.note
-            ])
+            .query_row(params, |row| row.get("suggestion_id"))
             .unwrap();
 
-        let suggestion_id = conn.last_insert_rowid();
+        let mut upsert_link = conn.prepare(INSERT_LINKED_WORD_SUGGESTION).unwrap();
+        let mut delete_link = conn.prepare(DELETE_LINKED_WORD_SUGGESTION).unwrap();
+        let prev_linked = get_linked_words_for_suggestion(db.clone(), suggestion_id);
 
-        for l in w.linked_words.0 {
-            conn.prepare(INSERT_LINKED_WORD_SUGGESTION)
-                .unwrap()
-                .execute(params!["Linked word added", false, suggestion_id, l.link_type, l.other.0.to_string()])
+        for prev in dbg!(prev_linked) {
+            dbg!(&prev);
+            if let Some(i) = w.linked_words.0.iter().position(|new| new.suggestion_id == Some(prev.suggestion_id)) {
+                let new = w.linked_words.0.remove(i);
+                dbg!("Update", &new);
+
+                upsert_link
+                    .execute(params![new.suggestion_id, "Linked word added", false, suggestion_id, new.link_type, new.other.0.to_string()])
+                    .unwrap();
+            } else {
+                delete_link.execute(params![prev.suggestion_id]).unwrap();
+            }
+        }
+
+        for new in dbg!(w.linked_words.0) {
+            dbg!("Insert", &new);
+            upsert_link
+                .execute(params![new.suggestion_id, "Linked word added", false, suggestion_id, new.link_type, new.other.0.to_string()])
                 .unwrap();
         }
 
-        for e in w.examples {
-            if e.english.is_empty() && e.xhosa.is_empty() {
+        let mut upsert_example = conn.prepare(INSERT_EXAMPLE_SUGGESTION).unwrap();
+        let mut delete_example = conn.prepare(DELETE_EXAMPLE_SUGGESTION).unwrap();
+        let prev_examples = get_examples_for_suggestion(db.clone(), suggestion_id);
+
+        for prev in dbg!(prev_examples) {
+            dbg!(&prev);
+            if let Some(i) = w.examples.iter().position(|new| new.suggestion_id == Some(prev.suggestion_id)) {
+                let new = w.examples.remove(i);
+
+                if new.english.is_empty() && new.xhosa.is_empty() {
+                    delete_example.execute(params![prev.suggestion_id]).unwrap();
+                    continue;
+                }
+
+                dbg!("Update", &new);
+                upsert_example
+                    .execute(params![new.suggestion_id, "Example added", false, suggestion_id, new.english, new.xhosa])
+                    .unwrap();
+            } else {
+                delete_example.execute(params![prev.suggestion_id]).unwrap();
+            }
+        }
+
+        for new in dbg!(w.examples) {
+            if new.english.is_empty() && new.xhosa.is_empty() {
                 continue;
             }
 
-            conn.prepare(INSERT_EXAMPLE_SUGGESTION)
-                .unwrap()
-                .execute(params!["Example added", false, suggestion_id, e.english, e.xhosa])
+            dbg!("Insert", &new);
+            upsert_example
+                .execute(params![new.suggestion_id, "Example added", false, suggestion_id, new.english, new.xhosa])
                 .unwrap();
         }
     })

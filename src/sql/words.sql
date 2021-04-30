@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS words (
-    word_id              INTEGER PRIMARY KEY,
+    word_id              INTEGER PRIMARY KEY AUTOINCREMENT,
     english              TEXT NOT NULL,
     xhosa                TEXT NOT NULL,
     part_of_speech       INTEGER NOT NULL,

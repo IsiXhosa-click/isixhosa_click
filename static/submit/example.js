@@ -26,7 +26,7 @@ function textField(name, label_txt, val) {
     return label;
 }
 
-export function addExample(english, xhosa) {
+export function addExample(english, xhosa, suggestion_id) {
     current_example_id += 1;
     let table = document.getElementById("examples");
     let row = table.insertRow(table.rows.length - 1);
@@ -39,6 +39,18 @@ export function addExample(english, xhosa) {
     delete_button.id = `example-${current_example_id}`;
     delete_cell.appendChild(delete_button);
 
+    if (suggestion_id != null) {
+        let suggestion = document.createElement("select");
+        suggestion.name = `examples[${current_example_id}][suggestion_id]`;
+        suggestion.hidden = true;
+
+        let option = document.createElement("option");
+        option.value = suggestion_id;
+        suggestion.add(option);
+
+        delete_cell.appendChild(suggestion);
+    }
+
     let sentence = row.insertCell();
     sentence.className = "column_list";
     sentence.appendChild(textField(`examples[${current_example_id}][english]`, "English example:", english));
@@ -49,7 +61,7 @@ export function addExamples(examples) {
     for (let example of examples) {
         console.log("Adding example");
         console.log(example);
-        addExample(example.english, example.xhosa)
+        addExample(example.english, example.xhosa, example.suggestion_id)
     }
 
     if (examples.length === 0) {
