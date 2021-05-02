@@ -23,7 +23,7 @@
             It may work regardless, but adding examples and linked words will certainly not. Apologies!</strong>
     </noscript>
 
-    <form id="submit_word" action="/submit" method="post" enctype="application/x-www-form-urlencoded">
+    <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded">
         {%- match word.suggestion_id -%}
             {%- when Some with (id) -%}
                 <select name="suggestion_id" hidden><option value="{{ id }}"></select>
@@ -51,7 +51,7 @@
             <label for="part_of_speech">Part of speech:
                 <select id="part_of_speech" name="part_of_speech">
                     <option value="">Choose a part of speech</option>
-                    <option value=1>Verb</option>
+                    <option value=1 id="verb_selected">Verb</option>
                     <option value=2 id="noun_selected">Noun</option>
                     <option value=4>Adverb</option>
                     <option value=5>Relative (adjective)</option>
@@ -140,7 +140,13 @@
             </table>
         </fieldset>
 
-        <button type="submit">Submit word</button>
+        <button type="submit">
+            {%- if word.suggestion_id.is_none() -%}
+                Submit word
+            {%- else -%}
+                Submit edit to suggestion
+            {%- endif -%}
+        </button>
     </form>
 
     <script type="module">
@@ -181,8 +187,14 @@
                     word.value = word.getAttribute("data-selected_word_id");
                 }
 
+                // TODO test
                 if (!document.getElementById("noun_selected").selected) {
                     document.getElementById("is_plural").checked = false;
+                    document.getElementById("noun_class").value = "";
+                }
+
+                if (!document.getElementById("verb_selected").selected) {
+                    document.getElementById("infinitive").value = "";
                 }
             });
         })
@@ -196,14 +208,16 @@
         {%- when None -%}
     {%- endmatch -%}
 
-    {%- if previous_success.is_some() -%}
-        <script>
-            // HACK(restioson): stop F5 from resubmitting form
-            if (window.history.replaceState) {
-                window.history.replaceState(null, null, window.location.href);
-            }
-        </script>
-    {%- endif -%}
+    {%- match previous_success -%}
+        {%- when Some with (true) -%}
+            <script>
+                // HACK(restioson): stop F5 from resubmitting form
+                if (window.history.replaceState) {
+                    window.history.replaceState(null, null, window.location.href);
+                }
+            </script>
+        {%- when other -%}
+    {%- endmatch -%}
 </body>
 
 </html>

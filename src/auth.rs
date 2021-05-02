@@ -3,9 +3,6 @@ use futures::FutureExt;
 use rand::RngCore;
 use unicode_normalization::UnicodeNormalization;
 
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
-
 pub const MAX_TOKEN_LENGTH: usize = 45;
 pub const MAX_PASSWORD_LEN: usize = 512;
 pub const MIN_PASSWORD_LEN: usize = 12;

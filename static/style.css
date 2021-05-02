@@ -7,6 +7,11 @@ body {
     flex-direction: column;
 }
 
+.row_list {
+    display: flex;
+    flex-direction: row;
+}
+
 .spaced_list {
     gap: 1.25em;
 }

@@ -1,36 +1,60 @@
 #![feature(associated_type_bounds)]
 
-// TODO error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
-// TODO ratelimiting
-// TODO CSS & styling
-// TODO html/css/js min
-// TODO attributions - editing users & links & so on?
+// v0.1:
+// - TODO attributions - editing users & references & so on
+// - TODO user system
+// - TODO suggestion publicising, voting & commenting
+// - TODO suggestion denying
+// - TODO word deletion
+// - TODO word editing
+// - TODO basic styling
+// - TODO about page
 
+// v0.2:
+// - conjugation tables
+// - user profiles showing statistics (for mods primarily but maybe can publicise it?)
+// - backups
+// - additional resources/links page
+// - automated data-dump which can be downloaded
+//        -> automate anki deck
+
+// v0.3:
+// - grammar notes
+// - embedded blog (static site generator?) for transparency
+
+// Stretch goals
+// - forum for xhosa questions (discourse?)
+// - donations for hosting costs (maybe even to pay native speakers to submit words?)
+
+// Technical improvements:
+// - TODO error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
+// - TODO ratelimiting
+// - TODO html/css/js min
+
+use crate::session::{LiveSearchSession, WsMessage};
 use crate::typesense::{ShortWordSearchResults, TypesenseClient};
+use accept::accept;
 use arcstr::ArcStr;
 use askama::Template;
+use futures::StreamExt;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Deserialize;
+use submit::submit;
 use tokio::task;
+use warp::reject::Reject;
 use warp::{path, Filter, Rejection};
+use xtra::spawn::TokioGlobalSpawnExt;
+use xtra::Actor;
 
-mod auth;
+mod accept;
+// mod auth;
+mod database;
 mod language;
 mod session;
 mod submit;
 mod typesense;
-mod accept;
-mod database;
-
-use crate::session::{LiveSearchSession, WsMessage};
-use futures::StreamExt;
-use submit::submit;
-use accept::accept;
-use warp::reject::Reject;
-use xtra::spawn::TokioGlobalSpawnExt;
-use xtra::Actor;
 
 #[derive(Debug)]
 struct TemplateError(askama::Error);
@@ -49,12 +73,18 @@ async fn main() {
 
     task::spawn_blocking(move || {
         let conn = pool_clone.get().unwrap();
-        conn.execute(include_str!("sql/words.sql"), params![]).unwrap();
-        conn.execute(include_str!("sql/examples.sql"), params![]).unwrap();
-        conn.execute(include_str!("sql/linked_words.sql"), params![]).unwrap();
-        conn.execute(include_str!("sql/example_suggestions.sql"), params![]).unwrap();
-        conn.execute(include_str!("sql/linked_word_suggestions.sql"), params![]).unwrap();
-        conn.execute(include_str!("sql/word_suggestions.sql"), params![]).unwrap();
+        conn.execute(include_str!("sql/words.sql"), params![])
+            .unwrap();
+        conn.execute(include_str!("sql/examples.sql"), params![])
+            .unwrap();
+        conn.execute(include_str!("sql/linked_words.sql"), params![])
+            .unwrap();
+        conn.execute(include_str!("sql/example_suggestions.sql"), params![])
+            .unwrap();
+        conn.execute(include_str!("sql/linked_word_suggestions.sql"), params![])
+            .unwrap();
+        conn.execute(include_str!("sql/word_suggestions.sql"), params![])
+            .unwrap();
     })
     .await
     .unwrap();
@@ -69,7 +99,7 @@ async fn main() {
     let typesense_cloned = typesense.clone();
     let typesense_filter = warp::any().map(move || typesense_cloned.clone());
 
-    let search_page = warp::any().map(|| ShortWordSearchResults::default());
+    let search_page = warp::any().map(ShortWordSearchResults::default);
     let query_search = warp::query()
         .and(typesense_filter.clone())
         .and_then(query_search);
@@ -81,12 +111,14 @@ async fn main() {
     let routes = warp::fs::dir("static")
         .or(search)
         .or(submit(pool.clone()))
-        .or(accept(pool))
+        .or(accept(pool, typesense))
         .or(warp::get().and(path::end()).map(|| MainPage))
         .or(warp::fs::file("pages/404.html"));
 
     println!("Visit http://127.0.0.1:8080/submit");
-    warp::serve(routes.with(warp::log("isixhosa"))).run(([0, 0, 0, 0], 8080)).await;
+    warp::serve(routes.with(warp::log("isixhosa")))
+        .run(([0, 0, 0, 0], 8080))
+        .await;
 }
 
 #[derive(Deserialize, Clone)]

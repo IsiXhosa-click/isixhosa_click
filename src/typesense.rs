@@ -214,7 +214,7 @@ impl TypesenseClient {
 
         let text = res.text().await?;
 
-        for line in text.split("\n") {
+        for line in text.split('\n') {
             let res: Success = serde_json::from_str(line).unwrap();
             assert!(res.success);
         }

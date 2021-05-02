@@ -7,9 +7,6 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::convert::TryInto;
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
-use serde::de::IntoDeserializer;
-use std::str::FromStr;
-use std::num::ParseIntError;
 
 #[derive(Debug, Clone)]
 struct DiscrimOutOfRange(i64, &'static str);

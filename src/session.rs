@@ -69,7 +69,7 @@ impl Handler<WsMessage> for LiveSearchSession {
         if msg.is_text() {
             let query = msg.to_str().unwrap();
 
-            if query == "" {
+            if query.is_empty() {
                 return;
             }
 
