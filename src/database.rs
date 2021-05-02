@@ -38,12 +38,6 @@ pub fn get_word_hit_from_db(db: Pool<SqliteConnectionManager>, id: i64) -> Optio
     v
 }
 
-pub fn accept_suggestion_full(db: Pool<SqliteConnectionManager>, suggestion_id: i64) {
-    const INSERT: &str = "
-        INSERT INTO
-    ";
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum WordOrSuggestedId {
     ExistingWord(i64),

@@ -288,6 +288,14 @@ pub fn get_full_suggested_word(
     word
 }
 
+pub fn delete_suggested_word(db: Pool<SqliteConnectionManager>, id: i64) -> bool {
+    const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1";
+
+    let conn = db.get().unwrap();
+    let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+    modified_rows == 1
+}
+
 pub fn get_examples_for_suggestion(
     db: Pool<SqliteConnectionManager>,
     suggested_word_id: i64,
@@ -308,6 +316,13 @@ pub fn get_examples_for_suggestion(
         .map(|row| Ok(SuggestedExample::from_row(row, &mut select_original)))
         .collect()
         .unwrap()
+}
+
+pub fn delete_suggested_example(db: Pool<SqliteConnectionManager>, id: i64) {
+    const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1";
+
+    let conn = db.get().unwrap();
+    conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
 }
 
 pub fn get_linked_words_for_suggestion(
@@ -337,4 +352,11 @@ pub fn get_linked_words_for_suggestion(
         })
         .collect()
         .unwrap()
+}
+
+pub fn delete_suggested_linked_word(db: Pool<SqliteConnectionManager>, id: i64) {
+    const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1";
+
+    let conn = db.get().unwrap();
+    conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
 }

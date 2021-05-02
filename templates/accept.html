@@ -27,9 +27,11 @@
                         {%- when Some with (method) -%}
                             {%- match method -%}
                                 {%- when Method::Accept -%}
-                                    fully accepted word.
+                                    fully accepted suggestion.
                                 {%- when Method::Edit -%}
                                     fully edited suggestion.
+                                {%- when Method::Deny -%}
+                                    fully denied suggestion.
                             {%- endmatch -%}
                         {%- when None -%}
                             .
@@ -41,9 +43,11 @@
                         {%- when Some with (method) -%}
                             {%- match method -%}
                                 {%- when Method::Accept %}
-                                    while accepting a word.
+                                    while accepting a suggestion.
                                 {%- when Method::Edit %}
                                     while editing a suggestion.
+                                {%- when Method::Deny %}
+                                    while denying a suggestion.
                             {%- endmatch -%}
                         {%- when None -%}
                             .
@@ -125,6 +129,14 @@
                     {%- endif -%}
                 </del>
         {%- endmatch -%}
+    {%- endmacro -%}
+
+    {%- macro action(method, text) -%}
+        <form action="/accept" method="post" enctype="application/x-www-form-urlencoded">
+            <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
+            <select name="method" hidden><option value="{{ method }}"></select>
+            <button type="submit">{{ text }}</button>
+        </form>
     {%- endmacro -%}
 
     <div id="suggestions">
@@ -219,26 +231,18 @@
                         {%- endif -%}
 
                         <div id="buttons" class="row_list spaced_list"> <!-- TODO fix styling :( -->
-                            <form action="/accept" method="post" enctype="application/x-www-form-urlencoded">
-                                <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
-                                <select name="method" hidden><option value="edit"></select>
-                                <button type="submit">Edit submission</button>
-                            </form>
-
-                            <form action="/accept" method="post" enctype="application/x-www-form-urlencoded">
-                                <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
-                                <select name="method" hidden><option value="accept"></select>
-                                <button type="submit">Accept submission</button>
-                            </form>
+                            {%- call action("edit", "Edit submission") -%}
+                            {%- call action("accept", "Accept submission") -%}
+                            {%- call action("deny", "Deny submission") -%}
                         </div>
                     </div>
             </li>
             {%- endfor -%}
-
-            {%- if suggestions.is_empty() -%}
-                <p>There are no suggested words.</p>
-            {%- endif -%}
         </ol>
+
+        {%- if suggestions.is_empty() -%}
+            <p>There are no suggested words.<p>
+        {%- endif -%}
     </div>
 </body>
 

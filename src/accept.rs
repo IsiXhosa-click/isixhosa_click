@@ -1,4 +1,4 @@
-use crate::database::suggestion::MaybeEdited;
+use crate::database::suggestion::{MaybeEdited, delete_suggested_word};
 use crate::database::suggestion::{get_full_suggested_word, get_suggestions_full, SuggestedWord};
 use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
 use askama::Template;
@@ -30,6 +30,7 @@ struct Success {
 enum Method {
     Edit,
     Accept,
+    Deny,
 }
 
 #[derive(Deserialize)]
@@ -72,19 +73,19 @@ pub fn accept(
         }))
         .and_then(suggested_words);
 
-    let accept_failed = warp::any()
+    let other_failed = warp::any()
         .and(db)
         .and(warp::any().map(|| {
             Some(Success {
                 success: false,
-                method: Some(Method::Accept),
+                method: None,
             })
         }))
         .and_then(suggested_words);
 
     // TODO accept form submit too
 
-    let root = warp::path::end().and(show_all.or(process_one).or(accept_failed));
+    let root = warp::path::end().and(show_all.or(process_one).or(other_failed));
     let submit_edit = warp::path("edit")
         .and(warp::path::end())
         .and(submit_edit.or(edit_failed));
@@ -153,6 +154,24 @@ async fn accept_suggestion(
     .await
 }
 
+async fn deny_suggestion(
+    db: Pool<SqliteConnectionManager>,
+    suggestion: i64
+) -> Result<impl Reply, Rejection> {
+    let db_clone = db.clone();
+    let success = tokio::task::spawn_blocking(move || delete_suggested_word(db, suggestion))
+        .await
+        .unwrap();
+
+    suggested_words(
+        db_clone,
+        Some(Success {
+            success,
+            method: Some(Method::Deny),
+        }),
+    ).await
+}
+
 async fn process_one(
     db: Pool<SqliteConnectionManager>,
     typesense: TypesenseClient,
@@ -165,5 +184,6 @@ async fn process_one(
         Method::Accept => accept_suggestion(db, typesense, params.suggestion)
             .await
             .map(Reply::into_response),
+        Method::Deny => deny_suggestion(db, params.suggestion).await.map(Reply::into_response),
     }
 }

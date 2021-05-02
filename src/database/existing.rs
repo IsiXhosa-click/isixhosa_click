@@ -4,7 +4,7 @@ use rusqlite::{params, Row};
 use std::convert::{TryFrom, TryInto};
 use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::Pool;
-use crate::database::suggestion::{SuggestedWord, SuggestedLinkedWord, SuggestedExample};
+use crate::database::suggestion::{SuggestedWord, SuggestedLinkedWord, SuggestedExample, delete_suggested_word, delete_suggested_linked_word, delete_suggested_example};
 
 pub struct ExistingWord {
     pub word_id: i64,
@@ -85,7 +85,8 @@ impl TryFrom<&Row<'_>> for ExistingLinkedWord {
 }
 
 pub fn accept_new_word_suggestion(db: Pool<SqliteConnectionManager>, s: SuggestedWord) -> i64 {
-    let word_id = accept_word_suggestion(db.clone(), &s);
+    let word_suggestion_id = s.suggestion_id;
+    let word_id = accept_word_suggestion(db.clone(), &s, false);
 
     for mut example in s.examples.into_iter() {
         example.word_or_suggested_id = WordOrSuggestedId::ExistingWord(word_id);
@@ -97,10 +98,12 @@ pub fn accept_new_word_suggestion(db: Pool<SqliteConnectionManager>, s: Suggeste
         accept_linked_word(db.clone(), linked_word);
     }
 
+    delete_suggested_word(db, word_suggestion_id);
+
     word_id
 }
 
-pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWord) -> i64 {
+pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWord, delete: bool) -> i64 {
     const INSERT: &str = "
         INSERT INTO words (
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -117,7 +120,6 @@ pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWo
                 note = excluded.note
             RETURNING word_id;
     ";
-    const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1";
 
     let conn = db.get().unwrap();
     let params = params![
@@ -132,7 +134,9 @@ pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWo
         .query_row(params, |row| row.get("word_id"))
         .unwrap();
 
-    conn.prepare(DELETE).unwrap().execute(params![s.suggestion_id]).unwrap();
+    if delete {
+        delete_suggested_word(db, s.suggestion_id);
+    }
 
     id
 }
@@ -148,7 +152,6 @@ pub fn accept_linked_word(
                 link_type = excluded.link_type
             RETURNING link_id;
     ";
-    const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1";
 
     let conn = db.get().unwrap();
     let second_existing = match s.second {
@@ -166,7 +169,7 @@ pub fn accept_linked_word(
         .query_row(params, |row| row.get("link_id"))
         .unwrap();
 
-    conn.prepare(DELETE).unwrap().execute(params![s.suggestion_id]).unwrap();
+    delete_suggested_linked_word(db, s.suggestion_id);
 
     id
 }
@@ -179,7 +182,6 @@ pub fn accept_example(db: Pool<SqliteConnectionManager>, s: SuggestedExample) ->
                 xhosa = excluded.xhosa
             RETURNING example_id;
     ";
-    const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1";
 
     let conn = db.get().unwrap();
     let word = match s.word_or_suggested_id {
@@ -196,7 +198,7 @@ pub fn accept_example(db: Pool<SqliteConnectionManager>, s: SuggestedExample) ->
         .query_row(params, |row| row.get("example_id"))
         .unwrap();
 
-    conn.prepare(DELETE).unwrap().execute(params![s.suggestion_id]).unwrap();
+    delete_suggested_example(db, s.suggestion_id);
 
     id
 }
