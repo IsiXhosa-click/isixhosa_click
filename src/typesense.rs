@@ -1,6 +1,5 @@
 use crate::language::{NounClass, PartOfSpeech, SerializeDisplay};
 use arcstr::ArcStr;
-use askama::Template;
 use itertools::Itertools;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use r2d2::Pool;
@@ -73,15 +72,14 @@ pub struct WordDocument {
     pub noun_class: Option<NounClass>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Template, Default)]
-#[template(path = "search.html")]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct ShortWordSearchResults {
-    hits: Vec<ShortWordSearchHit>,
+    pub hits: Vec<ShortWordSearchHit>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct ShortWordSearchHit {
-    document: WordHit,
+pub struct ShortWordSearchHit {
+    pub document: WordHit,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

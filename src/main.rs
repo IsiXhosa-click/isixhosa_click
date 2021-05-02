@@ -1,12 +1,12 @@
 #![feature(associated_type_bounds)]
 
 // v0.1:
-// - TODO attributions - editing users & references & so on
-// - TODO user system
-// - TODO suggestion publicising, voting & commenting
-// - TODO suggestion denying
 // - TODO word deletion
-// - TODO word editing
+// - TODO word editing - make sure to edit *_full methods to reflect this
+// - TODO suggestion publicising, voting & commenting
+// - TODO user system
+// - TODO attributions - editing users & references & so on
+
 // - TODO basic styling
 // - TODO about page
 
@@ -32,7 +32,7 @@
 // - TODO html/css/js min
 
 use crate::session::{LiveSearchSession, WsMessage};
-use crate::typesense::{ShortWordSearchResults, TypesenseClient};
+use crate::typesense::{TypesenseClient, ShortWordSearchHit};
 use accept::accept;
 use arcstr::ArcStr;
 use askama::Template;
@@ -99,7 +99,7 @@ async fn main() {
     let typesense_cloned = typesense.clone();
     let typesense_filter = warp::any().map(move || typesense_cloned.clone());
 
-    let search_page = warp::any().map(ShortWordSearchResults::default);
+    let search_page = warp::any().map(Search::default);
     let query_search = warp::query()
         .and(typesense_filter.clone())
         .and_then(query_search);
@@ -130,11 +130,23 @@ struct SearchQuery {
 #[template(path = "index.html")]
 struct MainPage;
 
+#[derive(Template, Default)]
+#[template(path = "search.html")]
+struct Search {
+    hits: Vec<ShortWordSearchHit>,
+    query: String,
+}
+
 async fn query_search(
     query: SearchQuery,
     typesense: TypesenseClient,
 ) -> Result<impl warp::Reply, Rejection> {
-    Ok(typesense.search_word_short(&query.query).await.unwrap())
+    let results = typesense.search_word_short(&query.query).await.unwrap();
+
+    Ok(Search {
+        query: query.query,
+        hits: results.hits,
+    })
 }
 
 fn live_search(ws: warp::ws::Ws, typesense: TypesenseClient) -> impl warp::Reply {

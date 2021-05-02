@@ -7,10 +7,8 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use warp::{Filter, Rejection, Reply};
-use crate::database::existing::{accept_word_suggestion, accept_new_word_suggestion};
-use crate::typesense::{TypesenseClient, WordHit, WordDocument};
-use warp::reject::Reject;
-use crate::database::get_word_hit_from_db;
+use crate::database::existing::accept_new_word_suggestion;
+use crate::typesense::{TypesenseClient, WordDocument};
 use futures::TryFutureExt;
 
 #[derive(Template)]

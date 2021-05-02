@@ -147,8 +147,8 @@
                         <p class="suggested_word_text">
                             {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
                             - (
-                                {%- call maybe_edited(s.part_of_speech) -%}
                                 {%- call plural_edited(s.is_plural) -%}
+                                {%- call maybe_edited(s.part_of_speech) -%}
                                 {%- call noun_class_edited(s.noun_class) -%}
                             )
                         </p>

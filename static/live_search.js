@@ -80,8 +80,8 @@ export function formatResult(result) {
 
     let plural = "";
     if (result.is_plural) {
-        plural = " plural ";
+        plural = "plural ";
     }
 
-    return `${result.english} - ${result.xhosa} (${result.part_of_speech}${plural}${noun_class})`;
+    return `${result.english} - ${result.xhosa} (${plural}${result.part_of_speech}${noun_class})`;
 }

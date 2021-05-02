@@ -85,25 +85,25 @@ impl<'de> Deserialize<'de> for LinkedWordList {
             other: String,
         }
 
-        let raw = dbg!(Vec::<Raw>::deserialize(deser))?;
+        let raw = Vec::<Raw>::deserialize(deser)?;
 
         Ok(LinkedWordList(
             raw.into_iter()
                 .filter_map(|raw| {
-                    if dbg!(raw.link_type.is_empty()) {
+                    if raw.link_type.is_empty() {
                         return None;
                     }
 
-                    let type_int = dbg!(raw.link_type).parse::<u8>().ok()?;
-                    let link_type = dbg!(WordLinkType::try_from_primitive(type_int)).ok()?;
-                    let other = dbg!(raw.other).parse::<i64>().ok().map(WordId)?;
-                    let suggestion_id = dbg!(raw.suggestion_id).and_then(|x| x.parse::<i64>().ok());
+                    let type_int = raw.link_type.parse::<u8>().ok()?;
+                    let link_type = WordLinkType::try_from_primitive(type_int).ok()?;
+                    let other = raw.other.parse::<i64>().ok().map(WordId)?;
+                    let suggestion_id = raw.suggestion_id.and_then(|x| x.parse::<i64>().ok());
 
-                    Some(dbg!(LinkedWord {
+                    Some(LinkedWord {
                         suggestion_id,
                         link_type,
                         other
-                    }))
+                    })
                 })
                 .collect(),
         ))
@@ -181,8 +181,6 @@ pub fn qs_form<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Erro
                     struct DeserErr(serde_qs::Error);
 
                     impl warp::reject::Reject for DeserErr {}
-
-                    dbg!(&err);
 
                     warp::reject::custom(DeserErr(err))
                 })
@@ -325,11 +323,11 @@ async fn submit_word_page(
         WordFormTemplate::default()
     };
 
-    Ok(dbg!(SubmitTemplate {
+    Ok(SubmitTemplate {
         previous_success,
         route,
         word,
-    }))
+    })
 }
 
 async fn submit_word_form(
@@ -392,8 +390,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
     let _db_clone = db.clone();
     let mut w = word;
 
-    dbg!(&w);
-
     tokio::task::spawn_blocking(move || {
         let conn = db.get().unwrap();
 
@@ -433,7 +429,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
         let prev_linked = get_linked_words_for_suggestion(db.clone(), suggestion_id);
 
         for prev in prev_linked {
-            dbg!(&prev);
             if let Some(i) = w
                 .linked_words
                 .0
@@ -441,7 +436,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
                 .position(|new| new.suggestion_id == Some(prev.suggestion_id))
             {
                 let new = w.linked_words.0.remove(i);
-                dbg!("Update", &new);
 
                 upsert_link
                     .execute(params![
@@ -459,7 +453,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
         }
 
         for new in w.linked_words.0 {
-            dbg!("Insert", &new);
             upsert_link
                 .execute(params![
                     new.suggestion_id,
@@ -477,7 +470,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
         let prev_examples = get_examples_for_suggestion(db.clone(), suggestion_id);
 
         for prev in prev_examples {
-            dbg!(&prev);
             if let Some(i) = w
                 .examples
                 .iter()
@@ -490,7 +482,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
                     continue;
                 }
 
-                dbg!("Update", &new);
                 upsert_example
                     .execute(params![
                         new.suggestion_id,
@@ -511,7 +502,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
                 continue;
             }
 
-            dbg!("Insert", &new);
             upsert_example
                 .execute(params![
                     new.suggestion_id,

@@ -6,15 +6,10 @@
     {%- endmatch -%}
 {%- endmacro -%}
 
-{%- macro plural(plural) -%}
-    {%- if plural.clone() %} plural {%- endif -%}
-{%- endmacro -%}
+{# HACK(restioson): Can't get it working without manual whitespace here :/ #}
+{% macro plural(plural) %}{% if plural.clone() %}{{ "plural " }}{% endif %}{% endmacro %}
 
 {%- macro format_result(word) -%}
     {{- word.english }} - {{ word.xhosa }}
-    (
-        {{- word.part_of_speech -}}
-        {%- call plural(word.is_plural) -%}
-        {%- call noun_class(word.noun_class) -%}
-    )
+    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.noun_class) %})
 {%- endmacro -%}

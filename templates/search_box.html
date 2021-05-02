@@ -1,30 +1,24 @@
-{%- macro searchbox() -%}
+{%- macro searchbox(start_query) -%}
+    <script type="module">
+        import { LiveSearch } from "/live_search.js";
 
-<div>
-    <div id="searchbox"></div>
-    <div id="hits"></div>
-</div>
+        document.addEventListener("DOMContentLoaded", function() {
+            let input = document.createElement("input");
+            input.setAttribute("type", "search");
+            document.getElementById("searchbox").appendChild(input);
+            input.value = "{{ start_query }}";
+            input.focus();
 
-<script type="module">
-    import { LiveSearch } from "/live_search.js";
+            new LiveSearch(input, document.getElementById("hits"));
+        });
+    </script>
 
-    document.addEventListener("DOMContentLoaded", function() {
-        let input = document.createElement("input");
-        input.setAttribute("type", "search");
-        document.getElementById("searchbox").appendChild(input);
-        input.focus();
+    <noscript>
+        <form id="search" action="/search" method="GET">
+            <label for="query">Search for a word:</label>
 
-        new LiveSearch(input, document.getElementById("hits"));
-    });
-</script>
-
-<noscript>
-    <form id="search" action="/search" method="GET">
-        <label for="query">Search for a word:</label>
-
-        <input type="search" id="query" name="query" autofocus>
-        <button type="submit">Search</button>
-    </form>
-</noscript>
-
+            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus>
+            <button type="submit">Search</button>
+        </form>
+    </noscript>
 {%- endmacro -%}
