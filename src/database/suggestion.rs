@@ -300,6 +300,14 @@ impl<T> MaybeEdited<T> {
             MaybeEdited::New(new) => new,
         }
     }
+
+    pub fn old(&self) -> &T {
+        match self {
+            MaybeEdited::Edited { old, .. } => old,
+            MaybeEdited::Old(old) => old,
+            MaybeEdited::New(new) => new,
+        }
+    }
 }
 
 impl MaybeEdited<String> {

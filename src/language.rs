@@ -132,30 +132,50 @@ impl ToSql for NounClass {
     }
 }
 
+pub struct NounClassPrefixes {
+    pub singular: &'static str,
+    pub plural: Option<&'static str>,
+}
+
+impl NounClassPrefixes {
+    fn from_singular_plural(singular: &'static str, plural: &'static str) -> Self {
+        NounClassPrefixes {
+            singular,
+            plural: Some(plural),
+        }
+    }
+
+    fn singular_class(singular: &'static str) -> Self {
+        NounClassPrefixes {
+            singular,
+            plural: None
+        }
+    }
+}
+
 impl NounClass {
-    pub fn to_disambiguated_prefix(&self) -> &'static str {
+    pub fn to_prefixes(&self) -> NounClassPrefixes {
+        use NounClass::*;
+
+        let both = NounClassPrefixes::from_singular_plural;
+        let singular = NounClassPrefixes::singular_class;
+
         match self {
-            NounClass::Class1Um | NounClass::Aba => "um/aba",
-            NounClass::U | NounClass::Oo => "u/oo",
-            NounClass::Class3Um | NounClass::Imi => "um/imi",
-            NounClass::Ili | NounClass::Ama => "i(li)/ama",
-            NounClass::Isi | NounClass::Izi => "isi/izi",
-            NounClass::In | NounClass::Izin => "i(n)/i(z)in",
-            NounClass::Ulu => "ulu",
-            NounClass::Ubu => "ubu",
-            NounClass::Uku => "uku",
+            Class1Um | Aba => both("um", "aba"),
+            U | Oo => both("u", "oo"),
+            Class3Um | Imi => both("um", "imi"),
+            Ili | Ama => both("i(li)", "ama"),
+            Isi | Izi => both("isi", "izi"),
+            In | Izin => both("i(n)", "i(z)in"),
+            Ulu => singular("ulu"),
+            Ubu => singular("ubu"),
+            Uku => singular("uku"),
         }
     }
 
     /// Used in askama templates
     pub fn to_u8(&self) -> u8 {
         *self as u8
-    }
-}
-
-impl Display for NounClass {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_str(self.to_disambiguated_prefix()) // TODO highlight?
     }
 }
 

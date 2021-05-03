@@ -48,10 +48,8 @@ export class LiveSearch {
 
                 data.hits.forEach(function (hit) {
                     let result = hit.document;
-                    let str = formatResult(result);
-                    let text = document.createTextNode(str);
-                    let item = search.create_item(str, result.id);
-                    item.appendChild(text);
+                    let item = search.create_item(formatResult(result), result.id);
+                    formatResultRich(result, item);
 
                     let item_container = search.create_item_container();
                     let append = item;
@@ -80,6 +78,58 @@ export class LiveSearch {
         clearInterval(this.ping_task);
         this.ws.close();
     }
+}
+
+const NOUN_CLASSES = {
+    1: ["um", "aba"],
+    2: ["um", "aba"],
+
+    3: ["u", "oo"],
+    4: ["u", "oo"],
+
+    5: ["um", "imi"],
+    6: ["um", "imi"],
+
+    7: ["ili", "ama"],
+    8: ["ili", "ama"],
+
+    9: ["isi", "izi"],
+    10: ["isi", "izi"],
+
+    11: ["in", "izin"],
+    12: ["in", "izin"],
+
+    13: ["ulu"],
+    14: ["ubu"],
+    15: ["uku"]
+};
+
+function formatResultRich(result, elt) {
+    let plural = "";
+    if (result.is_plural) {
+        plural = "plural ";
+    }
+
+    elt.innerText = `${result.english} - ${result.xhosa} (${plural}${result.part_of_speech}`;
+
+    if (result.noun_class != null) {
+        let class_pair = NOUN_CLASSES[result.noun_class];
+        let strong = document.createElement("strong");
+        strong.className = "noun_class_prefix";
+
+        if (result.is_plural) {
+            strong.innerText = class_pair[1]
+            elt.innerText += ` - class ${class_pair[0]}/`
+            elt.appendChild(strong);
+        } else {
+            strong.innerText = class_pair[0]
+            elt.innerText += ` - class `
+            elt.appendChild(strong);
+            elt.innerHTML += `/${class_pair[1]}`;
+        }
+    }
+
+    elt.innerHTML += ")";
 }
 
 export function formatResult(result) {

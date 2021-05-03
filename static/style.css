@@ -15,3 +15,11 @@ body {
 .spaced_list {
     gap: 1.25em;
 }
+
+strong.noun_class_prefix {
+    font-weight: bold;
+}
+
+body {
+    font-family: "Open Sans";
+}

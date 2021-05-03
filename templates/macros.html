@@ -1,8 +1,23 @@
-{%- macro noun_class(noun_class) -%}
+{%- macro noun_class(is_plural, noun_class) -%}
     {%- match noun_class -%}
         {%- when Some with (class) %}
-            - class {{ class }}
+            - class {% call noun_class_inner(is_plural, class) %}
         {%- when None -%}
+    {%- endmatch -%}
+{%- endmacro -%}
+
+{%- macro noun_class_inner(is_plural, class) -%}
+    {%- let prefixes = class.to_prefixes() -%}
+
+    {%- match prefixes.plural -%}
+        {%- when Some with (plural) -%}
+            {%- if is_plural.clone().clone().clone() -%} {# The wtf-clones :) #}
+                {{ prefixes.singular }}<strong class="noun_class_prefix">/{{ plural }}</strong>
+            {%- else -%}
+                <strong class="noun_class_prefix">{{ prefixes.singular }}</strong>/{{ plural }}
+            {%- endif -%}
+        {%- when None -%}
+            <strong class="noun_class_prefix">{{ prefixes.singular }}</strong>
     {%- endmatch -%}
 {%- endmacro -%}
 
@@ -11,5 +26,5 @@
 
 {%- macro format_result(word) -%}
     {{- word.english }} - {{ word.xhosa }}
-    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.noun_class) %})
+    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class) %})
 {%- endmacro -%}

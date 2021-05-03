@@ -1,0 +1,68 @@
+{%- import "macros.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa Live Dictionary</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta name="og:type" content="website"/>
+    <meta name="og:title" content="Live Dictionary"/>
+    <meta name="og:url" content="https://isixhosa.xyz/word/{{- word.word_id -}}"/>
+    <meta name="og:site_name" content="IsiXhosa.xyz"/>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans"/>
+</head>
+
+<body>
+    <h1>IsiXhosa Live Dictionary</h1>
+    <h2>{{ word.english }} - {{ word.xhosa }}</h2>
+
+    <table>
+        <caption>Word information</caption>
+
+        <tr>
+            <td>Part of speech</td>
+            <td>{{ word.part_of_speech }}</td>
+        </tr>
+
+        {#
+        {%- if word.part_of_speech == PartOfSpeech::Noun -%}
+            <tr>
+                <td>Plural</td>
+                <td>{{ word.is_plural }}</td>
+            </tr>
+
+            <tr>
+                <td></td>
+            </tr>
+        {%- endif -%}
+
+        {%- !if word.infinitive.is_empty() -%}
+            <tr>
+                <td>Infinitive</td>
+                <td>{{ word.infinitive }}</td>
+            </tr>
+        {%- endif -%}
+
+        {%- if !word.xhosa_tone_markings.is_empty() -%}
+            <tr>
+                <td>Xhosa with tone markings</td>
+                <td>{{ word.xhosa_tone_markings }}</td>
+            </tr>
+        {%- endif -%}
+
+        {%- if !word.note.is_empty() -%}
+            <tr>
+                <td>Note (extra information)</td>
+                <td>{{ word.note }}</td>
+            </tr>
+        {%- endif -%}
+        #}
+
+        <!-- TODO -->
+
+    </table>
+</body>
+
+</html>

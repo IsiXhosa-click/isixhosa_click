@@ -30,10 +30,7 @@ pub fn get_word_hit_from_db(db: Pool<SqliteConnectionManager>, id: i64) -> Optio
                 xhosa: row.get("xhosa").unwrap(),
                 part_of_speech: SerializeDisplay(row.get("part_of_speech").unwrap()),
                 is_plural: row.get("is_plural").unwrap(),
-                noun_class: row
-                    .get::<&str, Option<_>>("noun_class")
-                    .unwrap()
-                    .map(SerializeDisplay),
+                noun_class: row.get("noun_class").unwrap(),
             })
         })
         .optional()

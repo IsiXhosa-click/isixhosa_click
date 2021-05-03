@@ -91,7 +91,7 @@ pub struct WordHit {
     pub is_plural: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default = "option_none")]
-    pub noun_class: Option<SerializeDisplay<NounClass>>,
+    pub noun_class: Option<NounClass>,
 }
 
 impl From<WordDocument> for WordHit {
@@ -102,7 +102,7 @@ impl From<WordDocument> for WordHit {
             xhosa: d.xhosa,
             part_of_speech: SerializeDisplay(d.part_of_speech),
             is_plural: d.is_plural,
-            noun_class: d.noun_class.map(SerializeDisplay),
+            noun_class: d.noun_class,
         }
     }
 }

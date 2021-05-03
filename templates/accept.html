@@ -8,9 +8,10 @@
     <meta name="viewport" content="width=device-width">
     <meta name="og:type" content="website"/>
     <meta name="og:title" content="Live Dictionary"/>
-    <meta name="og:url" content="https://isixhosa.xyz/"/>
+    <meta name="og:url" content="https://isixhosa.xyz/accept/"/>
     <meta name="og:site_name" content="IsiXhosa.xyz"/>
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans"/>
     <link rel="stylesheet" href="/accept.css">
 </head>
 
@@ -90,20 +91,29 @@
         {%- endmatch -%}
     {%- endmacro -%}
 
-    {%- macro noun_class_edited(noun_class) -%}
+    {%- macro noun_class_edited(is_plural, noun_class) -%}
         {%- match noun_class -%}
             {%- when MaybeEdited::New with (class) -%}
-                <ins>{%- call macros::noun_class(class) -%}</ins>
+                <ins>{%- call macros::noun_class(is_plural.current(), class) -%}</ins>
             {%- when MaybeEdited::Old with (class) -%}
-                {%- call macros::noun_class(class) -%}
+                {%- match is_plural -%}
+                    {%- when MaybeEdited::New with (is_plural) -%}
+                        {%- call macros::noun_class(is_plural, class) -%}
+                    {%- when MaybeEdited::Old with (is_plural) -%}
+                        {%- call macros::noun_class(is_plural, class) -%}
+                    {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
+                        <ins>{%- call macros::noun_class(new_is_plural, class) -%}</ins>
+                        <del>{%- call macros::noun_class(old_is_plural, class) -%}</del>
+                {%- endmatch -%}
             {%- when MaybeEdited::Edited with { old, new } -%}
                 <ins>
-                    {%- call macros::noun_class(new) -%}
                     {%- if new.is_none() -%}
                         <strong>[Removed]</strong>
+                    {%- else -%}
+                        {%- call macros::noun_class(is_plural.current(), new) -%}
                     {%- endif -%}
                 </ins>
-                <del>{%- call macros::noun_class(old) -%}</del>
+                <del>{%- call macros::noun_class(is_plural.old(), old) -%}</del>
         {%- endmatch -%}
     {%- endmacro -%}
 
@@ -149,7 +159,7 @@
                             - (
                                 {%- call plural_edited(s.is_plural) -%}
                                 {%- call maybe_edited(s.part_of_speech) -%}
-                                {%- call noun_class_edited(s.noun_class) -%}
+                                {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
                             )
                         </p>
 
