@@ -6,6 +6,7 @@ use crate::database::existing::ExistingWord;
 use warp::reject::Reject;
 use crate::database::get_word_hit_from_db;
 use crate::NotFound;
+use crate::language::PartOfSpeech;
 
 pub fn details(
     db: Pool<SqliteConnectionManager>,

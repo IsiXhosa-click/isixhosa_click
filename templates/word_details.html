@@ -26,19 +26,23 @@
             <td>{{ word.part_of_speech }}</td>
         </tr>
 
-        {#
         {%- if word.part_of_speech == PartOfSpeech::Noun -%}
             <tr>
                 <td>Plural</td>
                 <td>{{ word.is_plural }}</td>
             </tr>
-
-            <tr>
-                <td></td>
-            </tr>
         {%- endif -%}
 
-        {%- !if word.infinitive.is_empty() -%}
+        {%- match word.noun_class -%}
+            {%- when Some with (class) -%}
+                <tr>
+                    <td>Noun class</td>
+                    <td>{%- call macros::noun_class_prefix(word.is_plural, class) -%}</td>
+                </tr>
+            {%- when None -%}
+        {%- endmatch -%}
+
+        {%- if !word.infinitive.is_empty() -%}
             <tr>
                 <td>Infinitive</td>
                 <td>{{ word.infinitive }}</td>
@@ -58,10 +62,6 @@
                 <td>{{ word.note }}</td>
             </tr>
         {%- endif -%}
-        #}
-
-        <!-- TODO -->
-
     </table>
 </body>
 

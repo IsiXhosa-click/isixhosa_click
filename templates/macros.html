@@ -1,12 +1,12 @@
 {%- macro noun_class(is_plural, noun_class) -%}
     {%- match noun_class -%}
         {%- when Some with (class) %}
-            - class {% call noun_class_inner(is_plural, class) %}
+            - class {% call noun_class_prefix(is_plural, class) %}
         {%- when None -%}
     {%- endmatch -%}
 {%- endmacro -%}
 
-{%- macro noun_class_inner(is_plural, class) -%}
+{%- macro noun_class_prefix(is_plural, class) -%}
     {%- let prefixes = class.to_prefixes() -%}
 
     {%- match prefixes.plural -%}

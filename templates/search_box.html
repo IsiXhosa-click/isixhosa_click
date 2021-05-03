@@ -4,12 +4,40 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
+            input.className = "searchbox_input";
             input.setAttribute("type", "search");
             document.getElementById("searchbox").appendChild(input);
             input.value = "{{ start_query }}";
             input.focus();
 
-            new LiveSearch(input, document.getElementById("hits"));
+            document.getElementById("searchbox").role = "search";
+
+            function createContainer() {
+                let list = document.createElement("ol");
+                list.className = "hits";
+                return list;
+            }
+
+            function createItem(formatted, id) {
+                let link = document.createElement("a");
+                link.href = `/word/${id}`;
+                link.className = "hit";
+                return link;
+            }
+
+            function createItemContainer() {
+                let container = document.createElement("li");
+                container.className = "hit_container";
+                return container;
+            }
+
+            new LiveSearch(
+                input,
+                document.getElementById("hits"),
+                createContainer,
+                createItem,
+                createItemContainer,
+            );
         });
     </script>
 
@@ -17,7 +45,7 @@
         <form id="search" action="/search" method="GET" role="search">
             <label for="query">Search for a word:</label>
 
-            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus>
+            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus class="searchbox_input">
             <button type="submit">Search</button>
         </form>
     </noscript>

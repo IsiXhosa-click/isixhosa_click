@@ -1,0 +1,37 @@
+.search_container {
+    display: flex;
+    flex-direction: column;
+
+    width: 30%;
+    margin: auto;
+}
+
+.searchbox_input {
+    width: 100%;
+}
+
+ol.hits {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+li.hit_container {
+    border: solid 1px grey;
+    background: white;
+    margin: 0;
+    padding: 0;
+    font-size: 0; /* HACK(restioson): get rid of small space in between elements due to "linebreaks" in HTML (???) */
+}
+
+li.hit_container:hover {
+    background: whitesmoke;
+}
+
+a.hit {
+    color: #080808;
+    text-decoration: none;
+    font-size: medium;
+    width: 100%;
+}
+

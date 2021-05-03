@@ -13,6 +13,7 @@
     <meta name="og:url" content="https://isixhosa.xyz/search"/>
     <meta name="og:site_name" content="IsiXhosa.xyz"/>
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/search.css">
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans"/>
 </head>
 
@@ -22,13 +23,13 @@
 
     {%- call searchbox::searchbox(query) -%}
 
-    <div>
+    <div class="search_container">
         <div id="searchbox"></div>
         <div id="hits">
-            <ol>
+            <ol class="hits">
                 {%- for hit in hits -%}
                 <!-- TODO(accept) test -->
-                <li>{%- call macros::format_result(hit.document) -%}</li>
+                <li class="hit">{%- call macros::format_result(hit.document) -%}</li>
                 {%- endfor -%}
             </ol>
         </div>

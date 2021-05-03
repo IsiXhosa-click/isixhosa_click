@@ -2,9 +2,9 @@ export class LiveSearch {
     constructor(
         input,
         results_container,
-        create_container = function() { return document.createElement("ol"); },
-        create_item = function() { return document.createElement("li"); },
-        create_item_container = function() { return null; }
+        create_container,
+        create_item,
+        create_item_container
     ) {
         this.last_value = "";
         this.hits = results_container;

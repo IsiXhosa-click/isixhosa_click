@@ -20,6 +20,12 @@ strong.noun_class_prefix {
     font-weight: bold;
 }
 
+/* Padding between table cells */
+tr > * + * {
+    padding-left: 2em;
+}
+
 body {
-    font-family: "Open Sans";
+    color: #080808;
+    font-family: "Open Sans", sans-serif;
 }

@@ -11,6 +11,7 @@
     <meta name="og:url" content="https://isixhosa.xyz/"/>
     <meta name="og:site_name" content="IsiXhosa.xyz"/>
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/search.css">
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans"/>
 </head>
 
@@ -19,7 +20,7 @@
     <h2>Search for a word:</h2>
     {%- call searchbox::searchbox("") -%}
 
-    <div>
+    <div class="search_container">
         <div id="searchbox"></div>
         <div id="hits"></div>
     </div>

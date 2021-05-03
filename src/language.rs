@@ -50,7 +50,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerializeDisplay<T> {
     }
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug)]
+#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum PartOfSpeech {
