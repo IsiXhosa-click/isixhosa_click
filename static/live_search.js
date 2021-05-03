@@ -3,13 +3,15 @@ export class LiveSearch {
         input,
         results_container,
         create_container = function() { return document.createElement("ol"); },
-        create_item = function() { return document.createElement("li"); }
+        create_item = function() { return document.createElement("li"); },
+        create_item_container = function() { return null; }
     ) {
         this.last_value = "";
         this.hits = results_container;
         this.ws = new WebSocket("ws://" + location.host + "/search");
         this.create_container = create_container;
         this.create_item = create_item;
+        this.create_item_container = create_item_container;
 
         let search = this;
 
@@ -51,10 +53,18 @@ export class LiveSearch {
                     let item = search.create_item(str, result.id);
                     item.appendChild(text);
 
+                    let item_container = search.create_item_container();
+                    let append = item;
+
+                    if (item_container != null) {
+                        item_container.appendChild(item);
+                        append = item_container;
+                    }
+
                     if (container != null) {
-                        container.appendChild(item);
+                        container.appendChild(append);
                     } else {
-                        search.hits.appendChild(item);
+                        search.hits.appendChild(append);
                     }
                 });
 

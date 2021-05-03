@@ -1,10 +1,14 @@
-use crate::database::WordOrSuggestedId;
-use crate::language::{NounClass, PartOfSpeech, WordLinkType};
-use rusqlite::{params, Row};
 use std::convert::{TryFrom, TryInto};
-use r2d2_sqlite::SqliteConnectionManager;
+
 use r2d2::Pool;
-use crate::database::suggestion::{SuggestedWord, SuggestedLinkedWord, SuggestedExample, delete_suggested_word, delete_suggested_linked_word, delete_suggested_example};
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::{OptionalExtension, params, Row};
+
+use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
+use crate::database::{WordOrSuggestedId, get_word_hit_from_db};
+use crate::language::{NounClass, PartOfSpeech, WordLinkType};
+use fallible_iterator::FallibleIterator;
+use crate::typesense::WordHit;
 
 pub struct ExistingWord {
     pub word_id: i64,
@@ -21,6 +25,33 @@ pub struct ExistingWord {
 
     pub examples: Vec<ExistingExample>,
     pub linked_words: Vec<ExistingLinkedWord>,
+}
+
+impl ExistingWord {
+    pub fn get_full(db: Pool<SqliteConnectionManager>, id: i64) -> Option<ExistingWord> {
+        let mut word = ExistingWord::get_alone(db.clone(), id);
+        if let Some(word) = word.as_mut() {
+            word.examples = ExistingExample::get_all_for_word(db.clone(), id);
+            word.linked_words = ExistingLinkedWord::get_all_for_word(db, id);
+        }
+
+        word
+    }
+
+    pub fn get_alone(db: Pool<SqliteConnectionManager>, id: i64) -> Option<ExistingWord> {
+        const SELECT_ORIGINAL: &str = "
+        SELECT
+            word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
+            noun_class, note
+        from words WHERE word_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let opt =conn.prepare(SELECT_ORIGINAL).unwrap()
+            .query_row(params![id], |row| ExistingWord::try_from(row))
+            .optional()
+            .unwrap();
+        opt
+    }
 }
 
 impl TryFrom<&Row<'_>> for ExistingWord {
@@ -45,10 +76,37 @@ impl TryFrom<&Row<'_>> for ExistingWord {
 
 pub struct ExistingExample {
     pub example_id: i64,
-    pub word_or_suggested_id: WordOrSuggestedId,
+    pub word_id: i64,
 
     pub english: String,
     pub xhosa: String,
+}
+
+impl ExistingExample {
+    pub fn get_all_for_word(db: Pool<SqliteConnectionManager>, word_id: i64) -> Vec<ExistingExample> {
+        const SELECT: &str = "SELECT example_id, word_id, english, xhosa FROM examples WHERE word_id = ?1";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+        let rows = query.query(params![word_id]).unwrap();
+
+        rows
+            .map(|row| ExistingExample::try_from(row))
+            .collect()
+            .unwrap()
+    }
+
+    pub fn get(db: Pool<SqliteConnectionManager>, example_id: i64) -> Option<ExistingExample> {
+        const SELECT: &str = "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1";
+
+        let conn = db.get().unwrap();
+        let opt = conn.prepare(SELECT)
+            .unwrap()
+            .query_row(params![example_id], |row| ExistingExample::try_from(row))
+            .optional()
+            .unwrap();
+        opt
+    }
 }
 
 impl TryFrom<&Row<'_>> for ExistingExample {
@@ -57,9 +115,9 @@ impl TryFrom<&Row<'_>> for ExistingExample {
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
         Ok(ExistingExample {
             example_id: row.get("example_id")?,
+            word_id: row.get("word_id")?,
             english: row.get("english")?,
             xhosa: row.get("xhosa")?,
-            word_or_suggested_id: row.try_into()?,
         })
     }
 }
@@ -69,136 +127,55 @@ pub struct ExistingLinkedWord {
     pub first_word_id: i64,
     pub second_word_id: i64,
     pub link_type: WordLinkType,
+    pub other: WordHit,
 }
 
-impl TryFrom<&Row<'_>> for ExistingLinkedWord {
-    type Error = rusqlite::Error;
+impl ExistingLinkedWord {
+    pub fn get_all_for_word(db: Pool<SqliteConnectionManager>, word_id: i64) -> Vec<ExistingLinkedWord> {
+        const SELECT: &str = "
+            SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words
+                WHERE first_word_id = ?1 OR second_word_id = ?1
+        ";
 
-    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+        let rows = query.query(params![word_id]).unwrap();
+
+        rows
+            .map(|row| ExistingLinkedWord::try_from_row_populate_other(row, db.clone(), word_id))
+            .collect()
+            .unwrap()
+    }
+
+    pub fn get(db: Pool<SqliteConnectionManager>, id: i64, skip_populating: i64) -> Option<ExistingLinkedWord> {
+        const SELECT: &str = "
+            SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words
+                WHERE link_id = ?1;
+        ";
+
+        let conn = db.get().unwrap();
+        let opt = conn.prepare(SELECT)
+            .unwrap()
+            .query_row(params![id], |row| ExistingLinkedWord::try_from_row_populate_other(row, db.clone(), skip_populating))
+            .optional()
+            .unwrap();
+        opt
+    }
+
+    fn try_from_row_populate_other(row: &Row<'_>, db: Pool<SqliteConnectionManager>, skip_populating: i64) -> Result<Self, rusqlite::Error> {
+        let (first_word_id, second_word_id) = (row.get("first_word_id")?, row.get("second_word_id")?);
+        let populate = if first_word_id != skip_populating {
+            first_word_id
+        } else {
+            second_word_id
+        };
+
         Ok(ExistingLinkedWord {
             link_id: row.get("link_id")?,
-            first_word_id: row.get("first_word_id")?,
-            second_word_id: row.get("second_word_id")?,
+            first_word_id,
+            second_word_id,
             link_type: row.get("link_type")?,
+            other: get_word_hit_from_db(db, populate).unwrap(),
         })
     }
-}
-
-pub fn accept_new_word_suggestion(db: Pool<SqliteConnectionManager>, s: SuggestedWord) -> i64 {
-    let word_suggestion_id = s.suggestion_id;
-    let word_id = accept_word_suggestion(db.clone(), &s, false);
-
-    for mut example in s.examples.into_iter() {
-        example.word_or_suggested_id = WordOrSuggestedId::ExistingWord(word_id);
-        accept_example(db.clone(), example);
-    }
-
-    for mut linked_word in s.linked_words.into_iter() {
-        linked_word.second = WordOrSuggestedId::ExistingWord(word_id);
-        accept_linked_word(db.clone(), linked_word);
-    }
-
-    delete_suggested_word(db, word_suggestion_id);
-
-    word_id
-}
-
-pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWord, delete: bool) -> i64 {
-    const INSERT: &str = "
-        INSERT INTO words (
-            word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-            ON CONFLICT(word_id) DO UPDATE SET
-                english = excluded.english,
-                xhosa = excluded.xhosa,
-                part_of_speech = excluded.part_of_speech,
-                xhosa_tone_markings = excluded.xhosa_tone_markings,
-                infinitive = excluded.infinitive,
-                is_plural = excluded.is_plural,
-                noun_class = excluded.noun_class,
-                note = excluded.note
-            RETURNING word_id;
-    ";
-
-    let conn = db.get().unwrap();
-    let params = params![
-        s.word_id, s.english.current(), s.xhosa.current(), s.part_of_speech.current(),
-        s.xhosa_tone_markings.current(), s.infinitive.current(), s.is_plural.current(),
-        s.noun_class.current(), s.note.current(),
-    ];
-
-    let id = conn
-        .prepare(INSERT)
-        .unwrap()
-        .query_row(params, |row| row.get("word_id"))
-        .unwrap();
-
-    if delete {
-        delete_suggested_word(db, s.suggestion_id);
-    }
-
-    id
-}
-
-pub fn accept_linked_word(
-    db: Pool<SqliteConnectionManager>,
-    s: SuggestedLinkedWord,
-) -> i64 {
-    const INSERT: &str = "
-        INSERT INTO linked_words (link_id, link_type, first_word_id, second_word_id)
-            VALUES (?1, ?2, ?3, ?4)
-            ON CONFLICT(link_id) DO UPDATE SET
-                link_type = excluded.link_type
-            RETURNING link_id;
-    ";
-
-    let conn = db.get().unwrap();
-    let second_existing = match s.second {
-        WordOrSuggestedId::ExistingWord(e) => e,
-        _ => panic!("No existing word for suggested linked word {:#?}", s),
-    };
-
-    let params = params![
-        s.existing_linked_word_id, s.link_type.current(), s.first_existing_word_id, second_existing
-    ];
-
-    let id = conn
-        .prepare(INSERT)
-        .unwrap()
-        .query_row(params, |row| row.get("link_id"))
-        .unwrap();
-
-    delete_suggested_linked_word(db, s.suggestion_id);
-
-    id
-}
-
-pub fn accept_example(db: Pool<SqliteConnectionManager>, s: SuggestedExample) -> i64 {
-    const INSERT: &str = "
-        INSERT INTO examples (example_id, word_id, english, xhosa) VALUES (?1, ?2, ?3, ?4)
-            ON CONFLICT(example_id) DO UPDATE SET
-                english = excluded.english,
-                xhosa = excluded.xhosa
-            RETURNING example_id;
-    ";
-
-    let conn = db.get().unwrap();
-    let word = match s.word_or_suggested_id {
-        WordOrSuggestedId::ExistingWord(e) => e,
-        _ => panic!("No existing word for suggested example {:#?}", s),
-    };
-    let params = params![
-        s.existing_example_id, word, s.english.current(), s.xhosa.current()
-    ];
-
-    let id = conn
-        .prepare(INSERT)
-        .unwrap()
-        .query_row(params, |row| row.get("example_id"))
-        .unwrap();
-
-    delete_suggested_example(db, s.suggestion_id);
-
-    id
 }

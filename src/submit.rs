@@ -17,10 +17,7 @@ use std::fmt::Debug;
 use warp::hyper::body::Bytes;
 use warp::{body, path, Buf, Filter, Rejection, Reply};
 
-use crate::database::suggestion::{
-    get_examples_for_suggestion, get_full_suggested_word, get_linked_words_for_suggestion,
-    SuggestedExample, SuggestedLinkedWord, SuggestedWord,
-};
+use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 
 #[derive(Template, Debug)]
 #[template(path = "submit.html")]
@@ -313,7 +310,7 @@ async fn submit_word_page(
     let word = if let Some(id) = params.suggestion {
         tokio::task::spawn_blocking(move || {
             // TODO handle examples and linked words
-            let suggested_word = get_full_suggested_word(db.clone(), id)?;
+            let suggested_word = SuggestedWord::get_full(db.clone(), id)?;
             Some(WordFormTemplate::from(suggested_word))
         })
         .await
@@ -426,7 +423,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
 
         let mut upsert_link = conn.prepare(INSERT_LINKED_WORD_SUGGESTION).unwrap();
         let mut delete_link = conn.prepare(DELETE_LINKED_WORD_SUGGESTION).unwrap();
-        let prev_linked = get_linked_words_for_suggestion(db.clone(), suggestion_id);
+        let prev_linked = SuggestedLinkedWord::get_all_for_suggestion(db.clone(), suggestion_id);
 
         for prev in prev_linked {
             if let Some(i) = w
@@ -467,7 +464,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
 
         let mut upsert_example = conn.prepare(INSERT_EXAMPLE_SUGGESTION).unwrap();
         let mut delete_example = conn.prepare(DELETE_EXAMPLE_SUGGESTION).unwrap();
-        let prev_examples = get_examples_for_suggestion(db.clone(), suggestion_id);
+        let prev_examples = SuggestedExample::get_all_for_suggestion(db.clone(), suggestion_id);
 
         for prev in prev_examples {
             if let Some(i) = w

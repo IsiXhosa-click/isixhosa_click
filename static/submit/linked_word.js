@@ -17,7 +17,7 @@ function createLinkedWordSearch(preset_word) {
     popover_container.className = "select_popover_container";
     popover_container.hidden = true;
 
-    let popover = document.createElement("div");
+    let popover = document.createElement("ol");
     popover_container.appendChild(popover);
     popover.className = "select_popover";
 
@@ -53,7 +53,7 @@ function createLinkedWordSearch(preset_word) {
     function createLinkedWordButton(word, word_id) {
         let button = document.createElement("button");
         button.type = "button";
-        button.className = "select_list_option";
+        button.className = "select_list_option"
         button.addEventListener("blur", selectFocusOut);
         button.addEventListener("focus", selectFocusIn);
         button.addEventListener("click", function () {
@@ -65,6 +65,12 @@ function createLinkedWordSearch(preset_word) {
             button.blur();
         })
         return button;
+    }
+
+    function createLinkedWordContainer() {
+        let item = document.createElement("li");
+        item.className = "select_list_option"
+        return item;
     }
 
     input.addEventListener("blur", function() {
@@ -89,7 +95,7 @@ function createLinkedWordSearch(preset_word) {
         input.value = input.getAttribute("data-last_search");
     });
 
-    return { input: input, popover: popover_container, search: new LiveSearch(input, popover, function() {}, createLinkedWordButton) };
+    return { input: input, popover: popover_container, search: new LiveSearch(input, popover, function() {}, createLinkedWordButton, createLinkedWordContainer) };
 }
 
 export function addLinkedWord(link_type, other, suggestion_id) {

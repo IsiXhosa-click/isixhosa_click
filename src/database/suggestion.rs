@@ -1,4 +1,4 @@
-use crate::database::existing::ExistingLinkedWord;
+use crate::database::existing::{ExistingLinkedWord, ExistingExample};
 use crate::database::existing::ExistingWord;
 use crate::database::{get_word_hit_from_db, WordOrSuggestedId};
 use crate::language::{NounClass, PartOfSpeech, WordLinkType};
@@ -33,16 +33,80 @@ pub struct SuggestedWord {
 }
 
 impl SuggestedWord {
-    fn from_row(row: &Row<'_>, select_original: &mut Statement<'_>) -> Self {
-        let e = row
-            .get::<&str, Option<i64>>("existing_word_id")
-            .unwrap()
-            .map(|word| {
-                select_original
-                    .query_row(params![word], |row| ExistingWord::try_from(row))
-                    .unwrap()
-            });
+    pub fn get_all_full(db: Pool<SqliteConnectionManager>) -> Vec<SuggestedWord> {
+        const SELECT_SUGGESTIONS: &str = "SELECT
+            suggestion_id, existing_word_id, changes_summary, deletion,
+            english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
+            noun_class, note
+        from word_suggestions;";
 
+        let conn = db.get().unwrap();
+
+        let mut query = conn.prepare(SELECT_SUGGESTIONS).unwrap();
+        let suggestions = query.query(params![]).unwrap();
+
+        suggestions
+            .map(|row| {
+                let mut word = SuggestedWord::from_row_fetch_original(row, db.clone());
+                word.examples = SuggestedExample::get_all_for_suggestion(db.clone(), word.suggestion_id);
+                word.linked_words = SuggestedLinkedWord::get_all_for_suggestion(db.clone(), word.suggestion_id);
+
+                Ok(word)
+            })
+            .collect()
+            .unwrap()
+    }
+
+    /// Returns the suggested word without examples and linked words populated.
+    pub fn get_alone(
+        db: Pool<SqliteConnectionManager>,
+        id: i64,
+    ) -> Option<SuggestedWord> {
+        const SELECT_SUGGESTION: &str = "SELECT
+            suggestion_id, existing_word_id, changes_summary, deletion,
+            english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
+            noun_class, note
+        from word_suggestions WHERE suggestion_id=?1;";
+
+        let conn = db.get().unwrap();
+
+        // WTF rustc?
+        let v = conn
+            .prepare(SELECT_SUGGESTION)
+            .unwrap()
+            .query_row(params![id], |row| {
+                Ok(SuggestedWord::from_row_fetch_original(row, db))
+            })
+            .optional()
+            .unwrap();
+        v
+    }
+
+    /// Returns the suggested word with examples and linked words populated.
+    pub fn get_full(
+        db: Pool<SqliteConnectionManager>,
+        id: i64,
+    ) -> Option<SuggestedWord> {
+        let mut word = SuggestedWord::get_alone(db.clone(), id);
+        if let Some(word) = word.as_mut() {
+            word.examples = SuggestedExample::get_all_for_suggestion(db.clone(), id);
+            word.linked_words = SuggestedLinkedWord::get_all_for_suggestion(db, id);
+        }
+
+        word
+    }
+
+    pub fn delete(db: Pool<SqliteConnectionManager>, id: i64) -> bool {
+        const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1";
+
+        let conn = db.get().unwrap();
+        let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        modified_rows == 1
+    }
+
+    fn from_row_fetch_original(row: &Row<'_>, db: Pool<SqliteConnectionManager>) -> Self {
+        let existing_id = row.get::<&str, Option<i64>>("existing_word_id").unwrap();
+        let e = existing_id.and_then(|id| ExistingWord::get_alone(db, id));
         let e = e.as_ref();
 
         let noun_class = row.get::<&str, Option<NounClass>>("noun_class");
@@ -97,16 +161,34 @@ pub struct SuggestedExample {
 }
 
 impl SuggestedExample {
-    fn from_row(row: &Row<'_>, select_original: &mut Statement<'_>) -> Self {
-        let e = row
-            .get::<&str, Option<i64>>("existing_example_id")
-            .unwrap()
-            .map(|example| {
-                select_original
-                    .query_row(params![example], |row| ExistingWord::try_from(row))
-                    .unwrap()
-            });
+    pub fn get_all_for_suggestion(
+        db: Pool<SqliteConnectionManager>,
+        suggested_word_id: i64,
+    ) -> Vec<SuggestedExample> {
+        const SELECT_SUGGESTION: &str = "
+        SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id, deletion, changes_summary, xhosa, english
+            FROM example_suggestions WHERE suggested_word_id = ?1;";
 
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
+        let examples = query.query(params![suggested_word_id]).unwrap();
+
+        examples
+            .map(|row| Ok(SuggestedExample::from_row_fetch_original(row, db.clone())))
+            .collect()
+            .unwrap()
+    }
+
+    pub fn delete(db: Pool<SqliteConnectionManager>, id: i64) {
+        const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1";
+
+        let conn = db.get().unwrap();
+        conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+    }
+
+    fn from_row_fetch_original(row: &Row<'_>, db: Pool<SqliteConnectionManager>) -> Self {
+        let existing_id = row.get::<&str, Option<i64>>("existing_example_id").unwrap();
+        let e = existing_id.and_then(|id| ExistingExample::get(db, id));
         let e = e.as_ref();
 
         SuggestedExample {
@@ -136,21 +218,50 @@ pub struct SuggestedLinkedWord {
 }
 
 impl SuggestedLinkedWord {
+    pub fn get_all_for_suggestion(
+        db: Pool<SqliteConnectionManager>,
+        suggested_word_id: i64,
+    ) -> Vec<SuggestedLinkedWord> {
+        const SELECT_SUGGESTION: &str = "
+        SELECT suggestion_id, link_type, deletion, changes_summary, existing_linked_word_id,
+            first_existing_word_id, second_existing_word_id, suggested_word_id
+            FROM linked_word_suggestions WHERE suggested_word_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
+        let examples = query.query(params![suggested_word_id]).unwrap();
+
+        examples
+            .map(|row| {
+                Ok(SuggestedLinkedWord::from_row_populate_other(
+                    row,
+                    db.clone(),
+                ))
+            })
+            .collect()
+            .unwrap()
+    }
+
+    pub fn delete(db: Pool<SqliteConnectionManager>, id: i64) {
+        const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1";
+
+        let conn = db.get().unwrap();
+        conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+    }
+
     fn from_row_populate_other(
         row: &Row<'_>,
         db: Pool<SqliteConnectionManager>,
-        select_original: &mut Statement<'_>,
     ) -> Self {
-        let e = row
-            .get::<&str, Option<i64>>("existing_linked_word_id")
+        let conn = db.get().unwrap();
+        let existing_id = row.get::<&str, Option<i64>>("existing_linked_word_id").unwrap();
+        let other_type = existing_id.and_then(|id| conn
+            .prepare("SELECT link_id FROM linked_words WHERE link_id = ?1")
             .unwrap()
-            .map(|example| {
-                select_original
-                    .query_row(params![example], |row| ExistingLinkedWord::try_from(row))
-                    .unwrap()
-            });
-
-        let e = e.as_ref();
+            .query_row(params![id], |row| row.get("link_id"))
+            .optional()
+            .unwrap()
+        );
 
         let first_existing_word_id = row.get("first_existing_word_id").unwrap();
         let other = get_word_hit_from_db(db, first_existing_word_id).unwrap();
@@ -168,7 +279,7 @@ impl SuggestedLinkedWord {
                 "suggested_word_id",
             )
             .unwrap(),
-            link_type: MaybeEdited::from_row("link_type", row, e.map(|e| e.link_type)),
+            link_type: MaybeEdited::from_row("link_type", row, other_type),
             other,
         }
     }
@@ -214,149 +325,4 @@ impl<T: FromSql> MaybeEdited<T> {
             ),
         }
     }
-}
-
-const SELECT_ORIGINAL: &str = "
-    SELECT
-        word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-        noun_class, note
-    from words WHERE word_id = ?1;";
-
-/// Returns the suggested word without examples and linked words populated.
-pub fn get_suggested_word_alone(
-    db: Pool<SqliteConnectionManager>,
-    id: i64,
-) -> Option<SuggestedWord> {
-    const SELECT_SUGGESTION: &str = "SELECT
-            suggestion_id, existing_word_id, changes_summary, deletion,
-            english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
-        from word_suggestions WHERE suggestion_id=?1;";
-
-    let conn = db.get().unwrap();
-
-    let mut select_original = conn.prepare(SELECT_ORIGINAL).unwrap();
-
-    // WTF rustc?
-    let v = conn
-        .prepare(SELECT_SUGGESTION)
-        .unwrap()
-        .query_row(params![id], |row| {
-            Ok(SuggestedWord::from_row(row, &mut select_original))
-        })
-        .optional()
-        .unwrap();
-    v
-}
-
-pub fn get_suggestions_full(db: Pool<SqliteConnectionManager>) -> Vec<SuggestedWord> {
-    const SELECT_SUGGESTIONS: &str = "SELECT
-            suggestion_id, existing_word_id, changes_summary, deletion,
-            english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
-        from word_suggestions;";
-
-    let conn = db.get().unwrap();
-
-    let mut query = conn.prepare(SELECT_SUGGESTIONS).unwrap();
-    let suggestions = query.query(params![]).unwrap();
-    let mut select_original = conn.prepare(SELECT_ORIGINAL).unwrap();
-
-    suggestions
-        .map(|row| {
-            let mut word = SuggestedWord::from_row(row, &mut select_original);
-            word.examples = get_examples_for_suggestion(db.clone(), word.suggestion_id);
-            word.linked_words = get_linked_words_for_suggestion(db.clone(), word.suggestion_id);
-
-            Ok(word)
-        })
-        .collect()
-        .unwrap()
-}
-
-/// Returns the suggested word with examples and linked words populated.
-pub fn get_full_suggested_word(
-    db: Pool<SqliteConnectionManager>,
-    id: i64,
-) -> Option<SuggestedWord> {
-    let mut word = get_suggested_word_alone(db.clone(), id);
-    if let Some(word) = word.as_mut() {
-        word.examples = get_examples_for_suggestion(db.clone(), id);
-        word.linked_words = get_linked_words_for_suggestion(db, id);
-    }
-
-    word
-}
-
-pub fn delete_suggested_word(db: Pool<SqliteConnectionManager>, id: i64) -> bool {
-    const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1";
-
-    let conn = db.get().unwrap();
-    let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
-    modified_rows == 1
-}
-
-pub fn get_examples_for_suggestion(
-    db: Pool<SqliteConnectionManager>,
-    suggested_word_id: i64,
-) -> Vec<SuggestedExample> {
-    const SELECT_SUGGESTION: &str = "
-        SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id, deletion, changes_summary, xhosa, english
-            FROM example_suggestions WHERE suggested_word_id = ?1;";
-
-    const SELECT_ORIGINAL: &str = "
-        SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1;";
-
-    let conn = db.get().unwrap();
-    let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
-    let mut select_original = conn.prepare(SELECT_ORIGINAL).unwrap();
-    let examples = query.query(params![suggested_word_id]).unwrap();
-
-    examples
-        .map(|row| Ok(SuggestedExample::from_row(row, &mut select_original)))
-        .collect()
-        .unwrap()
-}
-
-pub fn delete_suggested_example(db: Pool<SqliteConnectionManager>, id: i64) {
-    const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1";
-
-    let conn = db.get().unwrap();
-    conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
-}
-
-pub fn get_linked_words_for_suggestion(
-    db: Pool<SqliteConnectionManager>,
-    suggested_word_id: i64,
-) -> Vec<SuggestedLinkedWord> {
-    const SELECT_SUGGESTION: &str = "
-        SELECT suggestion_id, link_type, deletion, changes_summary, existing_linked_word_id,
-            first_existing_word_id, second_existing_word_id, suggested_word_id
-            FROM linked_word_suggestions WHERE suggested_word_id = ?1;";
-
-    const SELECT_ORIGINAL: &str = "
-        SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1;";
-
-    let conn = db.get().unwrap();
-    let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
-    let mut select_original = conn.prepare(SELECT_ORIGINAL).unwrap();
-    let examples = query.query(params![suggested_word_id]).unwrap();
-
-    examples
-        .map(|row| {
-            Ok(SuggestedLinkedWord::from_row_populate_other(
-                row,
-                db.clone(),
-                &mut select_original,
-            ))
-        })
-        .collect()
-        .unwrap()
-}
-
-pub fn delete_suggested_linked_word(db: Pool<SqliteConnectionManager>, id: i64) {
-    const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1";
-
-    let conn = db.get().unwrap();
-    conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
 }

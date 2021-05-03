@@ -7,6 +7,7 @@
 // - TODO user system
 // - TODO attributions - editing users & references & so on
 
+// - TODO "are you sure" dialogues for /accept
 // - TODO basic styling
 // - TODO about page
 
@@ -30,6 +31,7 @@
 // - TODO error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - TODO ratelimiting
 // - TODO html/css/js min
+// - TODO see if i can replace cloning pool with cloning conn?
 
 use crate::session::{LiveSearchSession, WsMessage};
 use crate::typesense::{TypesenseClient, ShortWordSearchHit};
@@ -42,6 +44,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Deserialize;
 use submit::submit;
+use details::details;
 use tokio::task;
 use warp::reject::Reject;
 use warp::{path, Filter, Rejection};
@@ -55,6 +58,7 @@ mod language;
 mod session;
 mod submit;
 mod typesense;
+mod details;
 
 #[derive(Debug)]
 struct TemplateError(askama::Error);
@@ -111,15 +115,17 @@ async fn main() {
     let routes = warp::fs::dir("static")
         .or(search)
         .or(submit(pool.clone()))
-        .or(accept(pool, typesense))
+        .or(accept(pool.clone(), typesense))
+        .or(details(pool))
         .or(warp::get().and(path::end()).map(|| MainPage))
-        .or(warp::fs::file("pages/404.html"));
+        .or(warp::any().map(|| NotFound));
 
     println!("Visit http://127.0.0.1:8080/submit");
     warp::serve(routes.with(warp::log("isixhosa")))
         .run(([0, 0, 0, 0], 8080))
         .await;
 }
+
 
 #[derive(Deserialize, Clone)]
 struct SearchQuery {
@@ -129,6 +135,10 @@ struct SearchQuery {
 #[derive(Template)]
 #[template(path = "index.html")]
 struct MainPage;
+
+#[derive(Template)]
+#[template(path = "404.html")]
+struct NotFound;
 
 #[derive(Template, Default)]
 #[template(path = "search.html")]

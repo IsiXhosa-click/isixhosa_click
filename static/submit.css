@@ -4,8 +4,10 @@
     border: 1px solid black;
     background: powderblue;
     width: 350px;
-    display: flex;
-    flex-direction: column;
+
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
 }
 
 .select_popover:empty {
@@ -27,12 +29,19 @@
     flex-grow: 1;
 }
 
-.select_list_option:active {
-    border: solid 1px grey;
+li.select_list_option {
+    margin: 0;
     padding: 0;
+    font-size: 0; /* HACK(restioson): get rid of small space in between elements due to "linebreaks" in HTML (???) */
 }
 
-.select_list_option {
+button.select_list_option:active {
+    border: solid 1px grey;
+}
+
+button.select_list_option {
     border: solid 1px grey;
     width: 100%;
+    padding: 0;
+    margin: 0;
 }

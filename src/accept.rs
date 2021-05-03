@@ -1,5 +1,4 @@
-use crate::database::suggestion::{MaybeEdited, delete_suggested_word};
-use crate::database::suggestion::{get_full_suggested_word, get_suggestions_full, SuggestedWord};
+use crate::database::suggestion::{MaybeEdited, SuggestedWord};
 use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
 use askama::Template;
 use askama_warp::warp::body;
@@ -7,7 +6,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use warp::{Filter, Rejection, Reply};
-use crate::database::existing::accept_new_word_suggestion;
+use crate::database::accept_new_word_suggestion;
 use crate::typesense::{TypesenseClient, WordDocument};
 use futures::TryFutureExt;
 
@@ -95,7 +94,7 @@ async fn suggested_words(
     db: Pool<SqliteConnectionManager>,
     previous_success: Option<Success>,
 ) -> Result<impl warp::Reply, Rejection> {
-    let suggestions = tokio::task::spawn_blocking(move || get_suggestions_full(db))
+    let suggestions = tokio::task::spawn_blocking(move || SuggestedWord::get_all_full(db))
         .await
         .unwrap();
     Ok(AcceptTemplate {
@@ -125,27 +124,38 @@ async fn accept_suggestion(
     suggestion: i64,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
-    let (word, id) = tokio::task::spawn_blocking(move || {
-        let word = get_full_suggested_word(db.clone(), suggestion).unwrap();
-        (word.clone(), accept_new_word_suggestion(db.clone(), word))
+    let opt = tokio::task::spawn_blocking(move || {
+        let word = SuggestedWord::get_full(db.clone(), suggestion).unwrap();
+
+        if !word.deletion {
+            Some((word.clone(), accept_new_word_suggestion(db.clone(), word)))
+        } else {
+            SuggestedWord::delete(db, word.suggestion_id);
+            None
+        }
     }).await.unwrap();
 
-    let res = typesense
-        .add_word(WordDocument {
-            id: id.to_string(),
-            english: word.english.current().clone(),
-            xhosa: word.xhosa.current().clone(),
-            part_of_speech: *word.part_of_speech.current(),
-            is_plural: *word.is_plural.current(),
-            noun_class: *word.noun_class.current(),
-        })
-        .inspect_err(|e| eprintln!("Error adding a word to typesense: {:#?}", e))
-        .await;
+    let success = if let Some((word, id)) = opt {
+        typesense
+            .add_word(WordDocument {
+                id: id.to_string(),
+                english: word.english.current().clone(),
+                xhosa: word.xhosa.current().clone(),
+                part_of_speech: *word.part_of_speech.current(),
+                is_plural: *word.is_plural.current(),
+                noun_class: *word.noun_class.current(),
+            })
+            .inspect_err(|e| eprintln!("Error adding a word to typesense: {:#?}", e))
+            .await
+            .is_ok()
+    } else {
+        true
+    };
 
     suggested_words(
         db_clone,
         Some(Success {
-            success: res.is_ok(),
+            success,
             method: Some(Method::Accept),
         }),
     )
@@ -157,7 +167,7 @@ async fn deny_suggestion(
     suggestion: i64
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
-    let success = tokio::task::spawn_blocking(move || delete_suggested_word(db, suggestion))
+    let success = tokio::task::spawn_blocking(move || SuggestedWord::delete(db, suggestion))
         .await
         .unwrap();
 
