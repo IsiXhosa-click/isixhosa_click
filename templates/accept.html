@@ -145,7 +145,11 @@
         {%- endmacro -%}
 
         {%- macro action(method, text) -%}
-            <form action="/accept" method="post" enctype="application/x-www-form-urlencoded">
+            <form action="/accept" method="post" enctype="application/x-www-form-urlencoded"
+                    {%- if (method.to_string() != "edit".to_string()) -%}
+                        onsubmit="return confirm('Are you sure you want to {{ method }} this suggestion?')"
+                    {%- endif -%}
+            >
                 <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
                 <select name="method" hidden><option value="{{ method }}"></select>
                 <button type="submit">{{ text }}</button>
@@ -261,9 +265,9 @@
                             {%- endif -%}
 
                             <div class="row_list spaced_flex_list">
-                                {%- call action("edit", "Edit submission") -%}
-                                {%- call action("accept", "Accept submission") -%}
-                                {%- call action("deny", "Deny submission") -%}
+                                {%- call action("edit", "Edit suggestion") -%}
+                                {%- call action("accept", "Accept suggestion") -%}
+                                {%- call action("deny", "Deny suggestion") -%}
                             </div>
                         </div>
                 </li>

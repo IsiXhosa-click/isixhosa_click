@@ -5,8 +5,6 @@
 // - TODO word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
 // - TODO attributions - editing users & references & so on
-
-// - TODO "are you sure" dialogues for /accept
 // - TODO about page
 
 // v0.2:

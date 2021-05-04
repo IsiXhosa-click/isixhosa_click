@@ -22,6 +22,26 @@
         <h2>Submit a word:</h2>
     </header>
 
+
+    {%- match previous_success -%}
+        {%- when Some with (true) -%}
+            <p>Word successfully submitted!</p>
+        {%- when Some with (false) -%}
+            <p>There was an error submitting the word.</p>
+        {%- when None -%}
+    {%- endmatch -%}
+
+    {%- match previous_success -%}
+        {%- when Some with (true) -%}
+            <script>
+                // HACK(restioson): stop F5 from resubmitting form
+                if (window.history.replaceState) {
+                    window.history.replaceState(null, null, window.location.href);
+                }
+            </script>
+        {%- when other -%}
+    {%- endmatch -%}
+
     <main>
         <noscript>
             <strong>Javascript is required for this page to work properly due to the complex nature of the form.
@@ -214,25 +234,6 @@
                 });
             })
         </script>
-
-        {%- match previous_success -%}
-            {%- when Some with (true) -%}
-                <p>Word successfully submitted!</p>
-            {%- when Some with (false) -%}
-                <p>There was an error submitting the word.</p>
-            {%- when None -%}
-        {%- endmatch -%}
-
-        {%- match previous_success -%}
-            {%- when Some with (true) -%}
-                <script>
-                    // HACK(restioson): stop F5 from resubmitting form
-                    if (window.history.replaceState) {
-                        window.history.replaceState(null, null, window.location.href);
-                    }
-                </script>
-            {%- when other -%}
-        {%- endmatch -%}
     </main>
 </body>
 
