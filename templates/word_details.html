@@ -18,51 +18,110 @@
     <h1>IsiXhosa Live Dictionary</h1>
     <h2>{{ word.english }} - {{ word.xhosa }}</h2>
 
-    <table>
-        <caption>Word information</caption>
+    <div class="column_list spaced_list">
+        {# This div prevents the table from expanding to the width of the whole page #}
+        <div>
+            <table>
+                <caption>Word information</caption>
 
-        <tr>
-            <td>Part of speech</td>
-            <td>{{ word.part_of_speech }}</td>
-        </tr>
-
-        {%- if word.part_of_speech == PartOfSpeech::Noun -%}
-            <tr>
-                <td>Plural</td>
-                <td>{{ word.is_plural }}</td>
-            </tr>
-        {%- endif -%}
-
-        {%- match word.noun_class -%}
-            {%- when Some with (class) -%}
                 <tr>
-                    <td>Noun class</td>
-                    <td>{%- call macros::noun_class_prefix(word.is_plural, class) -%}</td>
+                    <td>Part of speech</td>
+                    <td>{{ word.part_of_speech }}</td>
                 </tr>
-            {%- when None -%}
-        {%- endmatch -%}
 
-        {%- if !word.infinitive.is_empty() -%}
-            <tr>
-                <td>Infinitive</td>
-                <td>{{ word.infinitive }}</td>
-            </tr>
+                {%- if word.part_of_speech == PartOfSpeech::Noun -%}
+                    <tr>
+                        <td>Plural</td>
+                        <td>
+                            {%- if word.is_plural -%}
+                                Yes
+                            {%- else -%}
+                                No
+                            {%- endif -%}
+                        </td>
+                    </tr>
+                {%- endif -%}
+
+                {%- match word.noun_class -%}
+                    {%- when Some with (class) -%}
+                        <tr>
+                            <td>Noun class</td>
+                            <td>{%- call macros::noun_class_prefix(word.is_plural, class) -%}</td>
+                        </tr>
+                    {%- when None -%}
+                {%- endmatch -%}
+
+                {%- if !word.infinitive.is_empty() -%}
+                    <tr>
+                        <td>Infinitive</td>
+                        <td>{{ word.infinitive }}</td>
+                    </tr>
+                {%- endif -%}
+
+                {%- if !word.xhosa_tone_markings.is_empty() -%}
+                    <tr>
+                        <td>Xhosa with tone markings</td>
+                        <td>{{ word.xhosa_tone_markings }}</td>
+                    </tr>
+                {%- endif -%}
+
+                {%- if !word.note.is_empty() -%}
+                    <tr>
+                        <td>Note (extra information)</td>
+                        <td>{{ word.note }}</td>
+                    </tr>
+                {%- endif -%}
+            </table>
+        </div>
+
+        {%- if !word.examples.is_empty() -%}
+            <div>
+                <table>
+                    <caption>Examples</caption>
+
+                    <thead>
+                        <tr>
+                            <th>English</th>
+                            <th>Xhosa</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {%- for ex in word.examples -%}
+                            <tr>
+                                <td>{{ ex.english }}</td>
+                                <td>{{ ex.xhosa }}</td>
+                            </tr>
+                        {%- endfor -%}
+                    </tbody>
+                </table>
+            </div>
         {%- endif -%}
 
-        {%- if !word.xhosa_tone_markings.is_empty() -%}
-            <tr>
-                <td>Xhosa with tone markings</td>
-                <td>{{ word.xhosa_tone_markings }}</td>
-            </tr>
-        {%- endif -%}
+        {%- if !word.linked_words.is_empty() -%}
+            <div>
+                <table>
+                    <caption>Linked words</caption>
 
-        {%- if !word.note.is_empty() -%}
-            <tr>
-                <td>Note (extra information)</td>
-                <td>{{ word.note }}</td>
-            </tr>
+                    <thead>
+                        <tr>
+                            <th>Link type</th>
+                            <th>Other word</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {%- for link in word.linked_words -%}
+                            <tr>
+                                <td>{{ link.link_type }}</td>
+                                <td><a href="/word/{{ link.other.id }}">{%- call macros::format_result(link.other) -%}</a></td>
+                            </tr>
+                        {%- endfor -%}
+                    </tbody>
+                </table>
+            </div>
         {%- endif -%}
-    </table>
+    </div>
 </body>
 
 </html>

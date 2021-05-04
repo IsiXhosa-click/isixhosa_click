@@ -45,3 +45,19 @@ button.select_list_option {
     padding: 0;
     margin: 0;
 }
+
+.table {
+    display: table;
+}
+
+.table > div {
+    display: table-row;
+}
+
+.table > div > input {
+    display: table-cell;
+}
+
+.table > div > label {
+    display: table-cell;
+}

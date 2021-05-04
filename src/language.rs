@@ -179,7 +179,7 @@ impl NounClass {
     }
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug)]
+#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum WordLinkType {

@@ -31,20 +31,27 @@
             {%- when None -%}
         {%- endmatch -%}
 
-        <fieldset class="column_list">
-            <legend>Translation</legend>
+        <fieldset class="column_list table">
+            <legend class="cell">Translation</legend>
 
-            <label for="english">English:
-                <input type="text" id="english" name="english" autocomplete="off" value="{{ word.english }}">
-            </label>
+            <div>
+                <label for="english">English:</label><input type="text" id="english" name="english" autocomplete="off" value="{{ word.english }}">
+            </div>
 
-            <label for="xhosa">Xhosa:<input type="text" id="xhosa" name="xhosa" autocomplete="off" value="{{ word.xhosa }}"></label>
+            <div>
+                <label for="xhosa">Xhosa:</label>
+                <input type="text" id="xhosa" name="xhosa" autocomplete="off" value="{{ word.xhosa }}">
+            </div>
 
-            <label for="xhosa_tone_markings">Xhosa with tone markings:
+            <div>
+                <label for="xhosa_tone_markings">Xhosa with tone markings:</label>
                 <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off" value="{{ word.xhosa_tone_markings }}">
-            </label>
+            </div>
 
-            <label for="note">Note (extra information): <input type="text" id="note" name="note" autocomplete="off" value="{{ word.note }}"></label>
+            <div>
+                <label for="note">Note (extra information):</label>
+                <input type="text" id="note" name="note" autocomplete="off" value="{{ word.note }}">
+            </div>
         </fieldset>
 
         <fieldset class="column_list">
@@ -155,7 +162,7 @@
         import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
         import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
 
-        window.addEventListener("load", function() {
+        window.addEventListener("DOMContentLoaded", function() {
             let input_list = document.getElementsByTagName("input");
 
             for (let i = 0; i < input_list.length; i++) {
@@ -165,7 +172,9 @@
                     input.setAttribute("data-lpignore", "true");
                 }
             }
+        });
 
+        window.addEventListener("load", function() {
             function htmlDecode(input) {
                 let doc = new DOMParser().parseFromString(input, "text/html");
                 return doc.documentElement.textContent;

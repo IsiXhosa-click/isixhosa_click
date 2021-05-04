@@ -229,9 +229,9 @@ impl SuggestedLinkedWord {
 
         let conn = db.get().unwrap();
         let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
-        let examples = query.query(params![suggested_word_id]).unwrap();
+        let rows = query.query(params![suggested_word_id]).unwrap();
 
-        examples
+        let mut vec: Vec<SuggestedLinkedWord> = rows
             .map(|row| {
                 Ok(SuggestedLinkedWord::from_row_populate_other(
                     row,
@@ -239,7 +239,11 @@ impl SuggestedLinkedWord {
                 ))
             })
             .collect()
-            .unwrap()
+            .unwrap();
+
+        vec.sort_by_key(|link| *link.link_type.current());
+
+        vec
     }
 
     pub fn delete(db: Pool<SqliteConnectionManager>, id: i64) {

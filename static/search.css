@@ -2,12 +2,28 @@
     display: flex;
     flex-direction: column;
 
-    width: 30%;
+    width: 500px;
     margin: auto;
+}
+
+@media screen and (max-width: 600px) {
+    .search_container {
+        width: 70%;
+    }
 }
 
 .searchbox_input {
     width: 100%;
+    font-family: "Open Sans", sans-serif;
+    font-size: medium;
+    border-radius: 5px;
+    border: solid 1px lightgray;
+    padding: 5px 5px;
+}
+
+.searchbox_input.has_results {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0
 }
 
 ol.hits {
@@ -17,11 +33,16 @@ ol.hits {
 }
 
 li.hit_container {
-    border: solid 1px grey;
+    border: solid 1px lightgray;
     background: white;
+    padding: 5px 5px;
     margin: 0;
-    padding: 0;
     font-size: 0; /* HACK(restioson): get rid of small space in between elements due to "linebreaks" in HTML (???) */
+}
+
+li.hit_container:last-child {
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px
 }
 
 li.hit_container:hover {
@@ -34,4 +55,3 @@ a.hit {
     font-size: medium;
     width: 100%;
 }
-

@@ -163,84 +163,101 @@
                             )
                         </p>
 
-                        <table>
-                            <caption>Details</caption>
+                        {# This div prevents the table from expanding to the width of the whole page #}
+                        <div>
+                            <table>
+                                <caption>Details</caption>
 
-                            <tr>
-                                <td>Change type</td>
-                                <td>
-                                    {%- if s.word_id.is_none() -%}
-                                        Word added
-                                    {%- else if s.deletion -%}
-                                        Word deleted
-                                    {%- else -%}
-                                        Word edited
-                                    {%- endif -%}
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>Changes summary</td>
-                                <td>{{ s.changes_summary }}</td>
-                            </tr>
-
-                            {%- if !s.xhosa_tone_markings.is_empty() -%}
                                 <tr>
-                                    <td>Xhosa with tone markings</td>
-                                    <td>{%- call maybe_edited(s.xhosa_tone_markings) -%}</td>
+                                    <td>Change type</td>
+                                    <td>
+                                        {%- if s.word_id.is_none() -%}
+                                            Word added
+                                        {%- else if s.deletion -%}
+                                            Word deleted
+                                        {%- else -%}
+                                            Word edited
+                                        {%- endif -%}
+                                    </td>
                                 </tr>
-                            {%- endif -%}
 
-                            {%- if !s.infinitive.is_empty() -%}
                                 <tr>
-                                    <td>Infinitive form</td>
-                                    <td>{%- call maybe_edited(s.infinitive) -%}</td>
+                                    <td>Changes summary</td>
+                                    <td>{{ s.changes_summary }}</td>
                                 </tr>
-                            {%- endif -%}
 
-                            {%- if !s.note.is_empty() -%}
-                                <tr>
-                                    <td>Note</td>
-                                    <td>{%- call maybe_edited(s.note) -%}</td>
-                                </tr>
-                            {%- endif -%}
-                        </table>
+                                {%- if !s.xhosa_tone_markings.is_empty() -%}
+                                    <tr>
+                                        <td>Xhosa with tone markings</td>
+                                        <td>{%- call maybe_edited(s.xhosa_tone_markings) -%}</td>
+                                    </tr>
+                                {%- endif -%}
+
+                                {%- if !s.infinitive.is_empty() -%}
+                                    <tr>
+                                        <td>Infinitive form</td>
+                                        <td>{%- call maybe_edited(s.infinitive) -%}</td>
+                                    </tr>
+                                {%- endif -%}
+
+                                {%- if !s.note.is_empty() -%}
+                                    <tr>
+                                        <td>Note</td>
+                                        <td>{%- call maybe_edited(s.note) -%}</td>
+                                    </tr>
+                                {%- endif -%}
+                            </table>
+                        </div>
 
                         {%- if !s.examples.is_empty() -%}
-                            <table>
-                                <caption>Examples</caption>
-                                <tr>
-                                    <th>English</th>
-                                    <th>Xhosa</th>
-                                </tr>
+                            <div>
+                                <table>
+                                    <caption>Examples</caption>
 
-                                {%- for ex in s.examples -%}
-                                    <tr>
-                                        <td>"{%- call maybe_edited(ex.english) -%}"</td>
-                                        <td>"{%- call maybe_edited(ex.xhosa) -%}"</td>
-                                    </tr>
-                                {%- endfor -%}
-                            </table>
+                                    <thead>
+                                        <tr>
+                                            <th>English</th>
+                                            <th>Xhosa</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        {%- for ex in s.examples -%}
+                                            <tr>
+                                                <td>"{%- call maybe_edited(ex.english) -%}"</td>
+                                                <td>"{%- call maybe_edited(ex.xhosa) -%}"</td>
+                                            </tr>
+                                        {%- endfor -%}
+                                    </tbody>
+                                </table>
+                            </div>
                         {%- endif -%}
 
                         {%- if !s.linked_words.is_empty() -%}
-                            <table>
-                                <caption>Linked words</caption>
-                                <tr>
-                                    <th>Link type</th>
-                                    <th>Other word</th>
-                                </tr>
+                            <div>
+                                <table>
+                                    <caption>Linked words</caption>
 
-                                {%- for l in s.linked_words -%}
-                                    <tr>
-                                        <td>{%- call maybe_edited(l.link_type) -%}</td>
-                                        <td>{%- call macros::format_result(l.other) -%}</td>
-                                    </tr>
-                                {%- endfor -%}
-                            </table>
+                                    <thead>
+                                        <tr>
+                                            <th>Link type</th>
+                                            <th>Other word</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        {%- for l in s.linked_words -%}
+                                            <tr>
+                                                <td>{%- call maybe_edited(l.link_type) -%}</td>
+                                                <td>{%- call macros::format_result(l.other) -%}</td>
+                                            </tr>
+                                        {%- endfor -%}
+                                    </tbody>
+                                </table>
+                            </div>
                         {%- endif -%}
 
-                        <div id="buttons" class="row_list spaced_list"> <!-- TODO fix styling :( -->
+                        <div class="row_list spaced_list">
                             {%- call action("edit", "Edit submission") -%}
                             {%- call action("accept", "Accept submission") -%}
                             {%- call action("deny", "Deny submission") -%}

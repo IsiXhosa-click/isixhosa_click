@@ -141,10 +141,14 @@ impl ExistingLinkedWord {
         let mut query = conn.prepare(SELECT).unwrap();
         let rows = query.query(params![word_id]).unwrap();
 
-        rows
+        let mut vec: Vec<ExistingLinkedWord> = rows
             .map(|row| ExistingLinkedWord::try_from_row_populate_other(row, db.clone(), word_id))
             .collect()
-            .unwrap()
+            .unwrap();
+
+        vec.sort_by_key(|l| l.link_type);
+
+        vec
     }
 
     pub fn get(db: Pool<SqliteConnectionManager>, id: i64, skip_populating: i64) -> Option<ExistingLinkedWord> {

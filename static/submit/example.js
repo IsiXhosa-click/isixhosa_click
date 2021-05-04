@@ -8,6 +8,7 @@ function removeExample(button_id) {
 }
 
 function textField(name, label_txt, val) {
+    let div = document.createElement("div");
     let label = document.createElement("label");
     let input = document.createElement("input");
 
@@ -22,8 +23,9 @@ function textField(name, label_txt, val) {
 
     input.setAttribute("data-lpignore", "true");
 
-    label.appendChild(input);
-    return label;
+    div.appendChild(label);
+    div.appendChild(input);
+    return div;
 }
 
 export function addExample(english, xhosa, suggestion_id) {
@@ -52,7 +54,7 @@ export function addExample(english, xhosa, suggestion_id) {
     }
 
     let sentence = row.insertCell();
-    sentence.className = "column_list";
+    sentence.classList.add("table", "column_list");
     sentence.appendChild(textField(`examples[${current_example_id}][english]`, "English example:", english));
     sentence.appendChild(textField(`examples[${current_example_id}][xhosa]`, "Xhosa example:", xhosa));
 }

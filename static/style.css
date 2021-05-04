@@ -1,5 +1,7 @@
 body {
-    background-color: powderblue;
+    background-color: white;
+    color: #080808;
+    font-family: "Open Sans", sans-serif;
 }
 
 .column_list {
@@ -25,7 +27,7 @@ tr > * + * {
     padding-left: 2em;
 }
 
-body {
-    color: #080808;
-    font-family: "Open Sans", sans-serif;
+caption {
+    font-size: large;
+    font-weight: bold;
 }

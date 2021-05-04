@@ -41,6 +41,7 @@ export class LiveSearch {
                 let p = document.createElement("p");
                 let node = document.createTextNode("No results.");
                 p.appendChild(node);
+                input.classList.remove("has_results");
 
                 search.hits.appendChild(p);
             } else {
@@ -65,6 +66,8 @@ export class LiveSearch {
                         search.hits.appendChild(append);
                     }
                 });
+
+                input.classList.add("has_results");
 
                 if (container != null) {
                     search.hits.appendChild(container);
