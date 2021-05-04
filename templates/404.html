@@ -1,19 +1,17 @@
+{%- import "macros.html" as macros -%}
+
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="en-ZA" xmlns="http://www.w3.org/1999/html">
 <head>
     <title>404 - IsiXhosa.xyz</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <meta name="og:type" content="website"/>
-    <meta name="og:title" content="404"/>
+    <meta name="og:title" content="404 - IsiXhosa.xyz"/>
     <meta name="og:url" content="https://isixhosa.xyz/"/>
-    <meta name="og:site_name" content="IsiXhosa.xyz"/>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans"/>
+    {%- call macros::meta() -%}
 </head>
 
 <body>
-    <h1>404 - Page not found</h1>
+    {%- call macros::navbar() -%}
+    <header><h1 class="after_nav">404 - Page not found</h1></header>
     <p>This page was not found. Sorry!</p>
 </body>
 </html>

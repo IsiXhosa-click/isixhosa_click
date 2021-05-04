@@ -3,25 +3,20 @@
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
-    <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa Live Dictionary</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <meta name="og:type" content="website"/>
-    <meta name="og:title" content="Live Dictionary"/>
+    <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa.xyz</title>
+    <meta name="og:title" content=">{{ word.english }} - {{ word.xhosa }} - IsiXhosa.xyz"/>
     <meta name="og:url" content="https://isixhosa.xyz/word/{{- word.word_id -}}"/>
-    <meta name="og:site_name" content="IsiXhosa.xyz"/>
-    <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/details.css">
-    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans"/>
+    {%- call macros::meta() -%}
 </head>
 
 <body>
-    <h1>IsiXhosa Live Dictionary</h1>
+    {%- call macros::navbar() -%}
 
     <main>
         <article>
             <header>
-                <h2>{{ word.english }} - {{ word.xhosa }}</h2>
+                <h2 class="after_nav">{{ word.english }} - {{ word.xhosa }}</h2>
             </header>
 
             <div class="column_list spaced_flex_list">

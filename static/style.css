@@ -30,7 +30,7 @@ select {
 }
 
 strong.noun_class_prefix {
-    font-weight: bold;
+    font-weight: 600; /* Semibold */
 }
 
 th {
@@ -41,8 +41,80 @@ tr > * + * {
     padding-left: 2em;
 }
 
-caption, .virtual_caption {
+caption {
     text-align: left;
     font-size: large;
     font-weight: bold;
+}
+
+.menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    background: #282828;
+    width: 100%;
+}
+
+.menu > * {
+    color: white;
+    text-decoration: none;
+    padding: 0.75rem;
+}
+
+.site_name {
+    margin: 0;
+    font-weight: bold;
+}
+
+#hamburger {
+    position: absolute;
+    right: 0;
+    top: 0;
+    padding: 9px;
+    border: none;
+    display: none;
+    min-width: 0;
+    background: #282828;
+}
+
+#hamburger:hover {
+    background: #484848;
+}
+
+#hamburger > span {
+    color: white;
+}
+
+.menu > a:hover {
+    background: #484848;
+}
+
+.after_nav {
+    margin-top: 3.7rem;
+}
+
+@media screen and (max-width: 800px) {
+    .after_nav {
+        margin-top: 4.7rem;
+    }
+
+    .menu {
+        flex-direction: column;
+    }
+
+    .menu > a {
+        display: none;
+    }
+
+    .menu.open > a {
+        display: block;
+    }
+
+    #hamburger {
+        display: inline;
+    }
 }

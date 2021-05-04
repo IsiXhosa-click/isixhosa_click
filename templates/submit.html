@@ -1,27 +1,24 @@
+{%- import "macros.html" as macros -%}
+
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
     <title>Submit a word - IsiXhosa.xyz</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <meta name="og:type" content="website"/>
     <meta name="og:title" content="Submit a word - IsiXhosa.xyz"/>
     <meta name="og:url" content="https://isixhosa.xyz/submit"/>
-    <meta name="og:site_name" content="IsiXhosa.xyz"/>
     <link rel="stylesheet" href="/submit.css">
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans"/>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    {%- call macros::meta() -%}
 </head>
 
 <body>
+    {%- call macros::navbar() -%}
+
     <!-- TODO add required fields -->
     <!-- TODO explain fields and give examples -->
     <!-- TODO "calcpad" for the tone markers -->
     <header>
-        <h2>Submit a word:</h2>
+        <h2 class="after_nav">Submit a word:</h2>
     </header>
-
 
     {%- match previous_success -%}
         {%- when Some with (true) -%}

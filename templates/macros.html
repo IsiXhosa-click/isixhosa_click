@@ -1,3 +1,41 @@
+{%- macro navbar() -%}
+    <nav class="menu" id="menu">
+        <p class="site_name">IsiXhosa.xyz Live Dictionary</p>
+        <button id="hamburger">
+            <span class="material-icons">menu</span>
+        </button>
+
+        <a href="/search">Search</a>
+        <a href="/about/">About</a>
+        <a href="/submit/">Submit a Word</a>
+        <a href="/accept/">Moderation</a>
+    </nav>
+
+    <script type="module">
+        window.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("hamburger").addEventListener("click", function () {
+                let menu = document.getElementById("menu");
+
+                if (menu.classList.contains("open")) {
+                    menu.classList.remove("open");
+                } else {
+                    menu.classList.add("open");
+                }
+            })
+        });
+    </script>
+{%- endmacro -%}
+
+{%- macro meta() -%}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta name="og:type" content="website"/>
+    <meta name="og:site_name" content="IsiXhosa.xyz"/>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+{%- endmacro -%}
+
 {%- macro noun_class(is_plural, noun_class) -%}
     {%- match noun_class -%}
         {%- when Some with (class) %}
@@ -12,7 +50,7 @@
     {%- match prefixes.plural -%}
         {%- when Some with (plural) -%}
             {%- if is_plural.clone().clone().clone() -%} {# The wtf-clones :) #}
-                {{ prefixes.singular }}<strong class="noun_class_prefix">/{{ plural }}</strong>
+                {{ prefixes.singular }}/<strong class="noun_class_prefix">{{ plural }}</strong>
             {%- else -%}
                 <strong class="noun_class_prefix">{{ prefixes.singular }}</strong>/{{ plural }}
             {%- endif -%}
