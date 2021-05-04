@@ -3,15 +3,14 @@
 // v0.1:
 // - TODO word deletion
 // - TODO word editing - make sure to edit *_full methods to reflect this
-// - TODO suggestion publicising, voting & commenting
 // - TODO user system
 // - TODO attributions - editing users & references & so on
 
 // - TODO "are you sure" dialogues for /accept
-// - TODO basic styling
 // - TODO about page
 
 // v0.2:
+// - suggestion publicising, voting & commenting
 // - conjugation tables
 // - user profiles showing statistics (for mods primarily but maybe can publicise it?)
 // - backups

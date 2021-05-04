@@ -4,10 +4,16 @@ let current_linked_word_id = 0;
 
 function removeLinkedWord(button_id, search) {
     let button = document.getElementById(button_id);
-    let cell = button.parentElement;
-    let row = cell.parentElement;
-    row.remove();
+    let button_div = button.parentElement;
+    let list_div = button_div.parentElement;
+    let list_item = list_div.parentElement;
+    list_item.remove();
     search.stop();
+
+    let delete_buttons = document.getElementsByClassName("delete_linked_word");
+    if (delete_buttons.length === 1) {
+        delete_buttons.item(0).disabled = true;
+    }
 }
 
 function createLinkedWordSearch(preset_word) {
@@ -100,21 +106,39 @@ function createLinkedWordSearch(preset_word) {
 
 export function addLinkedWord(link_type, other, suggestion_id) {
     current_linked_word_id += 1;
-    let table = document.getElementById("linked_words");
-    let row = table.insertRow(table.rows.length - 1);
+    let list = document.getElementById("linked_words");
+    let item = document.createElement("li");
+    list.insertBefore(item, document.getElementById("add_linked_word").parentElement);
 
-    let delete_cell = row.insertCell();
+    let div = document.createElement("div");
+    item.appendChild(div);
+    div.classList.add("row_list", "spaced_flex_list");
+
     let delete_button = document.createElement("button");
     delete_button.type = "button";
-    delete_button.innerText = "Delete";
-    delete_button.id = `linked_word-${current_linked_word_id}`;
-    delete_cell.appendChild(delete_button);
 
-    let type_cell = row.insertCell();
+    let icon = document.createElement("span");
+    icon.className = "material-icons";
+    icon.innerText = "delete";
+    delete_button.appendChild(icon);
+    delete_button.setAttribute("aria-label", "delete");
+
+    delete_button.id = `linked_word-${current_linked_word_id}`;
+    delete_button.classList.add("delete_linked_word", "delete_button");
+    let delete_div = document.createElement("div");
+    delete_div.className = "delete_button_container";
+    delete_div.appendChild(delete_button);
+    div.appendChild(delete_div);
+
+    let select_input_container = document.createElement("div");
+    select_input_container.className = "row_or_column";
+    div.appendChild(select_input_container);
+
     let type_select = document.createElement("select");
+    type_select.className = "type_select";
     type_select.name = `linked_words[${current_linked_word_id}][link_type]`;
 
-    const list = [
+    const types_list = [
         { value: "", text: "Choose how the words are related" },
         { value: "1", text: "Singular or plural form" },
         { value: "2", text: "Synonym" },
@@ -123,10 +147,10 @@ export function addLinkedWord(link_type, other, suggestion_id) {
         { value: "5", text: "Confusable" }
     ];
 
-    for (let i = 0; i < list.length; i++) {
+    for (let i = 0; i < types_list.length; i++) {
         let option = document.createElement("option");
-        option.innerText = list[i].text;
-        option.value = list[i].value;
+        option.innerText = types_list[i].text;
+        option.value = types_list[i].value;
 
         if (i === link_type) {
             option.selected = true;
@@ -135,7 +159,7 @@ export function addLinkedWord(link_type, other, suggestion_id) {
         type_select.add(option);
     }
 
-    type_cell.appendChild(type_select);
+    select_input_container.appendChild(type_select);
 
     if (suggestion_id != null) {
         let suggestion = document.createElement("select");
@@ -145,16 +169,26 @@ export function addLinkedWord(link_type, other, suggestion_id) {
         let option = document.createElement("option");
         option.value = suggestion_id;
         suggestion.add(option);
-        
-        type_cell.appendChild(suggestion);
+
+        div.appendChild(suggestion);
     }
 
-    let linked_word = row.insertCell();
+    let linked_word = document.createElement("div");
     linked_word.className = "word_select_container";
     let { input, popover, search } = createLinkedWordSearch(other);
     delete_button.addEventListener("click", function() { removeLinkedWord(this.id, search) });
     linked_word.appendChild(input);
     linked_word.appendChild(popover);
+    select_input_container.appendChild(linked_word);
+
+    let delete_buttons = document.getElementsByClassName("delete_linked_word");
+    if (delete_buttons.length > 1) {
+        for (let button of delete_buttons) {
+            button.disabled = false;
+        }
+    } else {
+        delete_buttons.item(0).disabled = true;
+    }
 }
 
 export function addLinkedWords(linked_words) {

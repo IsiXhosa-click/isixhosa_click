@@ -27,6 +27,7 @@ export class LiveSearch {
 
                 if (input.value === "") {
                     search.hits.innerHTML = "";
+                    input.classList.remove("has_results");
                 }
             }, 250);
         };

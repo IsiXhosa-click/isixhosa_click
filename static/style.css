@@ -4,6 +4,17 @@ body {
     font-family: "Open Sans", sans-serif;
 }
 
+input {
+    font-family: "Open Sans", sans-serif;
+    border-radius: 3px;
+    border: solid 1px lightgray;
+    padding: 5px 5px;
+}
+
+select {
+    font-family: "Open Sans", sans-serif;
+}
+
 .column_list {
     display: flex;
     flex-direction: column;
@@ -14,7 +25,7 @@ body {
     flex-direction: row;
 }
 
-.spaced_list {
+.spaced_flex_list {
     gap: 1.25em;
 }
 
@@ -22,12 +33,16 @@ strong.noun_class_prefix {
     font-weight: bold;
 }
 
-/* Padding between table cells */
+th {
+    text-align: left;
+}
+
 tr > * + * {
     padding-left: 2em;
 }
 
-caption {
+caption, .virtual_caption {
+    text-align: left;
     font-size: large;
     font-weight: bold;
 }
