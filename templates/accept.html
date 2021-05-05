@@ -157,15 +157,17 @@
             <ol>
                 {%- for s in suggestions -%}
                     <li>
-                        <div class="column_list spaced_flex_list">
-                            <p class="suggested_word_text">
-                                {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
-                                - (
-                                    {%- call plural_edited(s.is_plural) -%}
-                                    {%- call maybe_edited(s.part_of_speech) -%}
-                                    {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
-                                )
-                            </p>
+                        <article class="column_list spaced_flex_list">
+                            <header>
+                               <h3 class="suggested_word_text">
+                                    {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
+                                    - (
+                                        {%- call plural_edited(s.is_plural) -%}
+                                        {%- call maybe_edited(s.part_of_speech) -%}
+                                        {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
+                                    )
+                                </h3>
+                            </header>
 
                             {# This div prevents the table from expanding to the width of the whole page #}
                             <div>
@@ -266,8 +268,8 @@
                                 {%- call action("accept", "Accept suggestion") -%}
                                 {%- call action("reject", "Reject suggestion") -%}
                             </div>
-                        </div>
-                </li>
+                        </article>
+                    </li>
                 {%- endfor -%}
             </ol>
 

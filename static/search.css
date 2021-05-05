@@ -6,7 +6,7 @@
     margin: auto;
 }
 
-@media screen and (max-width: 600px) {
+@media screen and (max-width: 800px) {
     .search_container {
         width: 80%;
     }

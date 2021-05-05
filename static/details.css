@@ -2,10 +2,3 @@ td:first-child, th:first-child {
     box-sizing: border-box;
     width: 10.625em;
 }
-
-/*@media screen and (max-width: 800px) {*/
-/*    td:first-child, th:first-child {*/
-/*        box-sizing: border-box;*/
-/*        width: 110px;*/
-/*    }*/
-/*}*/
