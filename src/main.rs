@@ -159,9 +159,6 @@ async fn query_search(
 ) -> Result<impl warp::Reply, Rejection> {
     let results = typesense.search_word_short(&query.query).await.unwrap();
 
-    // TODO
-    dbg!(&query);
-
     Ok(Search {
         query: query.query,
         hits: results.hits,
