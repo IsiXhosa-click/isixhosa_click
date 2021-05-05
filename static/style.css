@@ -24,12 +24,15 @@ form, fieldset {
     box-sizing: border-box;
 }
 
+#main_wrap {
+    margin: 0 auto;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
 @media screen and (min-width: 800px) {
     #main_wrap {
-        margin: 0 auto;
         width: 800px;
-        max-width: 100%;
-        box-sizing: border-box;
     }
 }
 
@@ -149,6 +152,10 @@ caption {
 @media screen and (max-width: 800px) {
     header {
         margin-top: 4.2rem;
+    }
+
+    #main_wrap {
+        margin: 0;
     }
 
     .menu {
