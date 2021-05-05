@@ -13,120 +13,122 @@
 <body>
     {%- call macros::navbar() -%}
 
-    <main>
-        <article>
-            <header>
-                <h2 class="after_nav">{{ word.english }} - {{ word.xhosa }}</h2>
-            </header>
+    <div id="main_wrap">
+        <main>
+            <article>
+                <header>
+                    <h2>{{ word.english }} - {{ word.xhosa }}</h2>
+                </header>
 
-            <div class="column_list spaced_flex_list">
-                {# This div prevents the table from expanding to the width of the whole page #}
-                <div>
-                    <table>
-                        <caption>Word information</caption>
+                <div class="column_list spaced_flex_list">
+                    {# This div prevents the table from expanding to the width of the whole page #}
+                    <div>
+                        <table>
+                            <caption>Word information</caption>
 
-                        <tbody>
-                            <tr>
-                                <th scope="row">Part of speech</th>
-                                <td>{{ word.part_of_speech }}</td>
-                            </tr>
-
-                            {%- if word.part_of_speech == PartOfSpeech::Noun -%}
+                            <tbody>
                                 <tr>
-                                    <th scope="row">Plural</th>
-                                    <td>
-                                        {%- if word.is_plural -%}
-                                            Yes
-                                        {%- else -%}
-                                            No
-                                        {%- endif -%}
-                                    </td>
+                                    <th scope="row">Part of speech</th>
+                                    <td>{{ word.part_of_speech }}</td>
                                 </tr>
-                            {%- endif -%}
 
-                            {%- match word.noun_class -%}
-                                {%- when Some with (class) -%}
+                                {%- if word.part_of_speech == PartOfSpeech::Noun -%}
                                     <tr>
-                                        <th scope="row">Noun class</th>
-                                        <td>{%- call macros::noun_class_prefix(word.is_plural, class) -%}</td>
+                                        <th scope="row">Plural</th>
+                                        <td>
+                                            {%- if word.is_plural -%}
+                                                Yes
+                                            {%- else -%}
+                                                No
+                                            {%- endif -%}
+                                        </td>
                                     </tr>
-                                {%- when None -%}
-                            {%- endmatch -%}
+                                {%- endif -%}
 
-                            {%- if !word.infinitive.is_empty() -%}
-                                <tr>
-                                    <th scope="row">Infinitive</th>
-                                    <td>{{ word.infinitive }}</td>
-                                </tr>
-                            {%- endif -%}
+                                {%- match word.noun_class -%}
+                                    {%- when Some with (class) -%}
+                                        <tr>
+                                            <th scope="row">Noun class</th>
+                                            <td>{%- call macros::noun_class_prefix(word.is_plural, class) -%}</td>
+                                        </tr>
+                                    {%- when None -%}
+                                {%- endmatch -%}
 
-                            {%- if !word.xhosa_tone_markings.is_empty() -%}
-                                <tr>
-                                    <th scope="row">Xhosa with tone markings</th>
-                                    <td>{{ word.xhosa_tone_markings }}</td>
-                                </tr>
-                            {%- endif -%}
+                                {%- if !word.infinitive.is_empty() -%}
+                                    <tr>
+                                        <th scope="row">Infinitive</th>
+                                        <td>{{ word.infinitive }}</td>
+                                    </tr>
+                                {%- endif -%}
 
-                            {%- if !word.note.is_empty() -%}
-                                <tr>
-                                    <th scope="row">Note (extra information)</th>
-                                    <td>{{ word.note }}</td>
-                                </tr>
-                            {%- endif -%}
-                        </tbody>
-                    </table>
+                                {%- if !word.xhosa_tone_markings.is_empty() -%}
+                                    <tr>
+                                        <th scope="row">Xhosa with tone markings</th>
+                                        <td>{{ word.xhosa_tone_markings }}</td>
+                                    </tr>
+                                {%- endif -%}
+
+                                {%- if !word.note.is_empty() -%}
+                                    <tr>
+                                        <th scope="row">Note (extra information)</th>
+                                        <td>{{ word.note }}</td>
+                                    </tr>
+                                {%- endif -%}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {%- if !word.examples.is_empty() -%}
+                        <div>
+                            <table>
+                                <caption>Examples</caption>
+
+                                <thead>
+                                    <tr>
+                                        <th scope="col">English</th>
+                                        <th scope="col">Xhosa</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {%- for ex in word.examples -%}
+                                        <tr>
+                                            <td>{{ ex.english }}</td>
+                                            <td>{{ ex.xhosa }}</td>
+                                        </tr>
+                                    {%- endfor -%}
+                                </tbody>
+                            </table>
+                        </div>
+                    {%- endif -%}
+
+                    {%- if !word.linked_words.is_empty() -%}
+                        <div>
+                            <table>
+                                <caption>Linked words</caption>
+
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Link type</th>
+                                        <th scope="col">Other word</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {%- for link in word.linked_words -%}
+                                        <tr>
+                                            <td>{{ link.link_type }}</td>
+                                            <td><a href="/word/{{ link.other.id }}">{%- call macros::format_result(link.other) -%}</a></td>
+                                        </tr>
+                                    {%- endfor -%}
+                                </tbody>
+                            </table>
+                        </div>
+                    {%- endif -%}
                 </div>
-
-                {%- if !word.examples.is_empty() -%}
-                    <div>
-                        <table>
-                            <caption>Examples</caption>
-
-                            <thead>
-                                <tr>
-                                    <th scope="col">English</th>
-                                    <th scope="col">Xhosa</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {%- for ex in word.examples -%}
-                                    <tr>
-                                        <td>{{ ex.english }}</td>
-                                        <td>{{ ex.xhosa }}</td>
-                                    </tr>
-                                {%- endfor -%}
-                            </tbody>
-                        </table>
-                    </div>
-                {%- endif -%}
-
-                {%- if !word.linked_words.is_empty() -%}
-                    <div>
-                        <table>
-                            <caption>Linked words</caption>
-
-                            <thead>
-                                <tr>
-                                    <th scope="col">Link type</th>
-                                    <th scope="col">Other word</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {%- for link in word.linked_words -%}
-                                    <tr>
-                                        <td>{{ link.link_type }}</td>
-                                        <td><a href="/word/{{ link.other.id }}">{%- call macros::format_result(link.other) -%}</a></td>
-                                    </tr>
-                                {%- endfor -%}
-                            </tbody>
-                        </table>
-                    </div>
-                {%- endif -%}
-            </div>
-        </article>
-    </main>
+            </article>
+        </main>
+    </div>
 </body>
 
 </html>

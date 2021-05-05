@@ -1,4 +1,4 @@
-use crate::database::existing::{ExistingLinkedWord, ExistingExample};
+use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
 use crate::database::{get_word_hit_from_db, WordOrSuggestedId};
 use crate::language::{NounClass, PartOfSpeech, WordLinkType};
@@ -7,8 +7,8 @@ use fallible_iterator::FallibleIterator;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::FromSql;
-use rusqlite::{params, OptionalExtension, Row, Statement};
-use std::convert::{TryFrom, TryInto};
+use rusqlite::{params, OptionalExtension, Row};
+use std::convert::TryInto;
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -48,8 +48,10 @@ impl SuggestedWord {
         suggestions
             .map(|row| {
                 let mut word = SuggestedWord::from_row_fetch_original(row, db.clone());
-                word.examples = SuggestedExample::get_all_for_suggestion(db.clone(), word.suggestion_id);
-                word.linked_words = SuggestedLinkedWord::get_all_for_suggestion(db.clone(), word.suggestion_id);
+                word.examples =
+                    SuggestedExample::get_all_for_suggestion(db.clone(), word.suggestion_id);
+                word.linked_words =
+                    SuggestedLinkedWord::get_all_for_suggestion(db.clone(), word.suggestion_id);
 
                 Ok(word)
             })
@@ -58,10 +60,7 @@ impl SuggestedWord {
     }
 
     /// Returns the suggested word without examples and linked words populated.
-    pub fn get_alone(
-        db: Pool<SqliteConnectionManager>,
-        id: i64,
-    ) -> Option<SuggestedWord> {
+    pub fn get_alone(db: Pool<SqliteConnectionManager>, id: i64) -> Option<SuggestedWord> {
         const SELECT_SUGGESTION: &str = "SELECT
             suggestion_id, existing_word_id, changes_summary, deletion,
             english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -83,10 +82,7 @@ impl SuggestedWord {
     }
 
     /// Returns the suggested word with examples and linked words populated.
-    pub fn get_full(
-        db: Pool<SqliteConnectionManager>,
-        id: i64,
-    ) -> Option<SuggestedWord> {
+    pub fn get_full(db: Pool<SqliteConnectionManager>, id: i64) -> Option<SuggestedWord> {
         let mut word = SuggestedWord::get_alone(db.clone(), id);
         if let Some(word) = word.as_mut() {
             word.examples = SuggestedExample::get_all_for_suggestion(db.clone(), id);
@@ -253,19 +249,18 @@ impl SuggestedLinkedWord {
         conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
     }
 
-    fn from_row_populate_other(
-        row: &Row<'_>,
-        db: Pool<SqliteConnectionManager>,
-    ) -> Self {
+    fn from_row_populate_other(row: &Row<'_>, db: Pool<SqliteConnectionManager>) -> Self {
         let conn = db.get().unwrap();
-        let existing_id = row.get::<&str, Option<i64>>("existing_linked_word_id").unwrap();
-        let other_type = existing_id.and_then(|id| conn
-            .prepare("SELECT link_id FROM linked_words WHERE link_id = ?1")
-            .unwrap()
-            .query_row(params![id], |row| row.get("link_id"))
-            .optional()
-            .unwrap()
-        );
+        let existing_id = row
+            .get::<&str, Option<i64>>("existing_linked_word_id")
+            .unwrap();
+        let other_type = existing_id.and_then(|id| {
+            conn.prepare("SELECT link_id FROM linked_words WHERE link_id = ?1")
+                .unwrap()
+                .query_row(params![id], |row| row.get("link_id"))
+                .optional()
+                .unwrap()
+        });
 
         let first_existing_word_id = row.get("first_existing_word_id").unwrap();
         let other = get_word_hit_from_db(db, first_existing_word_id).unwrap();

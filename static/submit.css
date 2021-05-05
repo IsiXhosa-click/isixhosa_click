@@ -13,6 +13,10 @@ table {
     box-sizing: border-box;
 }
 
+#submit_word {
+    gap: 1em;
+}
+
 .select_popover {
     position: absolute;
     box-sizing: border-box;
@@ -48,8 +52,12 @@ table {
     flex-direction: column;
 }
 
-.word_select_container, .type_select, .select_popover {
+.word_select_container, .select_popover {
     width: 21.8em;
+}
+
+.type_select {
+    width: 100%;
 }
 
 label > * {

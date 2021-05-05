@@ -2,6 +2,35 @@ body {
     background-color: white;
     color: #080808;
     font-family: "Open Sans", sans-serif;
+    box-sizing: border-box;
+}
+
+article, main {
+    margin: 0 auto;
+    width: 35em;
+    max-width: 100%;
+    line-height: 1.5rem;
+    box-sizing: border-box;
+}
+
+header {
+    margin: 3.2rem auto 0;
+    width: 35em;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+form, fieldset {
+    box-sizing: border-box;
+}
+
+@media screen and (min-width: 800px) {
+    #main_wrap {
+        margin: 0 auto;
+        width: 800px;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
 }
 
 input {
@@ -117,13 +146,9 @@ caption {
     background: #484848;
 }
 
-.after_nav {
-    margin-top: 3.7rem;
-}
-
 @media screen and (max-width: 800px) {
-    .after_nav {
-        margin-top: 4.7rem;
+    header {
+        margin-top: 4.2rem;
     }
 
     .menu {

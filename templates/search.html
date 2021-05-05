@@ -14,19 +14,24 @@
 
 <body>
     {%- call macros::navbar() -%}
-    <main class="search_container">
-        {%- call searchbox::searchbox(query) -%}
-        <h2 class="after_nav">Search for a word:</h2>
+    <div id="main_wrap">
+        <header id="main_header">
+            <h1>Search for a word</h1>
+        </header>
 
-        <div id="searchbox"></div>
-        <div id="hits">
-            <ol class="hits">
-                {%- for hit in hits -%}
-                <!-- TODO(accept) test -->
-                <li class="hit">{%- call macros::format_result(hit.document) -%}</li>
-                {%- endfor -%}
-            </ol>
-        </div>
-    </main>
+        <main class="search_container">
+            {%- call searchbox::searchbox(query) -%}
+
+            <div id="searchbox"></div>
+            <div id="hits">
+                <ol class="hits">
+                    {%- for hit in hits -%}
+                    <!-- TODO(accept) test -->
+                    <li class="hit">{%- call macros::format_result(hit.document) -%}</li>
+                    {%- endfor -%}
+                </ol>
+            </div>
+        </main>
+    </div>
 </body>
 </html>

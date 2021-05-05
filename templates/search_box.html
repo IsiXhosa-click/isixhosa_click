@@ -43,9 +43,9 @@
 
     <noscript>
         <form id="search" action="/search" method="GET" role="search">
-            <label for="query">Search for a word:</label>
+            <label for="query">Search for a word</label>
 
-            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus class="searchbox_input">
+            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus class="searchbox_input" aria-labelledby="main_header">
             <button type="submit">Search</button>
         </form>
     </noscript>

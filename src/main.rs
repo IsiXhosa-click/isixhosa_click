@@ -33,18 +33,19 @@
 // - TODO see if i can replace cloning pool with cloning conn?
 
 use crate::session::{LiveSearchSession, WsMessage};
-use crate::typesense::{TypesenseClient, ShortWordSearchHit};
+use crate::typesense::{ShortWordSearchHit, TypesenseClient};
 use accept::accept;
 use arcstr::ArcStr;
 use askama::Template;
+use details::details;
 use futures::StreamExt;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Deserialize;
 use submit::submit;
-use details::details;
 use tokio::task;
+use warp::http::Uri;
 use warp::reject::Reject;
 use warp::{path, Filter, Rejection};
 use xtra::spawn::TokioGlobalSpawnExt;
@@ -53,11 +54,11 @@ use xtra::Actor;
 mod accept;
 // mod auth;
 mod database;
+mod details;
 mod language;
 mod session;
 mod submit;
 mod typesense;
-mod details;
 
 #[derive(Debug)]
 struct TemplateError(askama::Error);
@@ -120,7 +121,9 @@ async fn main() {
         .or(submit(pool.clone()))
         .or(accept(pool.clone(), typesense))
         .or(details(pool))
-        .or(warp::get().and(path::end()).map(|| MainPage))
+        .or(warp::get()
+            .and(path::end())
+            .map(|| warp::redirect(Uri::from_static("/search"))))
         .or(about)
         .or(warp::any().map(|| NotFound));
 
@@ -130,15 +133,10 @@ async fn main() {
         .await;
 }
 
-
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 struct SearchQuery {
     query: String,
 }
-
-#[derive(Template)]
-#[template(path = "index.html")]
-struct MainPage;
 
 #[derive(Template)]
 #[template(path = "404.html")]
@@ -160,6 +158,9 @@ async fn query_search(
     typesense: TypesenseClient,
 ) -> Result<impl warp::Reply, Rejection> {
     let results = typesense.search_word_short(&query.query).await.unwrap();
+
+    // TODO
+    dbg!(&query);
 
     Ok(Search {
         query: query.query,

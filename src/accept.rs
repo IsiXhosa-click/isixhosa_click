@@ -1,14 +1,14 @@
+use crate::database::accept_new_word_suggestion;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
 use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
+use crate::typesense::{TypesenseClient, WordDocument};
 use askama::Template;
 use askama_warp::warp::body;
+use futures::TryFutureExt;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use warp::{Filter, Rejection, Reply};
-use crate::database::accept_new_word_suggestion;
-use crate::typesense::{TypesenseClient, WordDocument};
-use futures::TryFutureExt;
 
 #[derive(Template)]
 #[template(path = "accept.html")]
@@ -133,7 +133,9 @@ async fn accept_suggestion(
             SuggestedWord::delete(db, word.suggestion_id);
             None
         }
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 
     let success = if let Some((word, id)) = opt {
         typesense
@@ -164,7 +166,7 @@ async fn accept_suggestion(
 
 async fn reject_suggestion(
     db: Pool<SqliteConnectionManager>,
-    suggestion: i64
+    suggestion: i64,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
     let success = tokio::task::spawn_blocking(move || SuggestedWord::delete(db, suggestion))
@@ -177,7 +179,8 @@ async fn reject_suggestion(
             success,
             method: Some(Method::Reject),
         }),
-    ).await
+    )
+    .await
 }
 
 async fn process_one(
@@ -192,6 +195,8 @@ async fn process_one(
         Method::Accept => accept_suggestion(db, typesense, params.suggestion)
             .await
             .map(Reply::into_response),
-        Method::Reject => reject_suggestion(db, params.suggestion).await.map(Reply::into_response),
+        Method::Reject => reject_suggestion(db, params.suggestion)
+            .await
+            .map(Reply::into_response),
     }
 }

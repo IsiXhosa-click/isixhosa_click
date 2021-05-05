@@ -99,7 +99,7 @@ impl<'de> Deserialize<'de> for LinkedWordList {
                     Some(LinkedWord {
                         suggestion_id,
                         link_type,
-                        other
+                        other,
                     })
                 })
                 .collect(),

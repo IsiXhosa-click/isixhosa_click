@@ -16,222 +16,224 @@
     <!-- TODO add required fields -->
     <!-- TODO explain fields and give examples -->
     <!-- TODO "calcpad" for the tone markers -->
-    <header>
-        <h2 class="after_nav">Submit a word:</h2>
-    </header>
+    <div id="main_wrap">
+        <header>
+            <h1>Submit a word:</h1>
+        </header>
 
-    {%- match previous_success -%}
-        {%- when Some with (true) -%}
-            <p>Word successfully submitted!</p>
-        {%- when Some with (false) -%}
-            <p>There was an error submitting the word.</p>
-        {%- when None -%}
-    {%- endmatch -%}
+        {%- match previous_success -%}
+            {%- when Some with (true) -%}
+                <script>
+                    // HACK(restioson): stop F5 from resubmitting form
+                    if (window.history.replaceState) {
+                        window.history.replaceState(null, null, window.location.href);
+                    }
+                </script>
+            {%- when other -%}
+        {%- endmatch -%}
 
-    {%- match previous_success -%}
-        {%- when Some with (true) -%}
-            <script>
-                // HACK(restioson): stop F5 from resubmitting form
-                if (window.history.replaceState) {
-                    window.history.replaceState(null, null, window.location.href);
-                }
-            </script>
-        {%- when other -%}
-    {%- endmatch -%}
-
-    <main>
-        <noscript>
-            <strong>Javascript is required for this page to work properly due to the complex nature of the form.
-                It may work regardless, but adding examples and linked words will certainly not. Apologies!</strong>
-        </noscript>
-
-        <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded" class="column_list spaced_flex_list">
-            {%- match word.suggestion_id -%}
-                {%- when Some with (id) -%}
-                    <select name="suggestion_id" hidden><option value="{{ id }}"></select>
+        <main>
+            {%- match previous_success -%}
+                {%- when Some with (true) -%}
+                    <p>Word successfully submitted!</p>
+                {%- when Some with (false) -%}
+                    <p>There was an error submitting the word.</p>
                 {%- when None -%}
             {%- endmatch -%}
 
-            <!-- TODO fieldset -->
-            <fieldset class="contains_table">
-                <legend>Translation</legend>
+            <noscript>
+                <strong>Javascript is required for this page to work properly due to the complex nature of the form.
+                    It may work regardless, but adding examples and linked words will certainly not. Apologies!</strong>
+            </noscript>
 
-                <div class="table">
-                    <div>
-                        <label for="english">English:</label><input type="text" id="english" name="english" autocomplete="off" value="{{ word.english }}">
-                    </div>
-
-                    <div>
-                        <label for="xhosa">Xhosa:</label>
-                        <input type="text" id="xhosa" name="xhosa" autocomplete="off" value="{{ word.xhosa }}">
-                    </div>
-
-                    <div>
-                        <label for="xhosa_tone_markings">Xhosa with tone markings:</label>
-                        <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off" value="{{ word.xhosa_tone_markings }}">
-                    </div>
-
-                    <div>
-                        <label for="note">Note (extra information):</label>
-                        <input type="text" id="note" name="note" autocomplete="off" value="{{ word.note }}">
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset class="column_list">
-                <legend>Part of speech</legend>
-                <label for="part_of_speech">Part of speech:
-                    <select id="part_of_speech" name="part_of_speech">
-                        <option value="">Choose a part of speech</option>
-                        <option value=1 id="verb_selected">Verb</option>
-                        <option value=2 id="noun_selected">Noun</option>
-                        <option value=4>Adverb</option>
-                        <option value=5>Relative (adjective)</option>
-                        <option value=6>Interjection</option>
-                        <option value=7>Conjunction</option>
-                        <option value=8>Preposition</option>
-                    </select>
-                </label>
-
-                {%- match word.part_of_speech -%}
-                    {% when Some with (part) %}
-                        <script type="module">
-                            window.addEventListener("DOMContentLoaded", function () {
-                                let select = document.getElementById("part_of_speech");
-                                select.options[{{ part.to_u8() }}].selected = true;
-                            });
-                        </script>
-                    {% when None %}
-                {%- endmatch -%}
-
-                <!-- Noun options -->
-
-                <div class="noun_option" hidden>
-                    <label for="is_plural">Plural?</label>
-                    <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked {%- endif -%}>
-                </div>
-
-                {%- match word.noun_class -%}
-                    {%- when Some with (class) -%}
-                        <script type="module">
-                            window.addEventListener("DOMContentLoaded", function () {
-                                let select = document.getElementById("noun_class");
-                                select.options[{{ class.to_u8() }}].selected = true;
-                            });
-                        </script>
+            <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded" class="column_list">
+                {%- match word.suggestion_id -%}
+                    {%- when Some with (id) -%}
+                        <select name="suggestion_id" hidden><option value="{{ id }}"></select>
                     {%- when None -%}
                 {%- endmatch -%}
 
-                <div class="noun_option" hidden>
-                    <label for="noun_class">Noun class:</label>
-                    <select id="noun_class" name="noun_class">
-                        <option value="">Choose a noun class</option>
-                        <option value=1>um (aba)</option>
-                        <option value=2>aba</option>
-                        <option value=3>u</option>
-                        <option value=4>oo</option>
-                        <option value=5>um (imi)</option>
-                        <option value=6>imi</option>
-                        <option value=7>i(li)</option>
-                        <option value=8>ama</option>
-                        <option value=9>isi</option>
-                        <option value=10>izi</option>
-                        <option value=11>i(n)</option>
-                        <option value=12>i(z)i(n)</option>
-                        <option value=13>ulu</option>
-                        <option value=14>ubu</option>
-                        <option value=15>uku</option>
-                    </select>
+                <!-- TODO fieldset -->
+                <fieldset class="contains_table">
+                    <legend>Translation</legend>
+
+                    <div class="table">
+                        <div>
+                            <label for="english">English:</label><input type="text" id="english" name="english" autocomplete="off" value="{{ word.english }}">
+                        </div>
+
+                        <div>
+                            <label for="xhosa">Xhosa:</label>
+                            <input type="text" id="xhosa" name="xhosa" autocomplete="off" value="{{ word.xhosa }}">
+                        </div>
+
+                        <div>
+                            <label for="xhosa_tone_markings">Xhosa with tone markings:</label>
+                            <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off" value="{{ word.xhosa_tone_markings }}">
+                        </div>
+
+                        <div>
+                            <label for="note">Note (extra information):</label>
+                            <input type="text" id="note" name="note" autocomplete="off" value="{{ word.note }}">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="column_list">
+                    <legend>Part of speech</legend>
+                    <label for="part_of_speech">Part of speech:
+                        <select id="part_of_speech" name="part_of_speech">
+                            <option value="">Choose a part of speech</option>
+                            <option value=1 id="verb_selected">Verb</option>
+                            <option value=2 id="noun_selected">Noun</option>
+                            <option value=4>Adverb</option>
+                            <option value=5>Relative (adjective)</option>
+                            <option value=6>Interjection</option>
+                            <option value=7>Conjunction</option>
+                            <option value=8>Preposition</option>
+                        </select>
+                    </label>
+
+                    {%- match word.part_of_speech -%}
+                        {% when Some with (part) %}
+                            <script type="module">
+                                window.addEventListener("DOMContentLoaded", function () {
+                                    let select = document.getElementById("part_of_speech");
+                                    select.options[{{ part.to_u8() }}].selected = true;
+                                });
+                            </script>
+                        {% when None %}
+                    {%- endmatch -%}
+
+                    <!-- Noun options -->
+
+                    <div class="noun_option" hidden>
+                        <label for="is_plural">Plural?</label>
+                        <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked {%- endif -%}>
+                    </div>
+
+                    {%- match word.noun_class -%}
+                        {%- when Some with (class) -%}
+                            <script type="module">
+                                window.addEventListener("DOMContentLoaded", function () {
+                                    let select = document.getElementById("noun_class");
+                                    select.options[{{ class.to_u8() }}].selected = true;
+                                });
+                            </script>
+                        {%- when None -%}
+                    {%- endmatch -%}
+
+                    <div class="noun_option" hidden>
+                        <label for="noun_class">Noun class:</label>
+                        <select id="noun_class" name="noun_class">
+                            <option value="">Choose a noun class</option>
+                            <option value=1>um (aba)</option>
+                            <option value=2>aba</option>
+                            <option value=3>u</option>
+                            <option value=4>oo</option>
+                            <option value=5>um (imi)</option>
+                            <option value=6>imi</option>
+                            <option value=7>i(li)</option>
+                            <option value=8>ama</option>
+                            <option value=9>isi</option>
+                            <option value=10>izi</option>
+                            <option value=11>i(n)</option>
+                            <option value=12>i(z)i(n)</option>
+                            <option value=13>ulu</option>
+                            <option value=14>ubu</option>
+                            <option value=15>uku</option>
+                        </select>
+                    </div>
+
+                    <!-- Verb options -->
+
+                    <div class="verb_option" hidden>
+                        <label for="infinitive">Infinitive form:</label>
+                        <input type="text" id="infinitive" name="infinitive" autocomplete="off" value="{{ word.infinitive }}">
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Example sentences</legend>
+
+                    <ul id="examples" class="bare_list spaced_list">
+                        <li><button id="add_example" type="button">Add another</button></li>
+                    </ul>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Linked words</legend>
+
+                    <ul id="linked_words" class="bare_list spaced_list">
+                        <li><button id="add_linked_word" type="button">Add another</button></li>
+                    </ul>
+                </fieldset>
+
+                <div>
+                    <button type="submit">
+                        {%- if word.suggestion_id.is_none() -%}
+                            Submit word
+                        {%- else -%}
+                            Submit edit to suggestion
+                        {%- endif -%}
+                    </button>
                 </div>
+            </form>
 
-                <!-- Verb options -->
+            <script type="module">
+                import { addExample, addExamples } from "/submit/example.js";
+                import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
+                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
 
-                <div class="verb_option" hidden>
-                    <label for="infinitive">Infinitive form:</label>
-                    <input type="text" id="infinitive" name="infinitive" autocomplete="off" value="{{ word.infinitive }}">
-                </div>
-            </fieldset>
+                window.addEventListener("DOMContentLoaded", function() {
+                    let input_list = document.getElementsByTagName("input");
 
-            <fieldset>
-                <legend>Example sentences</legend>
+                    for (let i = 0; i < input_list.length; i++) {
+                        let input = input_list.item(i);
 
-                <ul id="examples" class="bare_list spaced_list">
-                    <li><button id="add_example" type="button">Add another</button></li>
-                </ul>
-            </fieldset>
-
-            <fieldset>
-                <legend>Linked words</legend>
-
-                <ul id="linked_words" class="bare_list spaced_list">
-                    <li><button id="add_linked_word" type="button">Add another</button></li>
-                </ul>
-            </fieldset>
-
-            <div>
-                <button type="submit">
-                    {%- if word.suggestion_id.is_none() -%}
-                        Submit word
-                    {%- else -%}
-                        Submit edit to suggestion
-                    {%- endif -%}
-                </button>
-            </div>
-        </form>
-
-        <script type="module">
-            import { addExample, addExamples } from "/submit/example.js";
-            import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
-            import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
-
-            window.addEventListener("DOMContentLoaded", function() {
-                let input_list = document.getElementsByTagName("input");
-
-                for (let i = 0; i < input_list.length; i++) {
-                    let input = input_list.item(i);
-
-                    if (input.type === "text") {
-                        input.setAttribute("data-lpignore", "true");
-                    }
-                }
-            });
-
-            window.addEventListener("load", function() {
-                function htmlDecode(input) {
-                    let doc = new DOMParser().parseFromString(input, "text/html");
-                    return doc.documentElement.textContent;
-                }
-
-                let examples_str = htmlDecode("{{ serde_json::to_string(word.examples).unwrap() }}");
-                let linked_words_str = htmlDecode("{{ serde_json::to_string(word.linked_words).unwrap() }}");
-                addExamples(JSON.parse(examples_str));
-                addLinkedWords(JSON.parse(linked_words_str));
-                partOfSpeechChange(); // Refresh part of speech sections
-
-                document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
-                document.getElementById("add_example").addEventListener("click", function() { addExample() });
-                document.getElementById("add_linked_word").addEventListener("click", function() { addLinkedWord() });
-                document.getElementById("submit_word").addEventListener("submit", function() {
-                    let linked_words = document.getElementsByClassName("word_select_search");
-
-                    for (let i = 0; i < linked_words.length; i++) {
-                        let word = linked_words.item(i);
-                        word.value = word.getAttribute("data-selected_word_id");
-                    }
-
-                    // TODO test
-                    if (!document.getElementById("noun_selected").selected) {
-                        document.getElementById("is_plural").checked = false;
-                        document.getElementById("noun_class").value = "";
-                    }
-
-                    if (!document.getElementById("verb_selected").selected) {
-                        document.getElementById("infinitive").value = "";
+                        if (input.type === "text") {
+                            input.setAttribute("data-lpignore", "true");
+                        }
                     }
                 });
-            })
-        </script>
-    </main>
+
+                window.addEventListener("load", function() {
+                    function htmlDecode(input) {
+                        let doc = new DOMParser().parseFromString(input, "text/html");
+                        return doc.documentElement.textContent;
+                    }
+
+                    let examples_str = htmlDecode("{{ serde_json::to_string(word.examples).unwrap() }}");
+                    let linked_words_str = htmlDecode("{{ serde_json::to_string(word.linked_words).unwrap() }}");
+                    addExamples(JSON.parse(examples_str));
+                    addLinkedWords(JSON.parse(linked_words_str));
+                    partOfSpeechChange(); // Refresh part of speech sections
+
+                    document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
+                    document.getElementById("add_example").addEventListener("click", function() { addExample() });
+                    document.getElementById("add_linked_word").addEventListener("click", function() { addLinkedWord() });
+                    document.getElementById("submit_word").addEventListener("submit", function() {
+                        let linked_words = document.getElementsByClassName("word_select_search");
+
+                        for (let i = 0; i < linked_words.length; i++) {
+                            let word = linked_words.item(i);
+                            word.value = word.getAttribute("data-selected_word_id");
+                        }
+
+                        // TODO test
+                        if (!document.getElementById("noun_selected").selected) {
+                            document.getElementById("is_plural").checked = false;
+                            document.getElementById("noun_class").value = "";
+                        }
+
+                        if (!document.getElementById("verb_selected").selected) {
+                            document.getElementById("infinitive").value = "";
+                        }
+                    });
+                })
+            </script>
+        </main>
+    </div>
 </body>
 
 </html>

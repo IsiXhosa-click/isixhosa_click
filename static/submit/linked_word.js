@@ -131,7 +131,7 @@ export function addLinkedWord(link_type, other, suggestion_id) {
     div.appendChild(delete_div);
 
     let select_input_container = document.createElement("div");
-    select_input_container.className = "row_or_column";
+    select_input_container.classList.add("column_list", "spaced_flex_list");
     div.appendChild(select_input_container);
 
     let type_select = document.createElement("select");

@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{OptionalExtension, params, Row};
+use rusqlite::{params, OptionalExtension, Row};
 
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::language::SerializeDisplay;
@@ -92,7 +92,11 @@ pub fn accept_new_word_suggestion(db: Pool<SqliteConnectionManager>, s: Suggeste
     word_id
 }
 
-pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWord, delete: bool) -> i64 {
+pub fn accept_word_suggestion(
+    db: Pool<SqliteConnectionManager>,
+    s: &SuggestedWord,
+    delete: bool,
+) -> i64 {
     const INSERT: &str = "
         INSERT INTO words (
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -112,9 +116,15 @@ pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWo
 
     let conn = db.get().unwrap();
     let params = params![
-        s.word_id, s.english.current(), s.xhosa.current(), s.part_of_speech.current(),
-        s.xhosa_tone_markings.current(), s.infinitive.current(), s.is_plural.current(),
-        s.noun_class.current(), s.note.current(),
+        s.word_id,
+        s.english.current(),
+        s.xhosa.current(),
+        s.part_of_speech.current(),
+        s.xhosa_tone_markings.current(),
+        s.infinitive.current(),
+        s.is_plural.current(),
+        s.noun_class.current(),
+        s.note.current(),
     ];
 
     let id = conn
@@ -130,10 +140,7 @@ pub fn accept_word_suggestion(db: Pool<SqliteConnectionManager>, s: &SuggestedWo
     id
 }
 
-pub fn accept_linked_word(
-    db: Pool<SqliteConnectionManager>,
-    s: SuggestedLinkedWord,
-) -> i64 {
+pub fn accept_linked_word(db: Pool<SqliteConnectionManager>, s: SuggestedLinkedWord) -> i64 {
     const INSERT: &str = "
         INSERT INTO linked_words (link_id, link_type, first_word_id, second_word_id)
             VALUES (?1, ?2, ?3, ?4)
@@ -149,7 +156,10 @@ pub fn accept_linked_word(
     };
 
     let params = params![
-        s.existing_linked_word_id, s.link_type.current(), s.first_existing_word_id, second_existing
+        s.existing_linked_word_id,
+        s.link_type.current(),
+        s.first_existing_word_id,
+        second_existing
     ];
 
     let id = conn
@@ -178,7 +188,10 @@ pub fn accept_example(db: Pool<SqliteConnectionManager>, s: SuggestedExample) ->
         _ => panic!("No existing word for suggested example {:#?}", s),
     };
     let params = params![
-        s.existing_example_id, word, s.english.current(), s.xhosa.current()
+        s.existing_example_id,
+        word,
+        s.english.current(),
+        s.xhosa.current()
     ];
 
     let id = conn

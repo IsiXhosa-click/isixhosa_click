@@ -1,14 +1,13 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{OptionalExtension, params, Row};
+use rusqlite::{params, OptionalExtension, Row};
 
-use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
-use crate::database::{WordOrSuggestedId, get_word_hit_from_db};
+use crate::database::get_word_hit_from_db;
 use crate::language::{NounClass, PartOfSpeech, WordLinkType};
-use fallible_iterator::FallibleIterator;
 use crate::typesense::WordHit;
+use fallible_iterator::FallibleIterator;
 
 pub struct ExistingWord {
     pub word_id: i64,
@@ -46,7 +45,9 @@ impl ExistingWord {
         from words WHERE word_id = ?1;";
 
         let conn = db.get().unwrap();
-        let opt =conn.prepare(SELECT_ORIGINAL).unwrap()
+        let opt = conn
+            .prepare(SELECT_ORIGINAL)
+            .unwrap()
             .query_row(params![id], |row| ExistingWord::try_from(row))
             .optional()
             .unwrap();
@@ -83,24 +84,29 @@ pub struct ExistingExample {
 }
 
 impl ExistingExample {
-    pub fn get_all_for_word(db: Pool<SqliteConnectionManager>, word_id: i64) -> Vec<ExistingExample> {
-        const SELECT: &str = "SELECT example_id, word_id, english, xhosa FROM examples WHERE word_id = ?1";
+    pub fn get_all_for_word(
+        db: Pool<SqliteConnectionManager>,
+        word_id: i64,
+    ) -> Vec<ExistingExample> {
+        const SELECT: &str =
+            "SELECT example_id, word_id, english, xhosa FROM examples WHERE word_id = ?1";
 
         let conn = db.get().unwrap();
         let mut query = conn.prepare(SELECT).unwrap();
         let rows = query.query(params![word_id]).unwrap();
 
-        rows
-            .map(|row| ExistingExample::try_from(row))
+        rows.map(|row| ExistingExample::try_from(row))
             .collect()
             .unwrap()
     }
 
     pub fn get(db: Pool<SqliteConnectionManager>, example_id: i64) -> Option<ExistingExample> {
-        const SELECT: &str = "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1";
+        const SELECT: &str =
+            "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1";
 
         let conn = db.get().unwrap();
-        let opt = conn.prepare(SELECT)
+        let opt = conn
+            .prepare(SELECT)
             .unwrap()
             .query_row(params![example_id], |row| ExistingExample::try_from(row))
             .optional()
@@ -131,7 +137,10 @@ pub struct ExistingLinkedWord {
 }
 
 impl ExistingLinkedWord {
-    pub fn get_all_for_word(db: Pool<SqliteConnectionManager>, word_id: i64) -> Vec<ExistingLinkedWord> {
+    pub fn get_all_for_word(
+        db: Pool<SqliteConnectionManager>,
+        word_id: i64,
+    ) -> Vec<ExistingLinkedWord> {
         const SELECT: &str = "
             SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words
                 WHERE first_word_id = ?1 OR second_word_id = ?1
@@ -151,23 +160,35 @@ impl ExistingLinkedWord {
         vec
     }
 
-    pub fn get(db: Pool<SqliteConnectionManager>, id: i64, skip_populating: i64) -> Option<ExistingLinkedWord> {
+    pub fn get(
+        db: Pool<SqliteConnectionManager>,
+        id: i64,
+        skip_populating: i64,
+    ) -> Option<ExistingLinkedWord> {
         const SELECT: &str = "
             SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words
                 WHERE link_id = ?1;
         ";
 
         let conn = db.get().unwrap();
-        let opt = conn.prepare(SELECT)
+        let opt = conn
+            .prepare(SELECT)
             .unwrap()
-            .query_row(params![id], |row| ExistingLinkedWord::try_from_row_populate_other(row, db.clone(), skip_populating))
+            .query_row(params![id], |row| {
+                ExistingLinkedWord::try_from_row_populate_other(row, db.clone(), skip_populating)
+            })
             .optional()
             .unwrap();
         opt
     }
 
-    fn try_from_row_populate_other(row: &Row<'_>, db: Pool<SqliteConnectionManager>, skip_populating: i64) -> Result<Self, rusqlite::Error> {
-        let (first_word_id, second_word_id) = (row.get("first_word_id")?, row.get("second_word_id")?);
+    fn try_from_row_populate_other(
+        row: &Row<'_>,
+        db: Pool<SqliteConnectionManager>,
+        skip_populating: i64,
+    ) -> Result<Self, rusqlite::Error> {
+        let (first_word_id, second_word_id) =
+            (row.get("first_word_id")?, row.get("second_word_id")?);
         let populate = if first_word_id != skip_populating {
             first_word_id
         } else {

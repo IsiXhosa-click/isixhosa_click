@@ -50,7 +50,17 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerializeDisplay<T> {
     }
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(
+    IntoPrimitive,
+    TryFromPrimitive,
+    Serialize_repr,
+    Deserialize_repr,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum PartOfSpeech {
@@ -148,7 +158,7 @@ impl NounClassPrefixes {
     fn singular_class(singular: &'static str) -> Self {
         NounClassPrefixes {
             singular,
-            plural: None
+            plural: None,
         }
     }
 }
@@ -179,7 +189,19 @@ impl NounClass {
     }
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(
+    IntoPrimitive,
+    TryFromPrimitive,
+    Serialize_repr,
+    Deserialize_repr,
+    Copy,
+    Clone,
+    Debug,
+    PartialOrd,
+    Ord,
+    PartialEq,
+    Eq,
+)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum WordLinkType {

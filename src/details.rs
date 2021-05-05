@@ -1,19 +1,17 @@
+use crate::database::existing::ExistingWord;
+use crate::language::PartOfSpeech;
+use crate::NotFound;
 use askama::Template;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use warp::{Filter, Rejection, Reply};
-use crate::database::existing::ExistingWord;
-use warp::reject::Reject;
-use crate::database::get_word_hit_from_db;
-use crate::NotFound;
-use crate::language::PartOfSpeech;
 
 pub fn details(
     db: Pool<SqliteConnectionManager>,
 ) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
     let db = warp::any().map(move || db.clone());
 
-    warp::path![ "word" / i64 ]
+    warp::path!["word" / i64]
         .and(warp::path::end())
         .and(warp::get())
         .and(db)
