@@ -27,7 +27,7 @@ struct Success {
 enum Method {
     Edit,
     Accept,
-    Deny,
+    Reject,
 }
 
 #[derive(Deserialize)]
@@ -162,7 +162,7 @@ async fn accept_suggestion(
     .await
 }
 
-async fn deny_suggestion(
+async fn reject_suggestion(
     db: Pool<SqliteConnectionManager>,
     suggestion: i64
 ) -> Result<impl Reply, Rejection> {
@@ -175,7 +175,7 @@ async fn deny_suggestion(
         db_clone,
         Some(Success {
             success,
-            method: Some(Method::Deny),
+            method: Some(Method::Reject),
         }),
     ).await
 }
@@ -192,6 +192,6 @@ async fn process_one(
         Method::Accept => accept_suggestion(db, typesense, params.suggestion)
             .await
             .map(Reply::into_response),
-        Method::Deny => deny_suggestion(db, params.suggestion).await.map(Reply::into_response),
+        Method::Reject => reject_suggestion(db, params.suggestion).await.map(Reply::into_response),
     }
 }

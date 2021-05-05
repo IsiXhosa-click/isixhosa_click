@@ -5,7 +5,9 @@
 // - TODO word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
 // - TODO attributions - editing users & references & so on
-// - TODO about page
+
+// - TODO align columns in /accept
+// - TODO fix plural undefined
 
 // v0.2:
 // - suggestion publicising, voting & commenting
@@ -108,6 +110,10 @@ async fn main() {
     let search = warp::path("search")
         .and(path::end())
         .and(live_search.or(query_search).or(search_page));
+    let about = warp::get()
+        .and(warp::path("about"))
+        .and(path::end())
+        .map(|| AboutPage);
 
     let routes = warp::fs::dir("static")
         .or(search)
@@ -115,6 +121,7 @@ async fn main() {
         .or(accept(pool.clone(), typesense))
         .or(details(pool))
         .or(warp::get().and(path::end()).map(|| MainPage))
+        .or(about)
         .or(warp::any().map(|| NotFound));
 
     println!("Visit http://127.0.0.1:8080/submit");
@@ -136,6 +143,10 @@ struct MainPage;
 #[derive(Template)]
 #[template(path = "404.html")]
 struct NotFound;
+
+#[derive(Template)]
+#[template(path = "about.html")]
+struct AboutPage;
 
 #[derive(Template, Default)]
 #[template(path = "search.html")]

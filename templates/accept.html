@@ -31,7 +31,7 @@
                                         fully accepted suggestion.
                                     {%- when Method::Edit -%}
                                         fully edited suggestion.
-                                    {%- when Method::Deny -%}
+                                    {%- when Method::Reject -%}
                                         fully denied suggestion.
                                 {%- endmatch -%}
                             {%- when None -%}
@@ -47,8 +47,8 @@
                                         while accepting a suggestion.
                                     {%- when Method::Edit %}
                                         while editing a suggestion.
-                                    {%- when Method::Deny %}
-                                        while denying a suggestion.
+                                    {%- when Method::Reject %}
+                                        while rejecting a suggestion.
                                 {%- endmatch -%}
                             {%- when None -%}
                                 .
@@ -264,7 +264,7 @@
                             <div class="row_list spaced_flex_list">
                                 {%- call action("edit", "Edit suggestion") -%}
                                 {%- call action("accept", "Accept suggestion") -%}
-                                {%- call action("deny", "Deny suggestion") -%}
+                                {%- call action("reject", "Reject suggestion") -%}
                             </div>
                         </div>
                 </li>

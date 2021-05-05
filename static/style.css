@@ -97,6 +97,12 @@ caption {
     margin-top: 3.7rem;
 }
 
+.site_icon {
+    max-width: 2rem;
+    height: auto;
+    margin-top: -0.1rem;
+}
+
 @media screen and (max-width: 800px) {
     .after_nav {
         margin-top: 4.7rem;
