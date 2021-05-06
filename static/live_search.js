@@ -129,7 +129,10 @@ function formatResultRich(result, elt) {
             strong.innerText = class_pair[0]
             elt.innerText += ` - class `
             elt.appendChild(strong);
-            elt.innerHTML += `/${class_pair[1]}`;
+
+            if (class_pair[1] != null) {
+                elt.innerHTML += `/${class_pair[1]}`;
+            }
         }
     }
 

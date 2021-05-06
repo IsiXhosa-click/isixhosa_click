@@ -36,7 +36,7 @@ form, fieldset {
     }
 }
 
-input {
+input[type="text"] {
     font-family: "Open Sans", sans-serif;
     border-radius: 3px;
     border: solid 1px lightgray;

@@ -6,8 +6,6 @@
 // - TODO user system
 // - TODO attributions - editing users & references & so on
 
-// - TODO align columns in /accept
-// - TODO fix plural undefined
 
 // v0.2:
 // - suggestion publicising, voting & commenting

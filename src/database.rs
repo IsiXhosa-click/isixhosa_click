@@ -2,6 +2,7 @@
 
 use std::convert::TryFrom;
 
+use serde::Deserialize;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
@@ -38,23 +39,35 @@ pub fn get_word_hit_from_db(db: Pool<SqliteConnectionManager>, id: i64) -> Optio
     v
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum WordOrSuggestedId {
-    ExistingWord(i64),
-    Suggested(i64),
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize)]
+#[serde(untagged)]
+pub enum WordOrSuggestionId {
+    ExistingWord {
+        existing_id: i64,
+    },
+    Suggested {
+        suggestion_id: i64,
+    }
 }
 
-impl WordOrSuggestedId {
+impl WordOrSuggestionId {
+    pub fn into_suggestion(self) -> Option<i64> {
+        match self {
+            WordOrSuggestionId::Suggested { suggestion_id } => Some(suggestion_id),
+            WordOrSuggestionId::ExistingWord { .. } => None,
+        }
+    }
+
     fn try_from_row(
         row: &Row<'_>,
         existing_idx: &str,
         suggested_idx: &str,
-    ) -> Result<WordOrSuggestedId, rusqlite::Error> {
+    ) -> Result<WordOrSuggestionId, rusqlite::Error> {
         let existing_word_id: Option<i64> = row.get(existing_idx).unwrap();
         let suggested_word_id: Option<i64> = row.get(suggested_idx).unwrap();
         match (existing_word_id, suggested_word_id) {
-            (Some(existing), None) => Ok(WordOrSuggestedId::ExistingWord(existing)),
-            (None, Some(suggested)) => Ok(WordOrSuggestedId::Suggested(suggested)),
+            (Some(existing_id), None) => Ok(WordOrSuggestionId::ExistingWord { existing_id }),
+            (None, Some(suggestion_id)) => Ok(WordOrSuggestionId::Suggested { suggestion_id }),
             (existing, _suggested) => {
                 panic!(
                     "Invalid pair of exisitng/suggested ids: existing - {:?} suggested - {:?}",
@@ -65,11 +78,11 @@ impl WordOrSuggestedId {
     }
 }
 
-impl TryFrom<&Row<'_>> for WordOrSuggestedId {
+impl TryFrom<&Row<'_>> for WordOrSuggestionId {
     type Error = rusqlite::Error;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
-        WordOrSuggestedId::try_from_row(row, "existing_word_id", "suggested_word_id")
+        WordOrSuggestionId::try_from_row(row, "existing_word_id", "suggested_word_id")
     }
 }
 
@@ -78,12 +91,12 @@ pub fn accept_new_word_suggestion(db: Pool<SqliteConnectionManager>, s: Suggeste
     let word_id = accept_word_suggestion(db.clone(), &s, false);
 
     for mut example in s.examples.into_iter() {
-        example.word_or_suggested_id = WordOrSuggestedId::ExistingWord(word_id);
+        example.word_or_suggested_id = WordOrSuggestionId::ExistingWord { existing_id: word_id };
         accept_example(db.clone(), example);
     }
 
     for mut linked_word in s.linked_words.into_iter() {
-        linked_word.second = WordOrSuggestedId::ExistingWord(word_id);
+        linked_word.second = WordOrSuggestionId::ExistingWord { existing_id: word_id };
         accept_linked_word(db.clone(), linked_word);
     }
 
@@ -151,7 +164,7 @@ pub fn accept_linked_word(db: Pool<SqliteConnectionManager>, s: SuggestedLinkedW
 
     let conn = db.get().unwrap();
     let second_existing = match s.second {
-        WordOrSuggestedId::ExistingWord(e) => e,
+        WordOrSuggestionId::ExistingWord { existing_id } => existing_id,
         _ => panic!("No existing word for suggested linked word {:#?}", s),
     };
 
@@ -184,7 +197,7 @@ pub fn accept_example(db: Pool<SqliteConnectionManager>, s: SuggestedExample) ->
 
     let conn = db.get().unwrap();
     let word = match s.word_or_suggested_id {
-        WordOrSuggestedId::ExistingWord(e) => e,
+        WordOrSuggestionId::ExistingWord { existing_id } => existing_id,
         _ => panic!("No existing word for suggested example {:#?}", s),
     };
     let params = params![

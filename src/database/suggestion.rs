@@ -1,6 +1,6 @@
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
-use crate::database::{get_word_hit_from_db, WordOrSuggestedId};
+use crate::database::{get_word_hit_from_db, WordOrSuggestionId};
 use crate::language::{NounClass, PartOfSpeech, WordLinkType};
 use crate::typesense::WordHit;
 use fallible_iterator::FallibleIterator;
@@ -150,7 +150,7 @@ pub struct SuggestedExample {
 
     pub suggestion_id: i64,
     pub existing_example_id: Option<i64>,
-    pub word_or_suggested_id: WordOrSuggestedId,
+    pub word_or_suggested_id: WordOrSuggestionId,
 
     pub english: MaybeEdited<String>,
     pub xhosa: MaybeEdited<String>,
@@ -207,7 +207,7 @@ pub struct SuggestedLinkedWord {
     pub existing_linked_word_id: Option<i64>,
 
     pub first_existing_word_id: i64,
-    pub second: WordOrSuggestedId,
+    pub second: WordOrSuggestionId,
     pub link_type: MaybeEdited<WordLinkType>,
 
     pub other: WordHit,
@@ -272,7 +272,7 @@ impl SuggestedLinkedWord {
 
             existing_linked_word_id: row.get("existing_linked_word_id").unwrap(),
             first_existing_word_id,
-            second: WordOrSuggestedId::try_from_row(
+            second: WordOrSuggestionId::try_from_row(
                 row,
                 "second_existing_word_id",
                 "suggested_word_id",

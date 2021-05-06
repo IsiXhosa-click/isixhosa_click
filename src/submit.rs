@@ -13,18 +13,38 @@ use rusqlite::{params, ToSql};
 use serde::de::{DeserializeOwned, Error};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::serde_as;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Display, Formatter};
 use warp::hyper::body::Bytes;
 use warp::{body, path, Buf, Filter, Rejection, Reply};
 
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
+use crate::database::WordOrSuggestionId;
 
 #[derive(Template, Debug)]
 #[template(path = "submit.html")]
 struct SubmitTemplate {
     previous_success: Option<bool>,
-    route: &'static str,
+    action: SubmitFormAction,
     word: WordFormTemplate,
+}
+
+#[derive(Deserialize, Debug)]
+enum SubmitFormAction {
+    EditSuggestion(i64),
+    SubmitNewWord,
+    EditExisting(i64),
+}
+
+impl Default for SubmitFormAction {
+    fn default() -> Self {
+        SubmitFormAction::SubmitNewWord
+    }
+}
+
+impl Display for SubmitFormAction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -113,7 +133,8 @@ pub struct WordSubmission {
     english: String,
     xhosa: String,
     part_of_speech: PartOfSpeech,
-    suggestion_id: Option<i64>,
+    #[serde(flatten)]
+    existing_id: Option<WordOrSuggestionId>,
 
     xhosa_tone_markings: String,
     infinitive: String,
@@ -184,11 +205,6 @@ pub fn qs_form<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Erro
         })
 }
 
-#[derive(Debug, Default)]
-struct SubmitParams {
-    suggestion: Option<i64>,
-}
-
 pub fn submit(
     db: Pool<SqliteConnectionManager>,
 ) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
@@ -197,8 +213,7 @@ pub fn submit(
     let submit_page = warp::get()
         .and(db.clone())
         .and(warp::any().map(|| None)) // previous_success is none
-        .and(warp::any().map(|| "/submit"))
-        .and(warp::any().map(SubmitParams::default))
+        .and(warp::any().map(SubmitFormAction::default))
         .and_then(submit_word_page);
 
     let submit_form = body::content_length_limit(4 * 1024)
@@ -209,8 +224,7 @@ pub fn submit(
     let failed_to_submit = warp::any()
         .and(db)
         .and(warp::any().map(|| Some(false))) // previous_success is Some(false)
-        .and(warp::any().map(|| "/submit"))
-        .and(warp::any().map(SubmitParams::default))
+        .and(warp::any().map(SubmitFormAction::default))
         .and_then(submit_word_page);
 
     let submit_routes = submit_page.or(submit_form).or(failed_to_submit);
@@ -226,17 +240,13 @@ pub async fn edit_suggestion_page(
     submit_word_page(
         db,
         None,
-        "/accept/edit",
-        SubmitParams {
-            suggestion: Some(id),
-        },
+        SubmitFormAction::EditSuggestion(id),
     )
     .await
 }
 
 #[derive(Default, Debug)]
 struct WordFormTemplate {
-    suggestion_id: Option<i64>,
     english: String,
     xhosa: String,
     part_of_speech: Option<PartOfSpeech>,
@@ -252,7 +262,6 @@ struct WordFormTemplate {
 impl From<SuggestedWord> for WordFormTemplate {
     fn from(w: SuggestedWord) -> Self {
         WordFormTemplate {
-            suggestion_id: Some(w.suggestion_id),
             english: w.english.current().clone(),
             xhosa: w.xhosa.current().clone(),
             part_of_speech: Some(*w.part_of_speech.current()),
@@ -304,25 +313,27 @@ impl From<SuggestedLinkedWord> for LinkedWordTemplate {
 async fn submit_word_page(
     db: Pool<SqliteConnectionManager>,
     previous_success: Option<bool>,
-    route: &'static str,
-    params: SubmitParams,
+    action: SubmitFormAction,
 ) -> Result<impl Reply, Rejection> {
-    let word = if let Some(id) = params.suggestion {
-        tokio::task::spawn_blocking(move || {
-            // TODO handle examples and linked words
-            let suggested_word = SuggestedWord::get_full(db.clone(), id)?;
-            Some(WordFormTemplate::from(suggested_word))
-        })
-        .await
-        .unwrap()
-        .unwrap_or_default()
-    } else {
-        WordFormTemplate::default()
+    let word = match action {
+        SubmitFormAction::EditSuggestion(id) => {
+            tokio::task::spawn_blocking(move || {
+                let suggested_word = SuggestedWord::get_full(db.clone(), id)?;
+                Some(WordFormTemplate::from(suggested_word))
+            })
+            .await
+            .unwrap()
+            .unwrap_or_default()
+        }
+        SubmitFormAction::EditExisting(id) => {
+            todo!("Handle existing word editing")
+        }
+        SubmitFormAction::SubmitNewWord => WordFormTemplate::default(),
     };
 
     Ok(SubmitTemplate {
         previous_success,
-        route,
+        action,
         word,
     })
 }
@@ -332,7 +343,7 @@ async fn submit_word_form(
     db: Pool<SqliteConnectionManager>,
 ) -> Result<impl warp::Reply, Rejection> {
     submit_suggestion(word, db.clone()).await;
-    submit_word_page(db, Some(true), "/submit", SubmitParams::default()).await
+    submit_word_page(db, Some(true),  SubmitFormAction::SubmitNewWord).await
 }
 
 pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionManager>) {
@@ -402,7 +413,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: Pool<SqliteConnectionMa
         };
 
         let params = params![
-            w.suggestion_id,
+            w.existing_id.and_then(WordOrSuggestionId::into_suggestion),
             "Word added",
             false,
             w.english,
