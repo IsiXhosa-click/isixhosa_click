@@ -145,7 +145,7 @@ async fn main() {
         .or(about)
         .or(warp::any().map(|| NotFound));
 
-    println!("Visit http://127.0.0.1:25565/submit");
+    println!("Visit http://127.0.0.1:8080/submit");
 
     let server = warp::serve(routes.with(warp::log("isixhosa")));
 

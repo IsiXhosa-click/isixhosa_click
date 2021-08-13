@@ -8,7 +8,7 @@ export class LiveSearch {
     ) {
         this.last_value = "";
         this.hits = results_container;
-        this.ws = new WebSocket("ws://" + location.host + "/search");
+        this.ws = new WebSocket("wss://" + location.host + "/search");
         this.create_container = create_container;
         this.create_item = create_item;
         this.create_item_container = create_item_container;
