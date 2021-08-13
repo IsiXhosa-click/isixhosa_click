@@ -5,7 +5,9 @@
 // - TODO word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
 // - TODO attributions - editing users & references & so on
-// - TODO about page
+// - TODO remove changes_summary
+// - TODO logging
+// - TODO config
 
 // v0.2:
 // - suggestion publicising, voting & commenting
@@ -31,46 +33,70 @@
 // - TODO see if i can replace cloning pool with cloning conn?
 
 use crate::session::{LiveSearchSession, WsMessage};
-use crate::typesense::{TypesenseClient, ShortWordSearchHit};
+use crate::search::{WordHit, TantivyClient};
 use accept::accept;
-use arcstr::ArcStr;
 use askama::Template;
+use details::details;
+use edit::edit;
 use futures::StreamExt;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
-use serde::Deserialize;
 use submit::submit;
-use details::details;
 use tokio::task;
+use warp::http::Uri;
 use warp::reject::Reject;
 use warp::{path, Filter, Rejection};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
+use serde::{Serialize, Deserialize};
+use std::sync::Arc;
+use std::path::PathBuf;
 
 mod accept;
 // mod auth;
 mod database;
+mod details;
+mod edit;
 mod language;
 mod session;
 mod submit;
-mod typesense;
-mod details;
+mod search;
 
 #[derive(Debug)]
 struct TemplateError(askama::Error);
 
 impl Reject for TemplateError {}
 
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    database_path: PathBuf,
+    tantivy_path: PathBuf,
+    tls_enabled: bool,
+    cert_path: PathBuf,
+    key_path: PathBuf,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            database_path: PathBuf::from("isixhosa_click.db"),
+            tantivy_path: PathBuf::from("tantivy_data/"),
+            tls_enabled: false,
+            cert_path: PathBuf::from("key.rsa"),
+            key_path: PathBuf::from("cert.pem"),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
-    let manager = SqliteConnectionManager::file("isixhosa_xyz.db");
+    let cfg: Config = confy::load("isixhosa_click").unwrap();
+    let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();
     let pool_clone = pool.clone();
-    let typesense = TypesenseClient {
-        api_key: ArcStr::from(std::env::var("TYPESENSE_API_KEY").unwrap()),
-    };
+    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone()).await.unwrap();
 
     task::spawn_blocking(move || {
         let conn = pool_clone.get().unwrap();
@@ -90,76 +116,88 @@ async fn main() {
     .await
     .unwrap();
 
-    let collection_created = typesense.create_collection_if_not_exists().await.unwrap();
-
-    if collection_created {
-        typesense.reindex_database(pool.clone()).await;
-        eprintln!("Database reindexed.");
-    }
-
-    let typesense_cloned = typesense.clone();
-    let typesense_filter = warp::any().map(move || typesense_cloned.clone());
+    let tantivy_cloned = tantivy.clone();
+    let tantivy_filter = warp::any().map(move || tantivy_cloned.clone());
 
     let search_page = warp::any().map(Search::default);
     let query_search = warp::query()
-        .and(typesense_filter.clone())
+        .and(tantivy_filter.clone())
         .and_then(query_search);
-    let live_search = warp::ws().and(typesense_filter).map(live_search);
+    let live_search = warp::ws().and(tantivy_filter).map(live_search);
     let search = warp::path("search")
         .and(path::end())
         .and(live_search.or(query_search).or(search_page));
+    let about = warp::get()
+        .and(warp::path("about"))
+        .and(path::end())
+        .map(|| AboutPage);
 
     let routes = warp::fs::dir("static")
         .or(search)
         .or(submit(pool.clone()))
-        .or(accept(pool.clone(), typesense))
-        .or(details(pool))
-        .or(warp::get().and(path::end()).map(|| MainPage))
+        .or(accept(pool.clone(), tantivy))
+        .or(details(pool.clone()))
+        .or(edit(pool))
+        .or(warp::get()
+            .and(path::end())
+            .map(|| warp::redirect(Uri::from_static("/search"))))
+        .or(about)
         .or(warp::any().map(|| NotFound));
 
-    println!("Visit http://127.0.0.1:8080/submit");
-    warp::serve(routes.with(warp::log("isixhosa")))
-        .run(([0, 0, 0, 0], 8080))
-        .await;
+    println!("Visit http://127.0.0.1:25565/submit");
+
+    let server = warp::serve(routes.with(warp::log("isixhosa")));
+
+    if cfg.tls_enabled {
+        server
+            .tls()
+            .cert_path(cfg.cert_path)
+            .key_path(cfg.key_path)
+            .run(([0, 0, 0, 0], 443))
+            .await
+    } else {
+        server
+            .run(([0, 0, 0, 0], 8080))
+            .await
+    }
 }
 
-
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 struct SearchQuery {
     query: String,
 }
 
 #[derive(Template)]
-#[template(path = "index.html")]
-struct MainPage;
-
-#[derive(Template)]
 #[template(path = "404.html")]
 struct NotFound;
+
+#[derive(Template)]
+#[template(path = "about.html")]
+struct AboutPage;
 
 #[derive(Template, Default)]
 #[template(path = "search.html")]
 struct Search {
-    hits: Vec<ShortWordSearchHit>,
+    hits: Vec<WordHit>,
     query: String,
 }
 
 async fn query_search(
     query: SearchQuery,
-    typesense: TypesenseClient,
+    tantivy: Arc<TantivyClient>,
 ) -> Result<impl warp::Reply, Rejection> {
-    let results = typesense.search_word_short(&query.query).await.unwrap();
+    let results = tantivy.search(query.query.clone()).await.unwrap();
 
     Ok(Search {
         query: query.query,
-        hits: results.hits,
+        hits: results,
     })
 }
 
-fn live_search(ws: warp::ws::Ws, typesense: TypesenseClient) -> impl warp::Reply {
+fn live_search(ws: warp::ws::Ws, tantivy: Arc<TantivyClient>) -> impl warp::Reply {
     ws.on_upgrade(move |websocket| {
         let (sender, stream) = websocket.split();
-        let addr = LiveSearchSession::new(sender, typesense)
+        let addr = LiveSearchSession::new(sender, tantivy)
             .create(Some(4))
             .spawn_global();
         tokio::spawn(addr.attach_stream(stream.map(WsMessage)));

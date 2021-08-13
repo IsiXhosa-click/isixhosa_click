@@ -1,3 +1,12 @@
 .suggested_word_text {
     white-space: nowrap;
 }
+
+td:first-child, th:first-child {
+    box-sizing: border-box;
+    width: 10.625em;
+}
+
+li::marker {
+    font-size: 1.17em;
+}

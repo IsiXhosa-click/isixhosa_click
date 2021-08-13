@@ -3,9 +3,9 @@
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
-    <title>Accept Words - IsiXhosa.xyz</title>
-    <meta name="og:title" content="Accept Words - IsiXhosa.xyz"/>
-    <meta name="og:url" content="https://isixhosa.xyz/accept/"/>
+    <title>Accept Words - IsiXhosa.click</title>
+    <meta name="og:title" content="Accept Words - IsiXhosa.click"/>
+    <meta name="og:url" content="https://isixhosa.click/accept"/>
     <link rel="stylesheet" href="/accept.css">
     {%- call macros::meta() -%}
 </head>
@@ -13,269 +13,284 @@
 <body>
     {%- call macros::navbar() -%}
 
-    <header>
-        <h1 class="after_nav">Suggested words:</h1>
-    </header>
+    <div id="main_wrap">
+        <header>
+            <h1>Suggested words:</h1>
+        </header>
 
-    <main>
-        {%- match previous_success -%}
-            {%- when Some with (prev) -%}
-                <p>
-                    {%- if prev.success -%}
-                        Success
+        <main>
+            {%- match previous_success -%}
+                {%- when Some with (prev) -%}
+                    <p>
+                        {%- if prev.success -%}
+                            Success
 
-                        {%- match prev.method -%}
-                            {%- when Some with (method) -%}
-                                {%- match method -%}
-                                    {%- when Method::Accept -%}
-                                        fully accepted suggestion.
-                                    {%- when Method::Edit -%}
-                                        fully edited suggestion.
-                                    {%- when Method::Deny -%}
-                                        fully denied suggestion.
-                                {%- endmatch -%}
-                            {%- when None -%}
-                                .
-                        {%- endmatch -%}
-                    {%- else -%}
-                        An error occurred
-
-                        {%- match prev.method -%}
-                            {%- when Some with (method) -%}
-                                {%- match method -%}
-                                    {%- when Method::Accept %}
-                                        while accepting a suggestion.
-                                    {%- when Method::Edit %}
-                                        while editing a suggestion.
-                                    {%- when Method::Deny %}
-                                        while denying a suggestion.
-                                {%- endmatch -%}
-                            {%- when None -%}
-                                .
-                        {%- endmatch -%}
-                    {%- endif -%}
-                </p>
-            {%- when None -%}
-        {%- endmatch -%}
-
-        {%- match previous_success -%}
-            {%- when Some with (prev) -%}
-                {%- if prev.success -%}
-                    <script>
-                        // HACK(restioson): stop F5 from resubmitting form
-                        if (window.history.replaceState) {
-                            window.history.replaceState(null, null, window.location.href);
-                        }
-
-                        // HACK(restioson): move user back to /accept/
-                        history.pushState({}, null, window.location.origin + "/accept");
-                    </script>
-                {%- endif -%}
-            {% when other -%}
-        {%- endmatch -%}
-
-        {%- macro maybe_edited(maybe_edited) -%}
-            {%- match maybe_edited -%}
-                {%- when MaybeEdited::New with (val) -%}
-                    <ins>{{ val }}</ins>
-
-                {%- when MaybeEdited::Old with (val) -%}
-                    {{ val }}}
-
-                {%- when MaybeEdited::Edited with { old, new } -%}
-                    {%- if !format!("{}", new).is_empty() -%}
-                        <ins>{{ new }}</ins> <del>{{ old }}</del>
-                    {%- else -%}
-                        <ins><strong>[Removed]</strong></ins> <del>{{ old }}</del>
-                    {%- endif -%}
-            {%- endmatch -%}
-        {%- endmacro -%}
-
-        {%- macro noun_class_edited(is_plural, noun_class) -%}
-            {%- match noun_class -%}
-                {%- when MaybeEdited::New with (class) -%}
-                    <ins>{%- call macros::noun_class(is_plural.current(), class) -%}</ins>
-                {%- when MaybeEdited::Old with (class) -%}
-                    {%- match is_plural -%}
-                        {%- when MaybeEdited::New with (is_plural) -%}
-                            {%- call macros::noun_class(is_plural, class) -%}
-                        {%- when MaybeEdited::Old with (is_plural) -%}
-                            {%- call macros::noun_class(is_plural, class) -%}
-                        {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
-                            <ins>{%- call macros::noun_class(new_is_plural, class) -%}</ins>
-                            <del>{%- call macros::noun_class(old_is_plural, class) -%}</del>
-                    {%- endmatch -%}
-                {%- when MaybeEdited::Edited with { old, new } -%}
-                    <ins>
-                        {%- if new.is_none() -%}
-                            <strong>[Removed]</strong>
+                            {%- match prev.method -%}
+                                {%- when Some with (method) -%}
+                                    {%- match method -%}
+                                        {%- when Method::Accept -%}
+                                            fully accepted suggestion.
+                                        {%- when Method::Edit -%}
+                                            fully edited suggestion.
+                                        {%- when Method::Reject -%}
+                                            fully rejected suggestion.
+                                    {%- endmatch -%}
+                                {%- when None -%}
+                                    .
+                            {%- endmatch -%}
                         {%- else -%}
-                            {%- call macros::noun_class(is_plural.current(), new) -%}
-                        {%- endif -%}
-                    </ins>
-                    <del>{%- call macros::noun_class(is_plural.old(), old) -%}</del>
-            {%- endmatch -%}
-        {%- endmacro -%}
+                            An error occurred
 
-        {%- macro plural_edited(plural) -%}
-            {%- match plural -%}
-                {%- when MaybeEdited::New with (p) -%}
-                    <ins>{%- call macros::plural(p.clone()) -%}</ins>
-                {%- when MaybeEdited::Old with (p) -%}
-                    {%- call macros::plural(p.clone()) -%}
-                {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
-                    <ins>
-                        {%- if old_is_plural.clone() %}
-                            plural
-                        {%- else %}
-                            [singular]
+                            {%- match prev.method -%}
+                                {%- when Some with (method) -%}
+                                    {%- match method -%}
+                                        {%- when Method::Accept %}
+                                            while accepting a suggestion.
+                                        {%- when Method::Edit %}
+                                            while editing a suggestion.
+                                        {%- when Method::Reject %}
+                                            while rejecting a suggestion.
+                                    {%- endmatch -%}
+                                {%- when None -%}
+                                    .
+                            {%- endmatch -%}
                         {%- endif -%}
-                    </ins>
-                    <del>
-                        {%- if new_is_plural.clone() %}
-                            plural
-                        {%- else %}
-                            [singular]
-                        {%- endif -%}
-                    </del>
+                    </p>
+                {%- when None -%}
             {%- endmatch -%}
-        {%- endmacro -%}
 
-        {%- macro action(method, text) -%}
-            <form action="/accept" method="post" enctype="application/x-www-form-urlencoded"
-                    {%- if (method.to_string() != "edit".to_string()) -%}
-                        onsubmit="return confirm('Are you sure you want to {{ method }} this suggestion?')"
+            {%- match previous_success -%}
+                {%- when Some with (prev) -%}
+                    {%- if prev.success -%}
+                        <script>
+                            // HACK(restioson): stop F5 from resubmitting form
+                            if (window.history.replaceState) {
+                                window.history.replaceState(null, null, window.location.href);
+                            }
+
+                            // HACK(restioson): move user back to /accept
+                            history.replaceState(null, null, window.location.origin + "/accept");
+                        </script>
                     {%- endif -%}
-            >
-                <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
-                <select name="method" hidden><option value="{{ method }}"></select>
-                <button type="submit">{{ text }}</button>
-            </form>
-        {%- endmacro -%}
+                {% when other -%}
+            {%- endmatch -%}
 
-        <div id="suggestions">
-            <ol>
-                {%- for s in suggestions -%}
-                    <li>
-                        <div class="column_list spaced_flex_list">
-                            <p class="suggested_word_text">
-                                {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
-                                - (
-                                    {%- call plural_edited(s.is_plural) -%}
-                                    {%- call maybe_edited(s.part_of_speech) -%}
-                                    {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
-                                )
-                            </p>
+            {%- macro maybe_edited(maybe_edited) -%}
+                {%- match maybe_edited -%}
+                    {%- when MaybeEdited::New with (val) -%}
+                        <ins>{{ val }}</ins>
 
-                            {# This div prevents the table from expanding to the width of the whole page #}
-                            <div>
-                                <table>
-                                    <caption>Details</caption>
+                    {%- when MaybeEdited::Old with (val) -%}
+                        {{ val }}
 
-                                    <tr>
-                                        <th scope="row">Change type</th>
-                                        <td>
-                                            {%- if s.word_id.is_none() -%}
-                                                Word added
-                                            {%- else if s.deletion -%}
-                                                Word deleted
-                                            {%- else -%}
-                                                Word edited
-                                            {%- endif -%}
-                                        </td>
-                                    </tr>
+                    {%- when MaybeEdited::Edited with { old, new } -%}
+                        {%- if !format!("{}", new).is_empty() -%}
+                            <ins>{{ new }}</ins> <del>{{ old }}</del>
+                        {%- else -%}
+                            <ins><strong>[Removed]</strong></ins> <del>{{ old }}</del>
+                        {%- endif -%}
+                {%- endmatch -%}
+            {%- endmacro -%}
 
-                                    <tr>
-                                        <th scope="row">Changes summary</th>
-                                        <td>{{ s.changes_summary }}</td>
-                                    </tr>
+            {%- macro noun_class_edited(is_plural, noun_class) -%}
+                {%- match noun_class -%}
+                    {%- when MaybeEdited::New with (class) -%}
+                        <ins>{%- call macros::noun_class(is_plural.current(), class) -%}</ins>
+                    {%- when MaybeEdited::Old with (class) -%}
+                        {%- match is_plural -%}
+                            {%- when MaybeEdited::New with (is_plural) -%}
+                                {%- call macros::noun_class(is_plural, class) -%}
+                            {%- when MaybeEdited::Old with (is_plural) -%}
+                                {%- call macros::noun_class(is_plural, class) -%}
+                            {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
+                                <ins>{%- call macros::noun_class(new_is_plural, class) -%}</ins>
+                                <del>{%- call macros::noun_class(old_is_plural, class) -%}</del>
+                        {%- endmatch -%}
+                    {%- when MaybeEdited::Edited with { old, new } -%}
+                        <ins>
+                            {%- if new.is_none() -%}
+                                <strong>[Removed]</strong>
+                            {%- else -%}
+                                {%- call macros::noun_class(is_plural.current(), new) -%}
+                            {%- endif -%}
+                        </ins>
+                        <del>{%- call macros::noun_class(is_plural.old(), old) -%}</del>
+                {%- endmatch -%}
+            {%- endmacro -%}
 
-                                    {%- if !s.xhosa_tone_markings.is_empty() -%}
-                                        <tr>
-                                            <th scope="row">Xhosa with tone markings</td>
-                                            <td>{%- call maybe_edited(s.xhosa_tone_markings) -%}</td>
-                                        </tr>
-                                    {%- endif -%}
+            {%- macro plural_edited(plural) -%}
+                {%- match plural -%}
+                    {%- when MaybeEdited::New with (p) -%}
+                        <ins>{%- call macros::plural(p.clone()) -%}</ins>
+                    {%- when MaybeEdited::Old with (p) -%}
+                        {%- call macros::plural(p.clone()) -%}
+                    {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
+                        <ins>
+                            {%- if old_is_plural.clone() %}
+                                plural
+                            {%- else %}
+                                [singular]
+                            {%- endif -%}
+                        </ins>
+                        <del>
+                            {%- if new_is_plural.clone() %}
+                                plural
+                            {%- else %}
+                                [singular]
+                            {%- endif -%}
+                        </del>
+                {%- endmatch -%}
+            {%- endmacro -%}
 
-                                    {%- if !s.infinitive.is_empty() -%}
-                                        <tr>
-                                            <th scope="row">Infinitive form</td>
-                                            <td>{%- call maybe_edited(s.infinitive) -%}</td>
-                                        </tr>
-                                    {%- endif -%}
+            {%- macro result_edited(res) -%}
+                {%- match res -%}
+                    {%- when MaybeEdited::New with (w) -%}
+                        <ins>{%- call macros::format_result(w) -%}</ins>
+                    {%- when MaybeEdited::Old with (w) -%}
+                        {%- call macros::format_result(w) -%}
+                    {%- when MaybeEdited::Edited with { old, new } -%}
+                        <ins>{%- call macros::format_result(new) -%}</ins> <del>{%- call macros::format_result(old) -%}</del>
+                {%- endmatch -%}
+            {%- endmacro -%}
 
-                                    {%- if !s.note.is_empty() -%}
-                                        <tr>
-                                            <th scope="row">Note</td>
-                                            <td>{%- call maybe_edited(s.note) -%}</td>
-                                        </tr>
-                                    {%- endif -%}
-                                </table>
-                            </div>
+            {%- macro action(method, text) -%}
+                <form action="/accept" method="post" enctype="application/x-www-form-urlencoded"
+                        {%- if (method.to_string() != "edit".to_string()) -%}
+                            onsubmit="return confirm('Are you sure you want to {{ method }} this suggestion?')"
+                        {%- endif -%}
+                >
+                    <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
+                    <select name="method" hidden><option value="{{ method }}"></select>
+                    <button type="submit">{{ text }}</button>
+                </form>
+            {%- endmacro -%}
 
-                            {%- if !s.examples.is_empty() -%}
+            <div id="suggestions">
+                <ol>
+                    {%- for s in suggestions -%}
+                        <li>
+                            <article class="column_list spaced_flex_list">
+                                <header>
+                                   <h3 class="suggested_word_text">
+                                        {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
+                                        - (
+                                            {%- call plural_edited(s.is_plural) -%}
+                                            {%- call maybe_edited(s.part_of_speech) -%}
+                                            {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
+                                        )
+                                    </h3>
+                                </header>
+
+                                {# This div prevents the table from expanding to the width of the whole page #}
                                 <div>
                                     <table>
-                                        <caption>Examples</caption>
+                                        <caption>Details</caption>
 
-                                        <thead>
+                                        <tr>
+                                            <th scope="row">Change type</th>
+                                            <td>
+                                                {%- if s.word_id.is_none() -%}
+                                                    Word added
+                                                {%- else if s.deletion -%}
+                                                    Word deleted
+                                                {%- else -%}
+                                                    Word edited
+                                                {%- endif -%}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <th scope="row">Changes summary</th>
+                                            <td>{{ s.changes_summary }}</td>
+                                        </tr>
+
+                                        {%- if !s.xhosa_tone_markings.is_empty() -%}
                                             <tr>
-                                                <th scope="col">English</th>
-                                                <th scope="col">Xhosa</th>
+                                                <th scope="row">Xhosa with tone markings</th>
+                                                <td>{%- call maybe_edited(s.xhosa_tone_markings) -%}</td>
                                             </tr>
-                                        </thead>
+                                        {%- endif -%}
 
-                                        <tbody>
-                                            {%- for ex in s.examples -%}
-                                                <tr>
-                                                    <td>"{%- call maybe_edited(ex.english) -%}"</td>
-                                                    <td>"{%- call maybe_edited(ex.xhosa) -%}"</td>
-                                                </tr>
-                                            {%- endfor -%}
-                                        </tbody>
+                                        {%- if !s.infinitive.is_empty() -%}
+                                            <tr>
+                                                <th scope="row">Infinitive form</th>
+                                                <td>{%- call maybe_edited(s.infinitive) -%}</td>
+                                            </tr>
+                                        {%- endif -%}
+
+                                        {%- if !s.note.is_empty() -%}
+                                            <tr>
+                                                <th scope="row">Note</th>
+                                                <td>{%- call maybe_edited(s.note) -%}</td>
+                                            </tr>
+                                        {%- endif -%}
                                     </table>
                                 </div>
-                            {%- endif -%}
 
-                            {%- if !s.linked_words.is_empty() -%}
-                                <div>
-                                    <table>
-                                        <caption>Linked words</caption>
+                                {%- if !s.examples.is_empty() -%}
+                                    <div>
+                                        <table>
+                                            <caption>Examples</caption>
 
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Link type</th>
-                                                <th scope="col">Other word</th>
-                                            </tr>
-                                        </thead>
-
-                                        <tbody>
-                                            {%- for l in s.linked_words -%}
+                                            <thead>
                                                 <tr>
-                                                    <td>{%- call maybe_edited(l.link_type) -%}</td>
-                                                    <td>{%- call macros::format_result(l.other) -%}</td>
+                                                    <th scope="col">English</th>
+                                                    <th scope="col">Xhosa</th>
                                                 </tr>
-                                            {%- endfor -%}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+
+                                            <tbody>
+                                                {%- for ex in s.examples -%}
+                                                    <tr>
+                                                        <td>"{%- call maybe_edited(ex.english) -%}"</td>
+                                                        <td>"{%- call maybe_edited(ex.xhosa) -%}"</td>
+                                                    </tr>
+                                                {%- endfor -%}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {%- endif -%}
+
+                                {%- if !s.linked_words.is_empty() -%}
+                                    <div>
+                                        <table>
+                                            <caption>Linked words</caption>
+
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">Link type</th>
+                                                    <th scope="col">Other word</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                {%- for l in s.linked_words -%}
+                                                    <tr>
+                                                        <td>{%- call maybe_edited(l.link_type) -%}</td>
+                                                        <td>{%- call result_edited(l.other(s.this_id())) -%}</td>
+                                                    </tr>
+                                                {%- endfor -%}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {%- endif -%}
+
+                                <div class="row_list spaced_flex_list">
+                                    {%- call action("edit", "Edit") -%}
+                                    {%- call action("accept", "Accept") -%}
+                                    {%- call action("reject", "Reject") -%}
                                 </div>
-                            {%- endif -%}
+                            </article>
+                        </li>
+                    {%- endfor -%}
+                </ol>
 
-                            <div class="row_list spaced_flex_list">
-                                {%- call action("edit", "Edit suggestion") -%}
-                                {%- call action("accept", "Accept suggestion") -%}
-                                {%- call action("deny", "Deny suggestion") -%}
-                            </div>
-                        </div>
-                </li>
-                {%- endfor -%}
-            </ol>
-
-            {%- if suggestions.is_empty() -%}
-                <p>There are no suggested words.<p>
-            {%- endif -%}
-        </div>
-    </main>
+                {%- if suggestions.is_empty() -%}
+                    <p>There are no suggested words.<p>
+                {%- endif -%}
+            </div>
+        </main>
+    </div>
 </body>
 
 </html>

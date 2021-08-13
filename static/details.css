@@ -3,9 +3,23 @@ td:first-child, th:first-child {
     width: 10.625em;
 }
 
-/*@media screen and (max-width: 800px) {*/
-/*    td:first-child, th:first-child {*/
-/*        box-sizing: border-box;*/
-/*        width: 110px;*/
-/*    }*/
-/*}*/
+#word_header > a {
+    align-self: center;
+    border: solid 1px lightgray;
+    border-radius: 5px;
+    margin-top: 4px;
+    color: #080808;
+    text-decoration: none;
+}
+
+#word_header > h1 {
+    flex-grow: 1;
+}
+
+#word_header {
+    gap: 1em;
+}
+
+main > article > div {
+    width: max-content;
+}

@@ -88,7 +88,7 @@ fn verify_credentials(
     .map(|r| r.expect("Error in tokio password verifying task"))
 }
 
-// pub async fn verify_user(username: String, db: Pool<SqliteConnectionManager>, password: String) -> bool {
+// pub async fn verify_user(username: String, db: &Pool<SqliteConnectionManager>, password: String) -> bool {
 //     let conn = db.get().unwrap();
 //     conn.prepare("SELECT password, "); // TODO
 //     verify_credentials(password, user.password_hash, user.hash_scheme_version).await

@@ -2,6 +2,5 @@
 .idea/
 *.iml
 data.ms/
-isixhosa_xyz.db
-typesense.env
-typesense/
+isixhosa_click.db
+tantivy_data/

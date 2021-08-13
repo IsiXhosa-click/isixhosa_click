@@ -2,6 +2,42 @@ body {
     background-color: white;
     color: #080808;
     font-family: "Open Sans", sans-serif;
+    box-sizing: border-box;
+}
+
+article, main {
+    margin: 0 auto;
+    width: 35em;
+    max-width: 100%;
+    line-height: 1.5rem;
+    box-sizing: border-box;
+}
+
+#main_wrap > header, main > article > div > header {
+    margin: 4.2rem auto 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: normal;
+}
+
+#main_wrap > header {
+    width: 35em;
+}
+
+form, fieldset {
+    box-sizing: border-box;
+}
+
+#main_wrap {
+    margin: 0 auto;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+@media screen and (min-width: 800px) {
+    #main_wrap {
+        width: 800px;
+    }
 }
 
 input {
@@ -33,6 +69,11 @@ strong.noun_class_prefix {
     font-weight: 600; /* Semibold */
 }
 
+header > * > strong.noun_class_prefix {
+    font-weight: bolder !important;
+}
+
+
 th {
     text-align: left;
 }
@@ -59,22 +100,46 @@ caption {
     width: 100%;
 }
 
-.menu > * {
+.menu > *, #site_name {
     color: white;
     text-decoration: none;
-    padding: 0.75rem;
 }
 
-.site_name {
-    margin: 0;
+.menu > * {
+    padding: 0.75rem;
+    box-sizing: border-box;
+    align-self: stretch;
+}
+
+#site_icon {
+    box-sizing: border-box;
+    padding: 0.25rem 0.75rem;
+}
+
+#site_icon > img {
+    margin-top: 1px;
+    max-width: calc(0.75rem * 2 + 1rem);
+    height: auto;
+}
+
+#site_name_container {
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    align-self: start;
+}
+
+#site_name {
     font-weight: bold;
+    margin-bottom: 0.4rem;
+    padding-right: 0.75rem;
 }
 
 #hamburger {
     position: absolute;
     right: 0;
     top: 0;
-    padding: 9px;
+    padding: 12px;
     border: none;
     display: none;
     min-width: 0;
@@ -93,13 +158,13 @@ caption {
     background: #484848;
 }
 
-.after_nav {
-    margin-top: 3.7rem;
-}
-
 @media screen and (max-width: 800px) {
-    .after_nav {
-        margin-top: 4.7rem;
+    header {
+        margin-top: 4.2rem;
+    }
+
+    #main_wrap {
+        margin: 0;
     }
 
     .menu {
@@ -110,8 +175,12 @@ caption {
         display: none;
     }
 
+    #site_name_container {
+        display: inline-flex;
+    }
+
     .menu.open > a {
-        display: block;
+        display: inline;
     }
 
     #hamburger {
