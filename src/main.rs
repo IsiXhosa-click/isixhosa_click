@@ -96,7 +96,6 @@ async fn main() {
     let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();
     let pool_clone = pool.clone();
-    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone()).await.unwrap();
 
     task::spawn_blocking(move || {
         let conn = pool_clone.get().unwrap();
@@ -115,6 +114,8 @@ async fn main() {
     })
     .await
     .unwrap();
+
+    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone()).await.unwrap();
 
     let tantivy_cloned = tantivy.clone();
     let tantivy_filter = warp::any().map(move || tantivy_cloned.clone());
