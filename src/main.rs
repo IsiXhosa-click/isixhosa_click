@@ -72,6 +72,9 @@ impl Reject for TemplateError {}
 pub struct Config {
     database_path: PathBuf,
     tantivy_path: PathBuf,
+    tls_enabled: bool,
+    cert_path: PathBuf,
+    key_path: PathBuf,
 }
 
 impl Default for Config {
@@ -79,6 +82,9 @@ impl Default for Config {
         Config {
             database_path: PathBuf::from("isixhosa_click.db"),
             tantivy_path: PathBuf::from("tantivy_data/"),
+            tls_enabled: false,
+            cert_path: PathBuf::from("key.rsa"),
+            key_path: PathBuf::from("cert.pem"),
         }
     }
 }
@@ -139,9 +145,21 @@ async fn main() {
         .or(warp::any().map(|| NotFound));
 
     println!("Visit http://127.0.0.1:25565/submit");
-    warp::serve(routes.with(warp::log("isixhosa")))
-        .run(([0, 0, 0, 0], 25565))
-        .await;
+
+    let server = warp::serve(routes.with(warp::log("isixhosa")));
+
+    if cfg.tls_enabled {
+        server
+            .tls()
+            .cert_path(cfg.cert_path)
+            .key_path(cfg.key_path)
+            .run(([0, 0, 0, 0], 443))
+            .await
+    } else {
+        server
+            .run(([0, 0, 0, 0], 8080))
+            .await
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]
