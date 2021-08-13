@@ -1,3 +1,5 @@
+import { addFormData } from "/submit/util.js";
+
 let current_example_id = 0;
 
 function removeExample(button_id) {
@@ -35,7 +37,7 @@ function textField(name, label_txt, val) {
     return div;
 }
 
-export function addExample(english, xhosa, suggestion_id) {
+export function addExample(english, xhosa, suggestion_id, existing_id) {
     current_example_id += 1;
     let list = document.getElementById("examples");
     let item = document.createElement("li");
@@ -63,15 +65,11 @@ export function addExample(english, xhosa, suggestion_id) {
     div.appendChild(delete_div);
 
     if (suggestion_id != null) {
-        let suggestion = document.createElement("select");
-        suggestion.name = `examples[${current_example_id}][suggestion_id]`;
-        suggestion.hidden = true;
+        div.appendChild(addFormData(`examples[${current_example_id}][suggestion_id]`, suggestion_id));
+    }
 
-        let option = document.createElement("option");
-        option.value = suggestion_id;
-        suggestion.add(option);
-
-        div.appendChild(suggestion);
+    if (existing_id != null) {
+        div.appendChild(addFormData(`examples[${current_example_id}][existing_id]`, existing_id));
     }
 
     let sentence = document.createElement("div");
@@ -96,7 +94,7 @@ export function addExamples(examples) {
     for (let example of examples) {
         console.log("Adding example");
         console.log(example);
-        addExample(example.english, example.xhosa, example.suggestion_id)
+        addExample(example.english, example.xhosa, example.suggestion_id, example.existing_id)
     }
 
     if (examples.length === 0) {

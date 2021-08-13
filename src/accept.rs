@@ -1,14 +1,14 @@
-use crate::database::accept_new_word_suggestion;
+use crate::database::{accept_whole_word_suggestion, delete_word};
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
-use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
-use crate::typesense::{TypesenseClient, WordDocument};
+use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission, WordId};
+use crate::search::{TantivyClient, WordDocument};
 use askama::Template;
 use askama_warp::warp::body;
-use futures::TryFutureExt;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use warp::{Filter, Rejection, Reply};
+use std::sync::Arc;
 
 #[derive(Template)]
 #[template(path = "accept.html")]
@@ -32,16 +32,16 @@ enum Method {
 
 #[derive(Deserialize)]
 struct AcceptParams {
-    suggestion: i64,
+    suggestion: u64,
     method: Method,
 }
 
 pub fn accept(
     db: Pool<SqliteConnectionManager>,
-    typesense: TypesenseClient,
+    tantivy: Arc<TantivyClient>,
 ) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
     let db = warp::any().map(move || db.clone());
-    let typesense = warp::any().map(move || typesense.clone());
+    let tantivy = warp::any().map(move || tantivy.clone());
 
     let show_all = warp::get()
         .and(db.clone())
@@ -50,7 +50,7 @@ pub fn accept(
 
     let process_one = warp::post()
         .and(db.clone())
-        .and(typesense)
+        .and(tantivy)
         .and(warp::body::form::<AcceptParams>())
         .and_then(process_one);
 
@@ -80,8 +80,6 @@ pub fn accept(
         }))
         .and_then(suggested_words);
 
-    // TODO accept form submit too
-
     let root = warp::path::end().and(show_all.or(process_one).or(other_failed));
     let submit_edit = warp::path("edit")
         .and(warp::path::end())
@@ -94,7 +92,8 @@ async fn suggested_words(
     db: Pool<SqliteConnectionManager>,
     previous_success: Option<Success>,
 ) -> Result<impl warp::Reply, Rejection> {
-    let suggestions = tokio::task::spawn_blocking(move || SuggestedWord::get_all_full(db))
+    let db_clone = db.clone();
+    let suggestions = tokio::task::spawn_blocking(move || SuggestedWord::get_all_full(&db_clone))
         .await
         .unwrap();
     Ok(AcceptTemplate {
@@ -107,7 +106,7 @@ async fn edit_suggestion_form(
     db: Pool<SqliteConnectionManager>,
     submission: WordSubmission,
 ) -> Result<impl Reply, Rejection> {
-    submit_suggestion(submission, db.clone()).await;
+    submit_suggestion(submission, &db).await;
     suggested_words(
         db,
         Some(Success {
@@ -119,45 +118,50 @@ async fn edit_suggestion_form(
 }
 
 async fn accept_suggestion(
-    db: Pool<SqliteConnectionManager>,
-    typesense: TypesenseClient,
-    suggestion: i64,
+    db: &Pool<SqliteConnectionManager>,
+    tantivy: Arc<TantivyClient>,
+    suggestion: u64,
 ) -> Result<impl Reply, Rejection> {
-    let db_clone = db.clone();
-    let opt = tokio::task::spawn_blocking(move || {
-        let word = SuggestedWord::get_full(db.clone(), suggestion).unwrap();
+    let (db, db_clone) = (db.clone(), db.clone());
+    let suggestion_and_id = tokio::task::spawn_blocking(move || {
+        let word = SuggestedWord::get_full(&db, suggestion).unwrap();
 
         if !word.deletion {
-            Some((word.clone(), accept_new_word_suggestion(db.clone(), word)))
+            (Some(word.clone()), accept_whole_word_suggestion(&db, word))
         } else {
-            SuggestedWord::delete(db, word.suggestion_id);
-            None
+            let word_id = word.word_id.unwrap();
+            delete_word(&db, WordId(word_id));
+            SuggestedWord::delete(&db, word.suggestion_id);
+            (None, word_id)
         }
     })
     .await
     .unwrap();
 
-    let success = if let Some((word, id)) = opt {
-        typesense
-            .add_word(WordDocument {
-                id: id.to_string(),
+    match suggestion_and_id {
+        (Some(word), id) => {
+            let document = WordDocument {
+                id: id as u64,
                 english: word.english.current().clone(),
                 xhosa: word.xhosa.current().clone(),
                 part_of_speech: *word.part_of_speech.current(),
                 is_plural: *word.is_plural.current(),
                 noun_class: *word.noun_class.current(),
-            })
-            .inspect_err(|e| eprintln!("Error adding a word to typesense: {:#?}", e))
-            .await
-            .is_ok()
-    } else {
-        true
-    };
+            };
+
+            if word.word_id.is_none() {
+                tantivy.add_new_word(document).await
+            } else {
+                tantivy.edit_word(document).await
+            }
+        },
+        (None, id) => tantivy.delete_word(id).await,
+    }
 
     suggested_words(
         db_clone,
         Some(Success {
-            success,
+            success: true,
             method: Some(Method::Accept),
         }),
     )
@@ -165,11 +169,11 @@ async fn accept_suggestion(
 }
 
 async fn reject_suggestion(
-    db: Pool<SqliteConnectionManager>,
-    suggestion: i64,
+    db: &Pool<SqliteConnectionManager>,
+    suggestion: u64,
 ) -> Result<impl Reply, Rejection> {
-    let db_clone = db.clone();
-    let success = tokio::task::spawn_blocking(move || SuggestedWord::delete(db, suggestion))
+    let (db, db_clone) = (db.clone(), db.clone());
+    let success = tokio::task::spawn_blocking(move || SuggestedWord::delete(&db, suggestion))
         .await
         .unwrap();
 
@@ -185,17 +189,17 @@ async fn reject_suggestion(
 
 async fn process_one(
     db: Pool<SqliteConnectionManager>,
-    typesense: TypesenseClient,
+    tantivy: Arc<TantivyClient>,
     params: AcceptParams,
 ) -> Result<impl Reply, Rejection> {
     match params.method {
         Method::Edit => edit_suggestion_page(db, params.suggestion)
             .await
             .map(Reply::into_response),
-        Method::Accept => accept_suggestion(db, typesense, params.suggestion)
+        Method::Accept => accept_suggestion(&db, tantivy, params.suggestion)
             .await
             .map(Reply::into_response),
-        Method::Reject => reject_suggestion(db, params.suggestion)
+        Method::Reject => reject_suggestion(&db, params.suggestion)
             .await
             .map(Reply::into_response),
     }

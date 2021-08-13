@@ -3,9 +3,9 @@
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
-    <title>Submit a word - IsiXhosa.xyz</title>
-    <meta name="og:title" content="Submit a word - IsiXhosa.xyz"/>
-    <meta name="og:url" content="https://isixhosa.xyz/submit"/>
+    <title>Submit a word - IsiXhosa.click</title>
+    <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
+    <meta name="og:url" content="https://isixhosa.click/submit"/>
     <link rel="stylesheet" href="/submit.css">
     {%- call macros::meta() -%}
 </head>
@@ -51,11 +51,11 @@
 
             {%- match action -%}
                 {%- when SubmitFormAction::EditSuggestion with (id) -%}
-                    {%- let route = "/accept/edit" -%}
+                    {%- let route = "/accept/edit".to_string() -%}
                 {%- when SubmitFormAction::SubmitNewWord -%}
-                    {%- let route = "/submit" -%}
+                    {%- let route = "/submit".to_string() -%}
                 {%- when SubmitFormAction::EditExisting with (id) -%}
-                    {%- let route = "/word/{{ id }}" -%}
+                    {%- let route = format!("/word/{}", id) -%}
             {%- endmatch -%}
 
             <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded" class="column_list">

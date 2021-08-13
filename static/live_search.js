@@ -38,7 +38,7 @@ export class LiveSearch {
             const data = JSON.parse(event.data);
             search.hits.innerHTML = "";
 
-            if (data.hits.length === 0) {
+            if (data.length === 0) {
                 let p = document.createElement("p");
                 let node = document.createTextNode("No results.");
                 p.appendChild(node);
@@ -48,8 +48,7 @@ export class LiveSearch {
             } else {
                 let container = search.create_container();
 
-                data.hits.forEach(function (hit) {
-                    let result = hit.document;
+                data.forEach(function (result) {
                     let item = search.create_item(formatResult(result), result.id);
                     formatResultRich(result, item);
 
@@ -84,7 +83,7 @@ export class LiveSearch {
     }
 }
 
-const NOUN_CLASSES = {
+const NOUN_CLASS_PAIRS = {
     1: ["um", "aba"],
     2: ["um", "aba"],
 
@@ -117,7 +116,7 @@ function formatResultRich(result, elt) {
     elt.innerText = `${result.english} - ${result.xhosa} (${plural}${result.part_of_speech}`;
 
     if (result.noun_class != null) {
-        let class_pair = NOUN_CLASSES[result.noun_class];
+        let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
         let strong = document.createElement("strong");
         strong.className = "noun_class_prefix";
 
@@ -142,7 +141,13 @@ function formatResultRich(result, elt) {
 export function formatResult(result) {
     let noun_class = "";
     if (result.noun_class != null) {
-        noun_class = ` - class ${result.noun_class}`;
+        let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
+
+        if (class_pair[1] != null) {
+            noun_class = ` - class ${class_pair[0]}/${class_pair[1]}`;
+        } else {
+            noun_class = ` - class ${class_pair[0]}`;
+        }
     }
 
     let plural = "";

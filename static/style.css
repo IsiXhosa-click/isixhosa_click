@@ -13,11 +13,15 @@ article, main {
     box-sizing: border-box;
 }
 
-header {
-    margin: 3.2rem auto 0;
-    width: 35em;
+#main_wrap > header, main > article > div > header {
+    margin: 4.2rem auto 0;
     max-width: 100%;
     box-sizing: border-box;
+    line-height: normal;
+}
+
+#main_wrap > header {
+    width: 35em;
 }
 
 form, fieldset {
@@ -36,7 +40,7 @@ form, fieldset {
     }
 }
 
-input[type="text"] {
+input {
     font-family: "Open Sans", sans-serif;
     border-radius: 3px;
     border: solid 1px lightgray;
@@ -64,6 +68,11 @@ select {
 strong.noun_class_prefix {
     font-weight: 600; /* Semibold */
 }
+
+header > * > strong.noun_class_prefix {
+    font-weight: bolder !important;
+}
+
 
 th {
     text-align: left;

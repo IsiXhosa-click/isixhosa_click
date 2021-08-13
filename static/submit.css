@@ -112,6 +112,7 @@ li.select_list_option {
     margin: 0;
     padding: 0;
     font-size: 0; /* HACK(restioson): get rid of small space in between elements due to "linebreaks" in HTML (???) */
+    line-height: 0;
 }
 
 button.select_list_option:hover {

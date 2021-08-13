@@ -5,9 +5,9 @@
 
 <html lang="en-ZA">
 <head>
-    <title>Live Dictionary - IsiXhosa.xyz</title>
-    <meta name="og:title" content="Search - IsiXhosa.xyz"/>
-    <meta name="og:url" content="https://isixhosa.xyz/search"/>
+    <title>Live Dictionary - IsiXhosa.click</title>
+    <meta name="og:title" content="Search - IsiXhosa.click"/>
+    <meta name="og:url" content="https://isixhosa.click/search"/>
     <link rel="stylesheet" href="/search.css">
     {%- call macros::meta() -%}
 </head>
@@ -27,7 +27,7 @@
                 <ol class="hits">
                     {%- for hit in hits -%}
                     <!-- TODO(accept) test -->
-                    <li class="hit">{%- call macros::format_result(hit.document) -%}</li>
+                    <li class="hit">{%- call macros::format_result(hit) -%}</li>
                     {%- endfor -%}
                 </ol>
             </div>

@@ -1,21 +1,22 @@
-use crate::typesense::TypesenseClient;
+use crate::search::TantivyClient;
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
 use xtra::prelude::*;
+use std::sync::Arc;
 
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,
-    pub typesense: TypesenseClient,
+    pub tantivy: Arc<TantivyClient>,
     heartbeat: Instant,
 }
 
 impl LiveSearchSession {
-    pub fn new(sender: SplitSink<WebSocket, ws::Message>, typesense: TypesenseClient) -> Self {
+    pub fn new(sender: SplitSink<WebSocket, ws::Message>, tantivy: Arc<TantivyClient>) -> Self {
         LiveSearchSession {
             sender,
-            typesense,
+            tantivy,
             heartbeat: Instant::now(),
         }
     }
@@ -73,7 +74,7 @@ impl Handler<WsMessage> for LiveSearchSession {
                 return;
             }
 
-            let results = self.typesense.search_word_short(query).await.unwrap();
+            let results = self.tantivy.search(query.to_owned()).await.unwrap();
             let json = serde_json::to_string(&results).unwrap();
 
             if self.sender.send(ws::Message::text(json)).await.is_err() {

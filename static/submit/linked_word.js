@@ -1,4 +1,5 @@
 import { LiveSearch, formatResult } from "/live_search.js";
+import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;
 
@@ -104,7 +105,7 @@ function createLinkedWordSearch(preset_word) {
     return { input: input, popover: popover_container, search: new LiveSearch(input, popover, function() {}, createLinkedWordButton, createLinkedWordContainer) };
 }
 
-export function addLinkedWord(link_type, other, suggestion_id) {
+export function addLinkedWord(link_type, other, suggestion_id, existing_id) {
     current_linked_word_id += 1;
     let list = document.getElementById("linked_words");
     let item = document.createElement("li");
@@ -162,15 +163,11 @@ export function addLinkedWord(link_type, other, suggestion_id) {
     select_input_container.appendChild(type_select);
 
     if (suggestion_id != null) {
-        let suggestion = document.createElement("select");
-        suggestion.name = `linked_words[${current_linked_word_id}][suggestion_id]`;
-        suggestion.hidden = true;
-        
-        let option = document.createElement("option");
-        option.value = suggestion_id;
-        suggestion.add(option);
+        div.appendChild(addFormData(`linked_words[${current_linked_word_id}][suggestion_id]`, suggestion_id));
+    }
 
-        div.appendChild(suggestion);
+    if (existing_id != null) {
+        div.appendChild(addFormData(`linked_words[${current_linked_word_id}][existing_id]`, existing_id));
     }
 
     let linked_word = document.createElement("div");
@@ -193,7 +190,7 @@ export function addLinkedWord(link_type, other, suggestion_id) {
 
 export function addLinkedWords(linked_words) {
     for (let linked_word of linked_words) {
-        addLinkedWord(linked_word.link_type, linked_word.other, linked_word.suggestion_id)
+        addLinkedWord(linked_word.link_type, linked_word.other, linked_word.suggestion_id, linked_word.existing_id)
     }
 
     if (linked_words.length === 0) {

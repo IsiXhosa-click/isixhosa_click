@@ -31,5 +31,10 @@ arcstr = "1"
 xtra = { version = "0.5", features = ["with-tokio-1"] }
 percent-encoding = "2.1"
 async-trait = "0.1"
+tantivy = "0.15"
+anyhow = "1"
+num_cpus = "1"
+ordered-float = "2"
+confy = "0.4"
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability

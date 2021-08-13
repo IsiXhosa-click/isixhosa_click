@@ -72,6 +72,7 @@ pub enum PartOfSpeech {
     Interjection = 6,
     Conjunction = 7,
     Preposition = 8,
+    Other = 9,
 }
 
 impl FromSql for PartOfSpeech {
@@ -101,7 +102,17 @@ impl Display for PartOfSpeech {
     }
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize_repr, Deserialize_repr, Copy, Clone, Debug)]
+#[derive(
+    IntoPrimitive,
+    TryFromPrimitive,
+    Serialize_repr,
+    Deserialize_repr,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
 pub enum NounClass {
@@ -128,11 +139,28 @@ pub enum NounClass {
     Uku,
 }
 
-impl FromSql for NounClass {
+pub struct NounClassOpt(pub Option<NounClass>);
+
+pub trait NounClassOptExt {
+    fn flatten(self) -> Option<NounClass>;
+}
+
+impl NounClassOptExt for Option<NounClassOpt> {
+    fn flatten(self) -> Option<NounClass> {
+        self.and_then(|x| x.0)
+    }
+}
+
+impl FromSql for NounClassOpt {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         let v = value.as_i64()?;
-        let err = || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, "NounClass")));
-        Self::try_from_primitive(v.try_into().map_err(|_| err())?).map_err(|_| err())
+
+        if v == 255 {
+            Ok(NounClassOpt(None))
+        } else {
+            let err = || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, "NounClass")));
+            NounClass::try_from_primitive(v.try_into().map_err(|_| err())?).map_err(|_| err()).map(|x| NounClassOpt(Some(x)))
+        }
     }
 }
 

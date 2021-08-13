@@ -32,9 +32,10 @@ ol.hits {
 li.hit_container {
     border: solid 1px lightgray;
     background: white;
-    padding: 5px 5px;
+    padding: 1rem 5px;
     margin: 0;
     font-size: 0; /* HACK(restioson): get rid of small space in between elements due to "linebreaks" in HTML (???) */
+    line-height: 0;
 }
 
 li.hit_container:last-child {

@@ -3,9 +3,9 @@
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
-    <title>Accept Words - IsiXhosa.xyz</title>
-    <meta name="og:title" content="Accept Words - IsiXhosa.xyz"/>
-    <meta name="og:url" content="https://isixhosa.xyz/accept"/>
+    <title>Accept Words - IsiXhosa.click</title>
+    <meta name="og:title" content="Accept Words - IsiXhosa.click"/>
+    <meta name="og:url" content="https://isixhosa.click/accept"/>
     <link rel="stylesheet" href="/accept.css">
     {%- call macros::meta() -%}
 </head>
@@ -33,7 +33,7 @@
                                         {%- when Method::Edit -%}
                                             fully edited suggestion.
                                         {%- when Method::Reject -%}
-                                            fully denied suggestion.
+                                            fully rejected suggestion.
                                     {%- endmatch -%}
                                 {%- when None -%}
                                     .
@@ -81,7 +81,7 @@
                         <ins>{{ val }}</ins>
 
                     {%- when MaybeEdited::Old with (val) -%}
-                        {{ val }}}
+                        {{ val }}
 
                     {%- when MaybeEdited::Edited with { old, new } -%}
                         {%- if !format!("{}", new).is_empty() -%}
@@ -142,6 +142,17 @@
                 {%- endmatch -%}
             {%- endmacro -%}
 
+            {%- macro result_edited(res) -%}
+                {%- match res -%}
+                    {%- when MaybeEdited::New with (w) -%}
+                        <ins>{%- call macros::format_result(w) -%}</ins>
+                    {%- when MaybeEdited::Old with (w) -%}
+                        {%- call macros::format_result(w) -%}
+                    {%- when MaybeEdited::Edited with { old, new } -%}
+                        <ins>{%- call macros::format_result(new) -%}</ins> <del>{%- call macros::format_result(old) -%}</del>
+                {%- endmatch -%}
+            {%- endmacro -%}
+
             {%- macro action(method, text) -%}
                 <form action="/accept" method="post" enctype="application/x-www-form-urlencoded"
                         {%- if (method.to_string() != "edit".to_string()) -%}
@@ -195,21 +206,21 @@
 
                                         {%- if !s.xhosa_tone_markings.is_empty() -%}
                                             <tr>
-                                                <th scope="row">Xhosa with tone markings</td>
+                                                <th scope="row">Xhosa with tone markings</th>
                                                 <td>{%- call maybe_edited(s.xhosa_tone_markings) -%}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.infinitive.is_empty() -%}
                                             <tr>
-                                                <th scope="row">Infinitive form</td>
+                                                <th scope="row">Infinitive form</th>
                                                 <td>{%- call maybe_edited(s.infinitive) -%}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.note.is_empty() -%}
                                             <tr>
-                                                <th scope="row">Note</td>
+                                                <th scope="row">Note</th>
                                                 <td>{%- call maybe_edited(s.note) -%}</td>
                                             </tr>
                                         {%- endif -%}
@@ -256,7 +267,7 @@
                                                 {%- for l in s.linked_words -%}
                                                     <tr>
                                                         <td>{%- call maybe_edited(l.link_type) -%}</td>
-                                                        <td>{%- call macros::format_result(l.other) -%}</td>
+                                                        <td>{%- call result_edited(l.other(s.this_id())) -%}</td>
                                                     </tr>
                                                 {%- endfor -%}
                                             </tbody>
