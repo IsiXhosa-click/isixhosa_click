@@ -1,14 +1,16 @@
+#![allow(clippy::cmp_owned)] // * is a syntax error in askama so clone has to be used
+
 use crate::database::accept_whole_word_suggestion;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
-use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
 use crate::search::{TantivyClient, WordDocument};
+use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
 use askama::Template;
 use askama_warp::warp::body;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
-use warp::{Filter, Rejection, Reply};
 use std::sync::Arc;
+use warp::{Filter, Rejection, Reply};
 
 #[derive(Template)]
 #[template(path = "moderation.html")]

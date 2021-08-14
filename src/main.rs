@@ -37,16 +37,19 @@
 // - html/css/js min
 // - see if i can replace cloning pool with cloning conn?
 
+use crate::search::{TantivyClient, WordHit};
 use crate::session::{LiveSearchSession, WsMessage};
-use crate::search::{WordHit, TantivyClient};
-use moderation::accept;
 use askama::Template;
 use details::details;
 use edit::edit;
 use futures::StreamExt;
+use moderation::accept;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::Arc;
 use submit::submit;
 use tokio::task;
 use warp::http::Uri;
@@ -54,10 +57,7 @@ use warp::reject::Reject;
 use warp::{path, Filter, Rejection};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-use serde::{Serialize, Deserialize};
-use std::sync::Arc;
-use std::path::PathBuf;
-use std::convert::TryFrom;
+use warp::path::FullPath;
 
 mod moderation;
 // mod auth;
@@ -65,9 +65,9 @@ mod database;
 mod details;
 mod edit;
 mod language;
+mod search;
 mod session;
 mod submit;
-mod search;
 
 #[derive(Debug)]
 struct TemplateError(askama::Error);
@@ -110,11 +110,9 @@ async fn main() {
             include_str!("sql/words.sql"),
             include_str!("sql/word_suggestions.sql"),
             include_str!("sql/word_deletion_suggestions.sql"),
-
             include_str!("sql/examples.sql"),
             include_str!("sql/example_suggestions.sql"),
             include_str!("sql/example_deletion_suggestions.sql"),
-
             include_str!("sql/linked_words.sql"),
             include_str!("sql/linked_word_suggestions.sql"),
             include_str!("sql/linked_word_deletion_suggestions.sql"),
@@ -129,7 +127,9 @@ async fn main() {
     .await
     .unwrap();
 
-    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone()).await.unwrap();
+    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone())
+        .await
+        .unwrap();
 
     let tantivy_cloned = tantivy.clone();
     let tantivy_filter = warp::any().map(move || tantivy_cloned.clone());
@@ -161,8 +161,16 @@ async fn main() {
 
     println!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
-    let redirect_uri = Uri::try_from("https://isixhosa.click").unwrap();
-    let http_redirect = warp::serve(warp::any().map(move || warp::redirect(redirect_uri.clone())));
+    let redirect = warp::path::full().map(move |path: FullPath| {
+        let to = Uri::builder()
+            .scheme("https")
+            .authority("isixhosa.click")
+            .path_and_query(path.as_str())
+            .build()
+            .unwrap();
+        warp::redirect(to)
+    });
+    let http_redirect = warp::serve(redirect);
 
     tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
 

@@ -300,7 +300,11 @@ impl From<SuggestedWord> for WordFormTemplate {
             noun_class: *w.noun_class.current(),
             note: w.note.current().clone(),
             examples: w.examples.into_iter().map(Into::into).collect(),
-            linked_words: w.linked_words.into_iter().map(|s| LinkedWordTemplate::from_suggested(s, this_id)).collect(),
+            linked_words: w
+                .linked_words
+                .into_iter()
+                .map(|s| LinkedWordTemplate::from_suggested(s, this_id))
+                .collect(),
         }
     }
 }
@@ -442,8 +446,7 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionMa
 
     tokio::task::spawn_blocking(move || {
         let conn = db.get().unwrap();
-        conn
-            .prepare(STATEMENT)
+        conn.prepare(STATEMENT)
             .unwrap()
             .execute(params![word_id.0])
             .unwrap();
@@ -504,15 +507,27 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
             w.suggestion_id,
             w.existing_id,
             "Word added",
-            diff(w.english.to_lowercase(), &orig.english.to_lowercase(), use_submitted),
-            diff(w.xhosa.to_lowercase(), &orig.xhosa.to_lowercase(), use_submitted),
+            diff(
+                w.english.to_lowercase(),
+                &orig.english.to_lowercase(),
+                use_submitted
+            ),
+            diff(
+                w.xhosa.to_lowercase(),
+                &orig.xhosa.to_lowercase(),
+                use_submitted
+            ),
             diff_opt(w.part_of_speech, &orig.part_of_speech, use_submitted),
             diff(
                 w.xhosa_tone_markings.to_lowercase(),
                 &orig.xhosa_tone_markings.to_lowercase(),
                 use_submitted
             ),
-            diff(w.infinitive.to_lowercase(), &orig.infinitive.to_lowercase(), use_submitted),
+            diff(
+                w.infinitive.to_lowercase(),
+                &orig.infinitive.to_lowercase(),
+                use_submitted
+            ),
             diff(w.is_plural, &orig.is_plural, use_submitted),
             noun_class,
             diff(w.note.clone(), &orig.note, use_submitted)

@@ -7,8 +7,10 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
 use serde::Deserialize;
 
-use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord, MaybeEdited};
-use crate::language::{SerializeDisplay, NounClassOpt, NounClassOptExt};
+use crate::database::suggestion::{
+    MaybeEdited, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
+};
+use crate::language::{NounClassOpt, NounClassOptExt, SerializeDisplay};
 use crate::search::WordHit;
 use crate::submit::WordId;
 
@@ -16,10 +18,15 @@ pub mod existing;
 pub mod suggestion;
 
 // TODO this assumes unedited suggestion
-pub fn get_word_hit_from_db(db: &Pool<SqliteConnectionManager>, id: WordOrSuggestionId) -> Option<WordHit> {
-    const SELECT_EXISTING: &str = "SELECT english, xhosa, part_of_speech, is_plural, noun_class from words
+pub fn get_word_hit_from_db(
+    db: &Pool<SqliteConnectionManager>,
+    id: WordOrSuggestionId,
+) -> Option<WordHit> {
+    const SELECT_EXISTING: &str =
+        "SELECT english, xhosa, part_of_speech, is_plural, noun_class from words
             WHERE word_id = ?1;";
-    const SELECT_SUGGESTED: &str = "SELECT english, xhosa, part_of_speech, is_plural, noun_class from word_suggestions
+    const SELECT_SUGGESTED: &str =
+        "SELECT english, xhosa, part_of_speech, is_plural, noun_class from word_suggestions
             WHERE suggestion_id = ?1;";
 
     let conn = db.get().unwrap();
@@ -40,7 +47,10 @@ pub fn get_word_hit_from_db(db: &Pool<SqliteConnectionManager>, id: WordOrSugges
                 xhosa: row.get("xhosa").unwrap(),
                 part_of_speech: SerializeDisplay(row.get("part_of_speech").unwrap()),
                 is_plural: row.get("is_plural").unwrap(),
-                noun_class: row.get::<&str, Option<NounClassOpt>>("noun_class").unwrap().flatten(),
+                noun_class: row
+                    .get::<&str, Option<NounClassOpt>>("noun_class")
+                    .unwrap()
+                    .flatten(),
             })
         })
         .optional()
@@ -68,8 +78,14 @@ impl WordOrSuggestionId {
         existing_idx: &str,
         suggested_idx: &str,
     ) -> Result<WordOrSuggestionId, rusqlite::Error> {
-        let existing_word_id: Option<u64> = row.get::<&str, Option<i64>>(existing_idx).unwrap().map(|x| x as u64);
-        let suggested_word_id: Option<u64> = row.get::<&str, Option<i64>>(suggested_idx).unwrap().map(|x| x as u64);
+        let existing_word_id: Option<u64> = row
+            .get::<&str, Option<i64>>(existing_idx)
+            .unwrap()
+            .map(|x| x as u64);
+        let suggested_word_id: Option<u64> = row
+            .get::<&str, Option<i64>>(suggested_idx)
+            .unwrap()
+            .map(|x| x as u64);
         match (existing_word_id, suggested_word_id) {
             (Some(existing_id), None) => Ok(WordOrSuggestionId::ExistingWord { existing_id }),
             (None, Some(suggestion_id)) => Ok(WordOrSuggestionId::Suggested { suggestion_id }),
@@ -103,12 +119,12 @@ pub fn accept_whole_word_suggestion(db: &Pool<SqliteConnectionManager>, s: Sugge
     }
 
     for mut linked_word in s.linked_words.into_iter() {
-        linked_word.second = MaybeEdited::New(
-            (WordOrSuggestionId::ExistingWord {
+        linked_word.second = MaybeEdited::New((
+            WordOrSuggestionId::ExistingWord {
                 existing_id: word_id,
             },
-            WordHit::empty(),)
-        );
+            WordHit::empty(),
+        ));
         accept_linked_word(&db, linked_word);
     }
 
@@ -234,5 +250,8 @@ pub fn delete_word(db: &Pool<SqliteConnectionManager>, word_id: WordId) {
     const DELETE: &str = "DELETE FROM words WHERE word_id = ?1;";
 
     let conn = db.get().unwrap();
-    conn.prepare(DELETE).unwrap().execute(params![word_id.0]).unwrap();
+    conn.prepare(DELETE)
+        .unwrap()
+        .execute(params![word_id.0])
+        .unwrap();
 }

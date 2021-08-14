@@ -159,7 +159,9 @@ impl FromSql for NounClassOpt {
             Ok(NounClassOpt(None))
         } else {
             let err = || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, "NounClass")));
-            NounClass::try_from_primitive(v.try_into().map_err(|_| err())?).map_err(|_| err()).map(|x| NounClassOpt(Some(x)))
+            NounClass::try_from_primitive(v.try_into().map_err(|_| err())?)
+                .map_err(|_| err())
+                .map(|x| NounClassOpt(Some(x)))
         }
     }
 }

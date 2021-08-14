@@ -5,7 +5,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
 
 use crate::database::{get_word_hit_from_db, WordOrSuggestionId};
-use crate::language::{NounClass, PartOfSpeech, WordLinkType, NounClassOpt, NounClassOptExt};
+use crate::language::{NounClass, NounClassOpt, NounClassOptExt, PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
 use fallible_iterator::FallibleIterator;
 
@@ -45,6 +45,8 @@ impl ExistingWord {
         from words WHERE word_id = ?1;";
 
         let conn = db.get().unwrap();
+
+        #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
         let opt = conn
             .prepare(SELECT_ORIGINAL)
             .unwrap()
@@ -67,7 +69,9 @@ impl TryFrom<&Row<'_>> for ExistingWord {
             xhosa_tone_markings: row.get("xhosa_tone_markings")?,
             infinitive: row.get("infinitive")?,
             is_plural: row.get("is_plural")?,
-            noun_class: row.get::<&str, Option<NounClassOpt>>("noun_class")?.flatten(),
+            noun_class: row
+                .get::<&str, Option<NounClassOpt>>("noun_class")?
+                .flatten(),
             note: row.get("note")?,
             examples: vec![],
             linked_words: vec![],
@@ -95,6 +99,7 @@ impl ExistingExample {
         let mut query = conn.prepare(SELECT).unwrap();
         let rows = query.query(params![word_id]).unwrap();
 
+        #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
         rows.map(|row| ExistingExample::try_from(row))
             .collect()
             .unwrap()
@@ -105,6 +110,7 @@ impl ExistingExample {
             "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1";
 
         let conn = db.get().unwrap();
+        #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
         let opt = conn
             .prepare(SELECT)
             .unwrap()
@@ -201,7 +207,13 @@ impl ExistingLinkedWord {
             first_word_id,
             second_word_id,
             link_type: row.get("link_type")?,
-            other: get_word_hit_from_db(db, WordOrSuggestionId::ExistingWord { existing_id: populate }).unwrap(),
+            other: get_word_hit_from_db(
+                db,
+                WordOrSuggestionId::ExistingWord {
+                    existing_id: populate,
+                },
+            )
+            .unwrap(),
         })
     }
 }

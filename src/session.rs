@@ -1,10 +1,10 @@
 use crate::search::TantivyClient;
 use futures::stream::SplitSink;
 use futures::SinkExt;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
 use xtra::prelude::*;
-use std::sync::Arc;
 
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,

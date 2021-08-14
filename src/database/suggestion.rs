@@ -1,7 +1,7 @@
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
 use crate::database::{get_word_hit_from_db, WordOrSuggestionId};
-use crate::language::{NounClass, PartOfSpeech, WordLinkType, NounClassOpt, NounClassOptExt};
+use crate::language::{NounClass, NounClassOpt, NounClassOptExt, PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
 use fallible_iterator::FallibleIterator;
 use r2d2::Pool;
@@ -34,9 +34,13 @@ pub struct SuggestedWord {
 impl SuggestedWord {
     pub fn this_id(&self) -> WordOrSuggestionId {
         if let Some(word_id) = self.word_id {
-            WordOrSuggestionId::ExistingWord { existing_id: word_id }
+            WordOrSuggestionId::ExistingWord {
+                existing_id: word_id,
+            }
         } else {
-            WordOrSuggestionId::Suggested { suggestion_id: self.suggestion_id }
+            WordOrSuggestionId::Suggested {
+                suggestion_id: self.suggestion_id,
+            }
         }
     }
 
@@ -110,7 +114,9 @@ impl SuggestedWord {
         let e = existing_id.and_then(|id| ExistingWord::get_alone(db, id as u64));
         let e = e.as_ref();
 
-        let noun_class = row.get::<&str, Option<NounClassOpt>>("noun_class").map(NounClassOptExt::flatten);
+        let noun_class = row
+            .get::<&str, Option<NounClassOpt>>("noun_class")
+            .map(NounClassOptExt::flatten);
         let old_noun_class = e.and_then(|e| e.noun_class);
         let noun_class = match (noun_class, old_noun_class) {
             (Ok(None), old) => MaybeEdited::Old(old),
@@ -249,10 +255,15 @@ impl SuggestedLinkedWord {
             .get::<&str, Option<i64>>("existing_linked_word_id")
             .unwrap();
         let (other_type, other_first, other_second) = if let Some(id) = existing_id {
-            let trio = conn.prepare("SELECT link_id FROM linked_words WHERE link_id = ?1")
+            let trio = conn
+                .prepare("SELECT link_id FROM linked_words WHERE link_id = ?1")
                 .unwrap()
                 .query_row(params![id], |r| {
-                    Ok((r.get("link_id")?, r.get("first_word_id")?, r.get("second_word_id")?))
+                    Ok((
+                        r.get("link_id")?,
+                        r.get("first_word_id")?,
+                        r.get("second_word_id")?,
+                    ))
                 })
                 .unwrap();
             (Some(trio.0), Some(trio.1), Some(trio.2))
@@ -261,31 +272,51 @@ impl SuggestedLinkedWord {
         };
 
         let first_existing_word_id = row.get("first_existing_word_id").unwrap();
-        let first_hit = get_word_hit_from_db(db, WordOrSuggestionId::ExistingWord { existing_id: first_existing_word_id }).unwrap();
+        let first_hit = get_word_hit_from_db(
+            db,
+            WordOrSuggestionId::ExistingWord {
+                existing_id: first_existing_word_id,
+            },
+        )
+        .unwrap();
 
         let first = if let Some(other_first) = other_first {
-            let other_hit = get_word_hit_from_db(db, WordOrSuggestionId::ExistingWord { existing_id: other_first }).unwrap();
+            let other_hit = get_word_hit_from_db(
+                db,
+                WordOrSuggestionId::ExistingWord {
+                    existing_id: other_first,
+                },
+            )
+            .unwrap();
             MaybeEdited::Edited {
                 new: (first_existing_word_id, first_hit),
-                old: (other_first, other_hit)
+                old: (other_first, other_hit),
             }
         } else {
             MaybeEdited::New((first_existing_word_id, first_hit))
         };
 
-        let second =  WordOrSuggestionId::try_from_row(
-                row,
-                "second_existing_word_id",
-                "suggested_word_id",
-            )
-        .unwrap();
+        let second =
+            WordOrSuggestionId::try_from_row(row, "second_existing_word_id", "suggested_word_id")
+                .unwrap();
         let second_hit = get_word_hit_from_db(db, second).unwrap();
 
         let second = if let Some(other_second) = other_second {
-            let other_hit = get_word_hit_from_db(db, WordOrSuggestionId::ExistingWord { existing_id: other_second }).unwrap();
+            let other_hit = get_word_hit_from_db(
+                db,
+                WordOrSuggestionId::ExistingWord {
+                    existing_id: other_second,
+                },
+            )
+            .unwrap();
             MaybeEdited::Edited {
                 new: (second, second_hit),
-                old: (WordOrSuggestionId::ExistingWord { existing_id: other_second }, other_hit)
+                old: (
+                    WordOrSuggestionId::ExistingWord {
+                        existing_id: other_second,
+                    },
+                    other_hit,
+                ),
             }
         } else {
             MaybeEdited::New((second, second_hit))
@@ -303,7 +334,8 @@ impl SuggestedLinkedWord {
     }
 
     pub fn other(&self, this_id: &WordOrSuggestionId) -> MaybeEdited<WordHit> {
-        if matches!(*this_id, WordOrSuggestionId::ExistingWord { existing_id } if existing_id == self.first.current().0) {
+        if matches!(*this_id, WordOrSuggestionId::ExistingWord { existing_id } if existing_id == self.first.current().0)
+        {
             self.first.map(|pair| pair.1.clone())
         } else {
             self.second.map(|pair| pair.1.clone())
@@ -321,7 +353,10 @@ pub enum MaybeEdited<T> {
 impl<T> MaybeEdited<T> {
     fn map<U, F: Fn(&T) -> U>(&self, f: F) -> MaybeEdited<U> {
         match self {
-            MaybeEdited::Edited { new, old } => MaybeEdited::Edited { new: f(new), old: f(old) },
+            MaybeEdited::Edited { new, old } => MaybeEdited::Edited {
+                new: f(new),
+                old: f(old),
+            },
             MaybeEdited::Old(old) => MaybeEdited::Old(f(old)),
             MaybeEdited::New(new) => MaybeEdited::New(f(new)),
         }

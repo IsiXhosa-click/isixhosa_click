@@ -1,5 +1,7 @@
 use crate::details::{word, WordChangeMethod};
-use crate::submit::{edit_word_page, qs_form, submit_suggestion, WordSubmission, suggest_word_deletion, WordId};
+use crate::submit::{
+    edit_word_page, qs_form, submit_suggestion, suggest_word_deletion, WordId, WordSubmission,
+};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use warp::{body, Filter, Rejection, Reply};
@@ -34,10 +36,13 @@ pub fn edit(
     let delete_redirect = warp::post()
         .and(warp::path!["word" / u64 / "delete"])
         .and(warp::path::end())
-        .and(db.clone())
+        .and(db)
         .and_then(delete_word_reply);
 
-    submit_page.or(submit_form).or(delete_redirect).or(failed_to_submit)
+    submit_page
+        .or(submit_form)
+        .or(delete_redirect)
+        .or(failed_to_submit)
 }
 
 async fn submit_suggestion_reply(

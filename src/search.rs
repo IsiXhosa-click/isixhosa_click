@@ -1,22 +1,22 @@
-use serde::{Serialize, Deserialize};
-use tantivy::schema::{Schema, STORED, STRING, Field, Value, INDEXED};
-use crate::language::{SerializeDisplay, PartOfSpeech, NounClass, NounClassOpt, NounClassOptExt};
-use std::sync::{Arc, Mutex};
-use tantivy::{Index, IndexReader, IndexWriter, Document, Term, DocAddress};
-use tantivy::directory::MmapDirectory;
+use crate::language::{NounClass, NounClassOpt, NounClassOptExt, PartOfSpeech, SerializeDisplay};
 use anyhow::{Context, Result};
-use xtra::{Address, Actor, Message, Handler};
-use tantivy::query::FuzzyTermQuery;
-use tantivy::collector::TopDocs;
-use std::convert::TryInto;
 use num_enum::TryFromPrimitive;
-use r2d2::Pool;
-use tantivy::doc;
-use rusqlite::params;
-use r2d2_sqlite::SqliteConnectionManager;
-use xtra::spawn::TokioGlobalSpawnExt;
 use ordered_float::OrderedFloat;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::params;
+use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
+use tantivy::collector::TopDocs;
+use tantivy::directory::MmapDirectory;
+use tantivy::doc;
+use tantivy::query::FuzzyTermQuery;
+use tantivy::schema::{Field, Schema, Value, INDEXED, STORED, STRING};
+use tantivy::{DocAddress, Document, Index, IndexReader, IndexWriter, Term};
+use xtra::spawn::TokioGlobalSpawnExt;
+use xtra::{Actor, Address, Handler, Message};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 
@@ -27,7 +27,10 @@ pub struct TantivyClient {
 }
 
 impl TantivyClient {
-    pub async fn start(path: &Path, db: Pool<SqliteConnectionManager>) -> Result<Arc<TantivyClient>> {
+    pub async fn start(
+        path: &Path,
+        db: Pool<SqliteConnectionManager>,
+    ) -> Result<Arc<TantivyClient>> {
         let schema_info = Self::build_schema();
         let dir = MmapDirectory::open(path)
             .with_context(|| format!("Failed to open tantivy directory {:?}", path))?;
@@ -35,7 +38,8 @@ impl TantivyClient {
         let index = Index::open_or_create(dir, schema_info.schema.clone())?;
 
         let num_searchers = num_cpus::get(); // TODO config
-        let reader = index.reader_builder()
+        let reader = index
+            .reader_builder()
             .num_searchers(num_searchers)
             .try_into()?;
 
@@ -45,7 +49,9 @@ impl TantivyClient {
 
         let client = TantivyClient {
             schema_info: schema_info.clone(),
-            writer: WriterActor::new(writer, schema_info).create(Some(16)).spawn_global(),
+            writer: WriterActor::new(writer, schema_info)
+                .create(Some(16))
+                .spawn_global(),
             searchers,
         };
         let client = Arc::new(client);
@@ -84,7 +90,10 @@ impl TantivyClient {
     }
 
     pub async fn search(&self, query: String) -> Result<Vec<WordHit>> {
-        self.searchers.send(SearchRequest(query)).await.map_err(Into::into)
+        self.searchers
+            .send(SearchRequest(query))
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn reindex_database(&self, db: Pool<SqliteConnectionManager>) {
@@ -94,20 +103,21 @@ impl TantivyClient {
             let conn = db.get().unwrap();
             let mut stmt = conn.prepare(SELECT).unwrap();
 
-            stmt
-                .query_map(params![], |row| {
-                    Ok(WordDocument {
-                        id: row.get::<&str, i64>("word_id")? as u64,
-                        english: row.get("english")?,
-                        xhosa: row.get("xhosa")?,
-                        part_of_speech: row.get("part_of_speech")?,
-                        is_plural: row.get("is_plural")?,
-                        noun_class: row.get::<&str, Option<NounClassOpt>>("noun_class")?.flatten(),
-                    })
+            stmt.query_map(params![], |row| {
+                Ok(WordDocument {
+                    id: row.get::<&str, i64>("word_id")? as u64,
+                    english: row.get("english")?,
+                    xhosa: row.get("xhosa")?,
+                    part_of_speech: row.get("part_of_speech")?,
+                    is_plural: row.get("is_plural")?,
+                    noun_class: row
+                        .get::<&str, Option<NounClassOpt>>("noun_class")?
+                        .flatten(),
                 })
-                .unwrap()
-                .collect::<Result<Vec<WordDocument>, _>>()
-                .unwrap()
+            })
+            .unwrap()
+            .collect::<Result<Vec<WordDocument>, _>>()
+            .unwrap()
         })
         .await
         .unwrap();
@@ -200,7 +210,9 @@ impl Handler<ReindexWords> for WriterActor {
             }
 
             writer.commit().unwrap();
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     }
 }
 
@@ -214,10 +226,11 @@ impl Handler<IndexWord> for WriterActor {
             let mut writer = writer.lock().unwrap();
             Self::add_word(&mut writer, &schema_info, doc.0);
             writer.commit().unwrap();
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     }
 }
-
 
 #[async_trait::async_trait]
 impl Handler<EditWord> for WriterActor {
@@ -233,10 +246,11 @@ impl Handler<EditWord> for WriterActor {
 
             Self::add_word(&mut writer, &schema_info, edit.0);
             writer.commit().unwrap();
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     }
 }
-
 
 #[async_trait::async_trait]
 impl Handler<DeleteWord> for WriterActor {
@@ -249,7 +263,9 @@ impl Handler<DeleteWord> for WriterActor {
             let term = Term::from_field_u64(schema_info.id, delete.0);
             writer.delete_term(term);
             writer.commit().unwrap();
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     }
 }
 
@@ -274,7 +290,11 @@ impl Message for SearchRequest {
 
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
-    async fn handle(&mut self, mut req: SearchRequest, _ctx: &mut xtra::Context<Self>) -> Vec<WordHit> {
+    async fn handle(
+        &mut self,
+        mut req: SearchRequest,
+        _ctx: &mut xtra::Context<Self>,
+    ) -> Vec<WordHit> {
         const MAX_RESULTS: usize = 5;
 
         req.0 = req.0.to_lowercase();
@@ -300,7 +320,10 @@ impl Handler<SearchRequest> for SearcherActor {
             results.append(&mut results2);
 
             #[inline(never)]
-            fn dedup((_, doc_address1): &mut (f32, DocAddress), (_, doc_address2): &mut (f32, DocAddress)) -> bool {
+            fn dedup(
+                (_, doc_address1): &mut (f32, DocAddress),
+                (_, doc_address2): &mut (f32, DocAddress),
+            ) -> bool {
                 doc_address1 == doc_address2
             }
 
@@ -314,13 +337,17 @@ impl Handler<SearchRequest> for SearcherActor {
             results
                 .into_iter()
                 .take(MAX_RESULTS)
-                .map(|(_score, doc_address)| searcher
-                    .doc(doc_address)
-                    .map_err(anyhow::Error::from)
-                    .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
-                )
+                .map(|(_score, doc_address)| {
+                    searcher
+                        .doc(doc_address)
+                        .map_err(anyhow::Error::from)
+                        .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
+                })
                 .collect::<Result<Vec<_>, _>>()
-        }).await.expect("Error executing search task").unwrap() // TODO error handling
+        })
+        .await
+        .expect("Error executing search task")
+        .unwrap() // TODO error handling
     }
 }
 
@@ -376,29 +403,53 @@ impl WordHit {
         let pos_ord = document
             .get_first(schema_info.part_of_speech)
             .and_then(Value::u64_value)
-            .with_context(|| format!("Invalid value for field `part_of_speech` in document {:#?}", document))?;
-        let part_of_speech = SerializeDisplay(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
+            .with_context(|| {
+                format!(
+                    "Invalid value for field `part_of_speech` in document {:#?}",
+                    document
+                )
+            })?;
+        let part_of_speech =
+            SerializeDisplay(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
 
         Ok(WordHit {
-            id: document.get_first(schema_info.id)
+            id: document
+                .get_first(schema_info.id)
                 .and_then(Value::u64_value)
-                .with_context(|| format!("Invalid value for field `id` in document {:#?}", document))?,
+                .with_context(|| {
+                    format!("Invalid value for field `id` in document {:#?}", document)
+                })?,
             english: document
                 .get_first(schema_info.english)
                 .and_then(Value::text)
-                .with_context(|| format!("Invalid value for field `english` in document {:#?}", document))?
+                .with_context(|| {
+                    format!(
+                        "Invalid value for field `english` in document {:#?}",
+                        document
+                    )
+                })?
                 .to_owned(),
             xhosa: document
                 .get_first(schema_info.xhosa)
                 .and_then(Value::text)
-                .with_context(|| format!("Invalid value for field `xhosa` in document {:#?}", document))?
+                .with_context(|| {
+                    format!(
+                        "Invalid value for field `xhosa` in document {:#?}",
+                        document
+                    )
+                })?
                 .to_owned(),
             part_of_speech,
             is_plural: document
                 .get_first(schema_info.is_plural)
                 .and_then(Value::u64_value)
                 .map(|v| v == 1)
-                .with_context(|| format!("Invalid value for field `is_plural` in document {:#?}", document))?,
+                .with_context(|| {
+                    format!(
+                        "Invalid value for field `is_plural` in document {:#?}",
+                        document
+                    )
+                })?,
             noun_class: document
                 .get_first(schema_info.noun_class)
                 .and_then(Value::u64_value)
