@@ -504,15 +504,15 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
             w.suggestion_id,
             w.existing_id,
             "Word added",
-            diff(w.english.clone(), &orig.english, use_submitted),
-            diff(w.xhosa.clone(), &orig.xhosa, use_submitted),
+            diff(w.english.to_lowercase(), &orig.english.to_lowercase(), use_submitted),
+            diff(w.xhosa.to_lowercase(), &orig.xhosa.to_lowercase(), use_submitted),
             diff_opt(w.part_of_speech, &orig.part_of_speech, use_submitted),
             diff(
-                w.xhosa_tone_markings.clone(),
-                &orig.xhosa_tone_markings,
+                w.xhosa_tone_markings.to_lowercase(),
+                &orig.xhosa_tone_markings.to_lowercase(),
                 use_submitted
             ),
-            diff(w.infinitive.clone(), &orig.infinitive, use_submitted),
+            diff(w.infinitive.to_lowercase(), &orig.infinitive.to_lowercase(), use_submitted),
             diff(w.is_plural, &orig.is_plural, use_submitted),
             noun_class,
             diff(w.note.clone(), &orig.note, use_submitted)

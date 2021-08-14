@@ -1,25 +1,31 @@
 #![feature(associated_type_bounds)]
 
 // v0.1:
-// - TODO word deletion
-// - TODO word editing - make sure to edit *_full methods to reflect this
+// - TODO word, example, and linked word deletion
+// - TODO word, example, and linked word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
 // - TODO attributions - editing users & references & so on
-// - TODO remove changes_summary
 // - TODO logging
-// - TODO config
-// - TODO ratelimiting, query len max, and so on
+// - TODO config for static directories
+// - TODO redirect rest of URL
+// - TODO opengraph image embed
 
 // v0.2:
+// - set up certbot
+// - ratelimiting
+// - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
+// - weekly drive backups
+// - automated data-dump & backups of the database content which can be downloaded
+
+// v0.3
+// - additional resources/links page
 // - suggestion publicising, voting & commenting
 // - conjugation tables
 // - user profiles showing statistics (for mods primarily but maybe can publicise it?)
-// - backups
-// - additional resources/links page
-// - automated data-dump which can be downloaded
-//        -> automate anki deck
+// - automate anki deck creation
 
-// v0.3:
+// v0.4:
+// - semantic fields/categories linking related words to browse all at once
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
 
@@ -27,11 +33,9 @@
 // - forum for xhosa questions (discourse?)
 // - donations for hosting costs (maybe even to pay native speakers to submit words?)
 
-// Technical improvements:
-// - TODO error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
-// - TODO ratelimiting
-// - TODO html/css/js min
-// - TODO see if i can replace cloning pool with cloning conn?
+// Ideas:
+// - html/css/js min
+// - see if i can replace cloning pool with cloning conn?
 
 use crate::session::{LiveSearchSession, WsMessage};
 use crate::search::{WordHit, TantivyClient};

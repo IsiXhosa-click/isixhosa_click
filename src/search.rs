@@ -145,8 +145,8 @@ impl WriterActor {
     fn add_word(writer: &mut IndexWriter, schema_info: &SchemaInfo, doc: WordDocument) {
         writer.add_document(tantivy::doc!(
             schema_info.id => doc.id,
-            schema_info.english => doc.english,
-            schema_info.xhosa => doc.xhosa,
+            schema_info.english => doc.english.to_lowercase(),
+            schema_info.xhosa => doc.xhosa.to_lowercase(),
             schema_info.part_of_speech => doc.part_of_speech as u64,
             schema_info.is_plural => doc.is_plural as u64,
             schema_info.noun_class => doc.noun_class.map(|x| x as u64).unwrap_or(255),
