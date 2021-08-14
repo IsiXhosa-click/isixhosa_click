@@ -8,6 +8,7 @@
 // - TODO remove changes_summary
 // - TODO logging
 // - TODO config
+// - TODO ratelimiting, query len max, and so on
 
 // v0.2:
 // - suggestion publicising, voting & commenting

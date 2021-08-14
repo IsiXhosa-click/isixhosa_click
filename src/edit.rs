@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use crate::details::{word, WordChangeMethod};
 use crate::submit::{edit_word_page, qs_form, submit_suggestion, WordSubmission, suggest_word_deletion, WordId};
 use r2d2::Pool;

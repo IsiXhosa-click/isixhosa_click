@@ -1,6 +1,6 @@
-use crate::database::{accept_whole_word_suggestion, delete_word};
+use crate::database::accept_whole_word_suggestion;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
-use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission, WordId};
+use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
 use crate::search::{TantivyClient, WordDocument};
 use askama::Template;
 use askama_warp::warp::body;

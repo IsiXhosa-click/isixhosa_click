@@ -275,17 +275,22 @@ impl Message for SearchRequest {
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
     async fn handle(&mut self, req: SearchRequest, _ctx: &mut xtra::Context<Self>) -> Vec<WordHit> {
+        const MAX_RESULTS: usize = 5;
+
         let searcher = self.reader.searcher();
         let client = self.client.clone();
         let english = Term::from_field_text(client.schema_info.english, &req.0);
         let xhosa = Term::from_field_text(client.schema_info.xhosa, &req.0);
 
-        let distance = 2;
-        let max_results = 5;
+        let distance = match req.0.len() {
+            0..=2 => 0,
+            3..=4 => 1,
+            _ => 2,
+        };
 
         let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
         let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
-        let top_docs = TopDocs::with_limit(max_results);
+        let top_docs = TopDocs::with_limit(MAX_RESULTS);
 
         tokio::task::spawn_blocking(move || {
             let mut results = searcher.search(&query_english, &top_docs)?;
@@ -306,7 +311,7 @@ impl Handler<SearchRequest> for SearcherActor {
 
             results
                 .into_iter()
-                .take(max_results)
+                .take(MAX_RESULTS)
                 .map(|(_score, doc_address)| searcher
                     .doc(doc_address)
                     .map_err(anyhow::Error::from)

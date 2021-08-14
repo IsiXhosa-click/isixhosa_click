@@ -435,7 +435,6 @@ fn diff_opt<T: PartialEq + Eq>(
     }
 }
 
-// TODO deletion
 pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionManager>) {
     const STATEMENT: &str = "INSERT INTO word_deletion_suggestions (word_id) VALUES (?1);";
 
@@ -621,7 +620,6 @@ fn process_linked_words(
                             None::<i64>,
                             prev.link_id,
                             "Linked word removed",
-                            true, // Deletion
                             None::<i64>,
                             prev.link_type,
                             prev.first_word_id,
@@ -730,12 +728,12 @@ fn process_examples(
                     let new = examples.remove(i);
                     insert_example(new, Some(prev));
                 } else {
+                    // TODO deletion
                     upsert_clone
                         .execute(params![
                             None::<i64>,
                             prev.example_id,
                             "Example removed",
-                            true,
                             suggested_word_id,
                             w.existing_id,
                             prev.english,
