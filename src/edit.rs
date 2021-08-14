@@ -1,5 +1,6 @@
+use serde::Deserialize;
 use crate::details::{word, WordChangeMethod};
-use crate::submit::{edit_word_page, qs_form, submit_suggestion, WordSubmission, suggest_deletion, WordId};
+use crate::submit::{edit_word_page, qs_form, submit_suggestion, WordSubmission, suggest_word_deletion, WordId};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use warp::{body, Filter, Rejection, Reply};
@@ -31,13 +32,13 @@ pub fn edit(
         .and(warp::path::end())
         .and_then(edit_word_page);
 
-    let delete_redirect = warp::get()
-        .and(db.clone())
+    let delete_redirect = warp::post()
         .and(warp::path!["word" / u64 / "delete"])
         .and(warp::path::end())
+        .and(db.clone())
         .and_then(delete_word_reply);
 
-    submit_page.or(submit_form).or(failed_to_submit).or(delete_redirect)
+    submit_page.or(submit_form).or(delete_redirect).or(failed_to_submit)
 }
 
 async fn submit_suggestion_reply(
@@ -49,10 +50,10 @@ async fn submit_suggestion_reply(
     word(id, db, Some(WordChangeMethod::Edit)).await
 }
 
-pub async fn delete_word_reply(
-    db: Pool<SqliteConnectionManager>,
+async fn delete_word_reply(
     id: u64,
+    db: Pool<SqliteConnectionManager>,
 ) -> Result<impl Reply, Rejection> {
-    suggest_deletion(WordId(id), &db).await;
+    suggest_word_deletion(WordId(id), &db).await;
     word(id, db, Some(WordChangeMethod::Delete)).await
 }

@@ -16,7 +16,6 @@ pub struct SuggestedWord {
     pub word_id: Option<u64>,
 
     pub changes_summary: String,
-    pub deletion: bool,
 
     pub english: MaybeEdited<String>,
     pub xhosa: MaybeEdited<String>,
@@ -43,7 +42,7 @@ impl SuggestedWord {
 
     pub fn get_all_full(db: &Pool<SqliteConnectionManager>) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "SELECT
-            suggestion_id, existing_word_id, changes_summary, deletion,
+            suggestion_id, existing_word_id, changes_summary,
             english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
             noun_class, note
         from word_suggestions;";
@@ -68,7 +67,7 @@ impl SuggestedWord {
     /// Returns the suggested word without examples and linked words populated.
     pub fn get_alone(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<SuggestedWord> {
         const SELECT_SUGGESTION: &str = "SELECT
-            suggestion_id, existing_word_id, changes_summary, deletion,
+            suggestion_id, existing_word_id, changes_summary,
             english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
             noun_class, note
         from word_suggestions WHERE suggestion_id=?1;";
@@ -126,7 +125,6 @@ impl SuggestedWord {
             suggestion_id: row.get("suggestion_id").unwrap(),
             word_id: row.get("existing_word_id").unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
-            deletion: row.get("deletion").unwrap(),
             english: MaybeEdited::from_row("english", row, e.map(|e| e.english.clone())),
             xhosa: MaybeEdited::from_row("xhosa", row, e.map(|e| e.xhosa.clone())),
             part_of_speech: MaybeEdited::from_row(
@@ -151,7 +149,6 @@ impl SuggestedWord {
 
 #[derive(Clone, Debug)]
 pub struct SuggestedExample {
-    pub deletion: bool,
     pub changes_summary: String,
 
     pub suggestion_id: u64,
@@ -168,7 +165,7 @@ impl SuggestedExample {
         suggested_word_id: u64,
     ) -> Vec<SuggestedExample> {
         const SELECT_SUGGESTION: &str = "
-        SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id, deletion, changes_summary, xhosa, english
+        SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id, changes_summary, xhosa, english
             FROM example_suggestions WHERE suggested_word_id = ?1;";
 
         let conn = db.get().unwrap();
@@ -194,7 +191,6 @@ impl SuggestedExample {
         let e = e.as_ref();
 
         SuggestedExample {
-            deletion: row.get("deletion").unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
             suggestion_id: row.get("suggestion_id").unwrap(),
             existing_example_id: row.get("existing_example_id").unwrap(),
@@ -207,7 +203,6 @@ impl SuggestedExample {
 
 #[derive(Clone, Debug)]
 pub struct SuggestedLinkedWord {
-    pub deletion: bool,
     pub changes_summary: String,
     pub suggestion_id: u64,
     pub existing_linked_word_id: Option<u64>,
@@ -223,7 +218,7 @@ impl SuggestedLinkedWord {
         suggested_word_id: u64,
     ) -> Vec<SuggestedLinkedWord> {
         const SELECT_SUGGESTION: &str = "
-        SELECT suggestion_id, link_type, deletion, changes_summary, existing_linked_word_id,
+        SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
             first_existing_word_id, second_existing_word_id, suggested_word_id
             FROM linked_word_suggestions WHERE suggested_word_id = ?1;";
 
@@ -297,7 +292,6 @@ impl SuggestedLinkedWord {
         };
 
         SuggestedLinkedWord {
-            deletion: row.get("deletion").unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
             suggestion_id: row.get("suggestion_id").unwrap(),
 

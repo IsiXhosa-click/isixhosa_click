@@ -51,7 +51,7 @@
 
             {%- match action -%}
                 {%- when SubmitFormAction::EditSuggestion with (id) -%}
-                    {%- let route = "/accept/edit".to_string() -%}
+                    {%- let route = "/moderation/edit".to_string() -%}
                 {%- when SubmitFormAction::SubmitNewWord -%}
                     {%- let route = "/submit".to_string() -%}
                 {%- when SubmitFormAction::EditExisting with (id) -%}

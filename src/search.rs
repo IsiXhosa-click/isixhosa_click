@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use tantivy::schema::{Schema, STORED, STRING, Field, Value, INDEXED};
 use crate::language::{SerializeDisplay, PartOfSpeech, NounClass, NounClassOpt, NounClassOptExt};
 use std::sync::{Arc, Mutex};
-use tantivy::{Index, IndexReader, IndexWriter, Document, Term};
+use tantivy::{Index, IndexReader, IndexWriter, Document, Term, DocAddress};
 use tantivy::directory::MmapDirectory;
 use anyhow::{Context, Result};
 use xtra::{Address, Actor, Message, Handler};
@@ -67,7 +67,7 @@ impl TantivyClient {
 
         let english = builder.add_text_field("english", STRING | STORED);
         let xhosa = builder.add_text_field("xhosa", STRING | STORED);
-        let part_of_speech = builder.add_u64_field("part_of_speech",STORED);
+        let part_of_speech = builder.add_u64_field("part_of_speech", STORED);
         let is_plural = builder.add_u64_field("is_plural", STORED);
         let noun_class = builder.add_u64_field("noun_class", STORED);
         let id = builder.add_u64_field("id", STORED | INDEXED);
@@ -288,13 +288,24 @@ impl Handler<SearchRequest> for SearcherActor {
         let top_docs = TopDocs::with_limit(max_results);
 
         tokio::task::spawn_blocking(move || {
-            let mut results = searcher.search(&query_english, &top_docs).unwrap();
+            let mut results = searcher.search(&query_english, &top_docs)?;
             let mut results2 = searcher.search(&query_xhosa, &top_docs)?;
             results.append(&mut results2);
-            results.dedup_by_key(|(_score, doc_address)| *doc_address);
+
+            #[inline(never)]
+            fn dedup((_, doc_address1): &mut (f32, DocAddress), (_, doc_address2): &mut (f32, DocAddress)) -> bool {
+                doc_address1 == doc_address2
+            }
+
+            // Sort by doc address, deduplicate, and then sort by score.
+            // Deduplicate only works on consecutive elements so it must be sorted by doc_address
+            // first.
+            results.sort_by_key(|(_score, doc_address)| *doc_address);
+            results.dedup_by(dedup);
             results.sort_by_key(|(score, _doc_address)| OrderedFloat(*score));
 
-            results.into_iter()
+            results
+                .into_iter()
                 .take(max_results)
                 .map(|(_score, doc_address)| searcher
                     .doc(doc_address)

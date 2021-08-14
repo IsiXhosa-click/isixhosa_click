@@ -34,7 +34,7 @@
 
 use crate::session::{LiveSearchSession, WsMessage};
 use crate::search::{WordHit, TantivyClient};
-use accept::accept;
+use moderation::accept;
 use askama::Template;
 use details::details;
 use edit::edit;
@@ -52,8 +52,9 @@ use xtra::Actor;
 use serde::{Serialize, Deserialize};
 use std::sync::Arc;
 use std::path::PathBuf;
+use std::convert::TryFrom;
 
-mod accept;
+mod moderation;
 // mod auth;
 mod database;
 mod details;
@@ -72,9 +73,10 @@ impl Reject for TemplateError {}
 pub struct Config {
     database_path: PathBuf,
     tantivy_path: PathBuf,
-    tls_enabled: bool,
     cert_path: PathBuf,
     key_path: PathBuf,
+    http_port: u16,
+    https_port: u16,
 }
 
 impl Default for Config {
@@ -82,9 +84,10 @@ impl Default for Config {
         Config {
             database_path: PathBuf::from("isixhosa_click.db"),
             tantivy_path: PathBuf::from("tantivy_data/"),
-            tls_enabled: false,
-            cert_path: PathBuf::from("key.rsa"),
-            key_path: PathBuf::from("cert.pem"),
+            cert_path: PathBuf::from("tls/cert.pem"),
+            key_path: PathBuf::from("tls/key.rsa"),
+            http_port: 8080,
+            https_port: 8443,
         }
     }
 }
@@ -98,19 +101,25 @@ async fn main() {
     let pool_clone = pool.clone();
 
     task::spawn_blocking(move || {
+        const CREATIONS: [&str; 9] = [
+            include_str!("sql/words.sql"),
+            include_str!("sql/word_suggestions.sql"),
+            include_str!("sql/word_deletion_suggestions.sql"),
+
+            include_str!("sql/examples.sql"),
+            include_str!("sql/example_suggestions.sql"),
+            include_str!("sql/example_deletion_suggestions.sql"),
+
+            include_str!("sql/linked_words.sql"),
+            include_str!("sql/linked_word_suggestions.sql"),
+            include_str!("sql/linked_word_deletion_suggestions.sql"),
+        ];
+
         let conn = pool_clone.get().unwrap();
-        conn.execute(include_str!("sql/words.sql"), params![])
-            .unwrap();
-        conn.execute(include_str!("sql/examples.sql"), params![])
-            .unwrap();
-        conn.execute(include_str!("sql/linked_words.sql"), params![])
-            .unwrap();
-        conn.execute(include_str!("sql/example_suggestions.sql"), params![])
-            .unwrap();
-        conn.execute(include_str!("sql/linked_word_suggestions.sql"), params![])
-            .unwrap();
-        conn.execute(include_str!("sql/word_suggestions.sql"), params![])
-            .unwrap();
+
+        for creation in &CREATIONS {
+            conn.execute(creation, params![]).unwrap();
+        }
     })
     .await
     .unwrap();
@@ -145,22 +154,19 @@ async fn main() {
         .or(about)
         .or(warp::any().map(|| NotFound));
 
-    println!("Visit http://127.0.0.1:8080/submit");
+    println!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
-    let server = warp::serve(routes.with(warp::log("isixhosa")));
+    let redirect_uri = Uri::try_from("https://isixhosa.click").unwrap();
+    let http_redirect = warp::serve(warp::any().map(move || warp::redirect(redirect_uri.clone())));
 
-    if cfg.tls_enabled {
-        server
-            .tls()
-            .cert_path(cfg.cert_path)
-            .key_path(cfg.key_path)
-            .run(([0, 0, 0, 0], 443))
-            .await
-    } else {
-        server
-            .run(([0, 0, 0, 0], 8080))
-            .await
-    }
+    tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
+
+    warp::serve(routes.with(warp::log("isixhosa")))
+        .tls()
+        .cert_path(cfg.cert_path)
+        .key_path(cfg.key_path)
+        .run(([0, 0, 0, 0], cfg.https_port))
+        .await
 }
 
 #[derive(Deserialize, Clone, Debug)]

@@ -435,8 +435,9 @@ fn diff_opt<T: PartialEq + Eq>(
     }
 }
 
-pub async fn suggest_deletion(word_id: WordId, db: &Pool<SqliteConnectionManager>) {
-    const STATEMENT: &str = "INSERT INTO word_suggestions (deletion, existing_word_id) VALUES (?1, ?2);";
+// TODO deletion
+pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionManager>) {
+    const STATEMENT: &str = "INSERT INTO word_deletion_suggestions (word_id) VALUES (?1);";
 
     let db = db.clone();
 
@@ -445,7 +446,7 @@ pub async fn suggest_deletion(word_id: WordId, db: &Pool<SqliteConnectionManager
         conn
             .prepare(STATEMENT)
             .unwrap()
-            .execute(params![true, word_id.0])
+            .execute(params![word_id.0])
             .unwrap();
     })
     .await
@@ -455,9 +456,9 @@ pub async fn suggest_deletion(word_id: WordId, db: &Pool<SqliteConnectionManager
 pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionManager>) {
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
-            suggestion_id, existing_word_id, changes_summary, deletion, english, xhosa,
+            suggestion_id, existing_word_id, changes_summary, english, xhosa,
             part_of_speech, xhosa_tone_markings, infinitive, is_plural, noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 changes_summary = excluded.changes_summary,
                 english = excluded.english,
@@ -504,7 +505,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
             w.suggestion_id,
             w.existing_id,
             "Word added",
-            false,
             diff(w.english.clone(), &orig.english, use_submitted),
             diff(w.xhosa.clone(), &orig.xhosa, use_submitted),
             diff_opt(w.part_of_speech, &orig.part_of_speech, use_submitted),
@@ -540,9 +540,9 @@ fn process_linked_words(
 ) {
     const INSERT_LINKED_WORD_SUGGESTION: &str = "
         INSERT INTO linked_word_suggestions (
-            suggestion_id, existing_linked_word_id, changes_summary, deletion, suggested_word_id,
+            suggestion_id, existing_linked_word_id, changes_summary, suggested_word_id,
             link_type, first_existing_word_id, second_existing_word_id
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 changes_summary = excluded.changes_summary,
                 suggested_word_id = excluded.suggested_word_id,
@@ -568,7 +568,6 @@ fn process_linked_words(
                 new.suggestion_id,
                 new.existing_id,
                 "Linked word added",
-                false,
                 suggested_word_id,
                 diff_opt(
                     new.link_type,
@@ -616,6 +615,7 @@ fn process_linked_words(
                     let new = linked_words.remove(i);
                     insert_link(new, Some(prev));
                 } else {
+                    // TODO deletion
                     upsert_clone
                         .execute(params![
                             None::<i64>,
@@ -642,7 +642,6 @@ fn process_linked_words(
                 new.suggestion_id,
                 new.existing_id,
                 "Linked word added",
-                false,
                 suggested_word_id,
                 new.link_type,
                 new.other.0.to_string(),
@@ -661,9 +660,9 @@ fn process_examples(
 ) {
     const INSERT_EXAMPLE_SUGGESTION: &str = "
         INSERT INTO example_suggestions (
-            suggestion_id, existing_example_id, changes_summary, deletion, suggested_word_id,
+            suggestion_id, existing_example_id, changes_summary, suggested_word_id,
             existing_word_id, english, xhosa
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 changes_summary = excluded.changes_summary,
                 suggested_word_id = excluded.suggested_word_id,
@@ -689,7 +688,6 @@ fn process_examples(
                 new.suggestion_id,
                 new.existing_id,
                 "Example added",
-                false,
                 suggested_word_id,
                 existing_id,
                 diff_opt(
@@ -759,7 +757,6 @@ fn process_examples(
                 new.suggestion_id,
                 new.existing_id,
                 "Example added",
-                false,
                 suggested_word_id,
                 w.existing_id,
                 new.english,

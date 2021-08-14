@@ -22,13 +22,15 @@
                         <a id="edit_word" title="Suggest edit" href="/word/{{ word.word_id }}/edit">
                             <span class="material-icons">edit</span>
                         </a>
-                        <a id="delete_word"
-                           title="Suggest deletion"
-                           href="/word/{{ word.word_id }}/delete"
-                           onclick="return confirm('Are you sure you want to suggest this word be deleted?')"
+
+                        <form action="/word/{{ word.word_id }}/delete" method="post" enctype="application/x-www-form-urlencoded"
+                              onsubmit="return confirm('Are you sure you want to suggest this word be deleted?')"
                         >
-                            <span class="material-icons">delete</span>
-                        </a>
+                            <select name="method" hidden><option value="delete"></select>
+                            <button title="Suggest deletion" type="submit">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </form>
                     </header>
 
                     {%- match previous_success -%}
@@ -38,6 +40,10 @@
                                 if (window.history.replaceState) {
                                     window.history.replaceState(null, null, window.location.href);
                                 }
+
+                                // HACK(restioson): move user back to /word/id
+                                history.replaceState(null, null, window.location.origin + "/word/{{ word.word_id }}");
+                            </script>
                             </script>
 
                             <p>

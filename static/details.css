@@ -3,9 +3,19 @@ td:first-child, th:first-child {
     width: 10.625em;
 }
 
-#word_header > a {
+#word_header > form {
+    align-self: center;
+}
+
+#word_header > form > button {
+    padding: 0;
+}
+
+#word_header > a, #word_header > form > button {
     align-self: center;
     border: solid 1px lightgray;
+    background: white;
+    font-size: small;
     border-radius: 5px;
     margin-top: 4px;
     color: #080808;

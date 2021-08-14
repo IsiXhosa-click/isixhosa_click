@@ -28,6 +28,16 @@ form, fieldset {
     box-sizing: border-box;
 }
 
+button, .button {
+    font-family: "Open Sans", sans-serif;
+    font-size: medium;
+    box-sizing: border-box;
+    border-radius: 5px;
+    border: solid 1px lightgray;
+    padding: 4px;
+    cursor:pointer;
+}
+
 #main_wrap {
     margin: 0 auto;
     max-width: 100%;
@@ -72,7 +82,6 @@ strong.noun_class_prefix {
 header > * > strong.noun_class_prefix {
     font-weight: bolder !important;
 }
-
 
 th {
     text-align: left;

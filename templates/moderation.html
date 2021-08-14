@@ -5,8 +5,8 @@
 <head>
     <title>Accept Words - IsiXhosa.click</title>
     <meta name="og:title" content="Accept Words - IsiXhosa.click"/>
-    <meta name="og:url" content="https://isixhosa.click/accept"/>
-    <link rel="stylesheet" href="/accept.css">
+    <meta name="og:url" content="https://isixhosa.click/moderation"/>
+    <link rel="stylesheet" href="/moderation.css">
     {%- call macros::meta() -%}
 </head>
 
@@ -68,8 +68,8 @@
                                 window.history.replaceState(null, null, window.location.href);
                             }
 
-                            // HACK(restioson): move user back to /accept
-                            history.replaceState(null, null, window.location.origin + "/accept");
+                            // HACK(restioson): move user back to /moderation
+                            history.replaceState(null, null, window.location.origin + "/moderation");
                         </script>
                     {%- endif -%}
                 {% when other -%}
@@ -154,7 +154,7 @@
             {%- endmacro -%}
 
             {%- macro action(method, text) -%}
-                <form action="/accept" method="post" enctype="application/x-www-form-urlencoded"
+                <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded"
                         {%- if (method.to_string() != "edit".to_string()) -%}
                             onsubmit="return confirm('Are you sure you want to {{ method }} this suggestion?')"
                         {%- endif -%}
@@ -167,7 +167,7 @@
 
             <div id="suggestions">
                 <ol>
-                    {%- for s in suggestions -%}
+                    {%- for s in word_suggestions -%}
                         <li>
                             <article class="column_list spaced_flex_list">
                                 <header>
@@ -191,8 +191,6 @@
                                             <td>
                                                 {%- if s.word_id.is_none() -%}
                                                     Word added
-                                                {%- else if s.deletion -%}
-                                                    Word deleted
                                                 {%- else -%}
                                                     Word edited
                                                 {%- endif -%}
@@ -285,7 +283,7 @@
                     {%- endfor -%}
                 </ol>
 
-                {%- if suggestions.is_empty() -%}
+                {%- if word_suggestions.is_empty() -%}
                     <p>There are no suggested words.<p>
                 {%- endif -%}
             </div>
