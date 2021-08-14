@@ -274,8 +274,10 @@ impl Message for SearchRequest {
 
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
-    async fn handle(&mut self, req: SearchRequest, _ctx: &mut xtra::Context<Self>) -> Vec<WordHit> {
+    async fn handle(&mut self, mut req: SearchRequest, _ctx: &mut xtra::Context<Self>) -> Vec<WordHit> {
         const MAX_RESULTS: usize = 5;
+
+        req.0 = req.0.to_lowercase();
 
         let searcher = self.reader.searcher();
         let client = self.client.clone();
