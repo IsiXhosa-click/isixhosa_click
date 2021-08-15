@@ -501,7 +501,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
         let conn = db.get().unwrap();
 
         let orig = WordFormTemplate::fetch_from_db(&db, w.existing_id, None).unwrap_or_default();
-        let use_submitted = w.existing_id.is_none() && w.suggestion_id.is_none();
+        let use_submitted = w.existing_id.is_none();
 
         // HACK(restioson): 255 is sentinel for "no noun class" as opposed to null which is noun class
         // not changed. It's bad I know but I don't have the energy for anything else, feel free to

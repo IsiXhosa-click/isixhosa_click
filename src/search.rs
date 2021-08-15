@@ -16,7 +16,7 @@ use tantivy::query::FuzzyTermQuery;
 use tantivy::schema::{Field, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
-use tantivy::{DocAddress, Document, Index, IndexReader, IndexWriter, Term};
+use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
 
@@ -326,19 +326,11 @@ impl Handler<SearchRequest> for SearcherActor {
             let mut results2 = searcher.search(&query_xhosa, &top_docs)?;
             results.append(&mut results2);
 
-            #[inline(never)]
-            fn dedup(
-                (_, doc_address1): &mut (f32, DocAddress),
-                (_, doc_address2): &mut (f32, DocAddress),
-            ) -> bool {
-                doc_address1 == doc_address2
-            }
-
             // Sort by doc address, deduplicate, and then sort by score.
             // Deduplicate only works on consecutive elements so it must be sorted by doc_address
             // first.
             results.sort_by_key(|(_score, doc_address)| *doc_address);
-            results.dedup_by(dedup);
+            results.dedup_by(|(_, a), (_, b)| a == b);
             results.sort_by_key(|(score, _doc_address)| OrderedFloat(*score));
 
             results

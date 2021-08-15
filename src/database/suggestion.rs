@@ -165,7 +165,6 @@ impl SuggestedWord {
             .prepare(SELECT)
             .unwrap()
             .query_row(params![suggestion], |row| row.get("existing_word_id"))
-            .optional()
             .unwrap();
         word_id
     }

@@ -9,6 +9,7 @@ use crate::language::{NounClass, NounClassOpt, NounClassOptExt, PartOfSpeech, Wo
 use crate::search::WordHit;
 use fallible_iterator::FallibleIterator;
 
+#[derive(Debug)]
 pub struct ExistingWord {
     pub word_id: u64,
 
@@ -86,6 +87,7 @@ impl TryFrom<&Row<'_>> for ExistingWord {
     }
 }
 
+#[derive(Debug)]
 pub struct ExistingExample {
     pub example_id: u64,
     pub word_id: u64,
