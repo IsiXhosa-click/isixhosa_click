@@ -5,8 +5,6 @@
 // - TODO word, example, and linked word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
 // - TODO attributions - editing users & references & so on
-// - TODO change select/input text size it looks weird
-// - TODO more padding between "infinitive form" and input
 
 // Soon after launch, perhaps before:
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!

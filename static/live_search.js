@@ -40,6 +40,7 @@ export class LiveSearch {
 
             if (data.length === 0) {
                 let p = document.createElement("p");
+                p.className = "no_results";
                 let node = document.createTextNode("No results.");
                 p.appendChild(node);
                 input.classList.remove("has_results");

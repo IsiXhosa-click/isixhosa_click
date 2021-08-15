@@ -1,3 +1,8 @@
+/* https://meowni.ca/hidden.is.a.lie.html */
+[hidden] {
+    display: none !important;
+}
+
 body {
     background-color: white;
     color: #080808;
@@ -30,12 +35,12 @@ form, fieldset {
 
 button, .button {
     font-family: "Open Sans", sans-serif;
-    font-size: medium;
+    font-size: 0.9rem;
     box-sizing: border-box;
     border-radius: 5px;
     border: solid 1px lightgray;
     padding: 4px;
-    cursor:pointer;
+    cursor: pointer;
 }
 
 #main_wrap {
@@ -50,8 +55,15 @@ button, .button {
     }
 }
 
+input[type='checkbox'] {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin: 0;
+}
+
 input {
     font-family: "Open Sans", sans-serif;
+    font-size: 0.9rem;
     border-radius: 3px;
     border: solid 1px lightgray;
     padding: 5px 5px;
@@ -59,6 +71,7 @@ input {
 
 select {
     font-family: "Open Sans", sans-serif;
+    font-size: 0.9rem;
 }
 
 .column_list {

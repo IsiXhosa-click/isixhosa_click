@@ -100,79 +100,81 @@
                     </div>
                 </fieldset>
 
-                <fieldset class="column_list spaced_flex_list">
+                <fieldset class="contains_table">
                     <legend>Part of speech</legend>
 
-                    <div class="row_or_column">
-                        <label for="part_of_speech">Part of speech:</label>
-                        <select id="part_of_speech" name="part_of_speech">
-                            <option value="">Choose a part of speech</option>
-                            <option value=1 id="verb_selected">Verb</option>
-                            <option value=2 id="noun_selected">Noun</option>
-                            <option value=4>Adverb</option>
-                            <option value=5>Relative (adjective)</option>
-                            <option value=6>Interjection</option>
-                            <option value=7>Conjunction</option>
-                            <option value=8>Preposition</option>
-                        </select>
-                    </div>
+                    <div class="table">
+                        <div>
+                            <label for="part_of_speech">Part of speech:</label>
+                            <select id="part_of_speech" name="part_of_speech">
+                                <option value="">Choose a part of speech</option>
+                                <option value=1 id="verb_selected">Verb</option>
+                                <option value=2 id="noun_selected">Noun</option>
+                                <option value=4>Adverb</option>
+                                <option value=5>Relative (adjective)</option>
+                                <option value=6>Interjection</option>
+                                <option value=7>Conjunction</option>
+                                <option value=8>Preposition</option>
+                            </select>
+                        </div>
 
-                    {%- match word.part_of_speech -%}
-                        {% when Some with (part) %}
-                            <script type="module">
-                                window.addEventListener("DOMContentLoaded", function () {
-                                    let select = document.getElementById("part_of_speech");
-                                    select.options[{{ part.to_u8() }}].selected = true;
-                                });
-                            </script>
-                        {% when None %}
-                    {%- endmatch -%}
+                        {%- match word.part_of_speech -%}
+                            {% when Some with (part) %}
+                                <script type="module">
+                                    window.addEventListener("DOMContentLoaded", function () {
+                                        let select = document.getElementById("part_of_speech");
+                                        select.options[{{ part.to_u8() }}].selected = true;
+                                    });
+                                </script>
+                            {% when None %}
+                        {%- endmatch -%}
 
-                    <!-- Noun options -->
+                        <!-- Noun options -->
 
-                    <div class="noun_option" hidden>
-                        <label for="is_plural">Plural?</label>
-                        <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked {%- endif -%}>
-                    </div>
+                        <div class="noun_option" hidden>
+                            <label for="is_plural">Plural?</label>
+                            <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked {%- endif -%}>
+                        </div>
 
-                    {%- match word.noun_class -%}
-                        {%- when Some with (class) -%}
-                            <script type="module">
-                                window.addEventListener("DOMContentLoaded", function () {
-                                    let select = document.getElementById("noun_class");
-                                    select.options[{{ class.to_u8() }}].selected = true;
-                                });
-                            </script>
-                        {%- when None -%}
-                    {%- endmatch -%}
+                        {%- match word.noun_class -%}
+                            {%- when Some with (class) -%}
+                                <script type="module">
+                                    window.addEventListener("DOMContentLoaded", function () {
+                                        let select = document.getElementById("noun_class");
+                                        select.options[{{ class.to_u8() }}].selected = true;
+                                    });
+                                </script>
+                            {%- when None -%}
+                        {%- endmatch -%}
 
-                    <div class="noun_option" hidden>
-                        <label for="noun_class">Noun class:</label>
-                        <select id="noun_class" name="noun_class">
-                            <option value="">Choose a noun class</option>
-                            <option value=1>um (aba)</option>
-                            <option value=2>aba</option>
-                            <option value=3>u</option>
-                            <option value=4>oo</option>
-                            <option value=5>um (imi)</option>
-                            <option value=6>imi</option>
-                            <option value=7>i(li)</option>
-                            <option value=8>ama</option>
-                            <option value=9>isi</option>
-                            <option value=10>izi</option>
-                            <option value=11>i(n)</option>
-                            <option value=12>i(z)i(n)</option>
-                            <option value=13>ulu</option>
-                            <option value=14>ubu</option>
-                            <option value=15>uku</option>
-                        </select>
-                    </div>
+                        <div class="noun_option" hidden>
+                            <label for="noun_class">Noun class:</label>
+                            <select id="noun_class" name="noun_class">
+                                <option value="">Choose a noun class</option>
+                                <option value=1>um (aba)</option>
+                                <option value=2>aba</option>
+                                <option value=3>u</option>
+                                <option value=4>oo</option>
+                                <option value=5>um (imi)</option>
+                                <option value=6>imi</option>
+                                <option value=7>i(li)</option>
+                                <option value=8>ama</option>
+                                <option value=9>isi</option>
+                                <option value=10>izi</option>
+                                <option value=11>i(n)</option>
+                                <option value=12>i(z)i(n)</option>
+                                <option value=13>ulu</option>
+                                <option value=14>ubu</option>
+                                <option value=15>uku</option>
+                            </select>
+                        </div>
 
-                    <!-- Verb options -->
+                        <!-- Verb options -->
 
-                    <div class="verb_option" hidden>
-                        <label for="infinitive">Infinitive form:</label>
-                        <input type="text" id="infinitive" name="infinitive" autocomplete="off" value="{{ word.infinitive }}">
+                        <div class="verb_option" hidden>
+                            <label for="infinitive">Infinitive form:</label>
+                            <input type="text" id="infinitive" name="infinitive" autocomplete="off" value="{{ word.infinitive }}">
+                        </div>
                     </div>
                 </fieldset>
 

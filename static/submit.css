@@ -102,6 +102,7 @@ ul.spaced_list:last-child {
 
 .word_select_search {
     flex-grow: 1;
+    outline-offset: -2px;
 }
 
 .word_select_search:focus {
@@ -126,10 +127,16 @@ button.select_list_option:active {
 button.select_list_option {
     background: white;
     border: solid 1px lightgray;
+    font-size: medium;
+    border-radius: 0;
     box-sizing: border-box;
     width: 100%;
     padding: 0;
     margin: 0;
+}
+
+p.no_results {
+    text-align: center;
 }
 
 .table {
