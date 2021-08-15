@@ -13,12 +13,12 @@ use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::doc;
 use tantivy::query::FuzzyTermQuery;
+use tantivy::schema::{Field, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED};
 use tantivy::tokenizer::TextAnalyzer;
-use tantivy::schema::{Field, Schema, Value, INDEXED, STORED, TextOptions, TextFieldIndexing};
+use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{DocAddress, Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
-use tantivy::tokenizer::{SimpleTokenizer, LowerCaser};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 
@@ -66,8 +66,9 @@ impl TantivyClient {
         }
 
         if reindex {
+            log::info!("Reindexing database");
             client.reindex_database(db).await;
-            eprintln!("Database reindexed");
+            log::info!("Database reindexed");
         }
 
         Ok(client)
@@ -77,10 +78,7 @@ impl TantivyClient {
         let mut builder = Schema::builder();
 
         let text_options = TextOptions::default()
-            .set_indexing_options(
-                TextFieldIndexing::default()
-                    .set_tokenizer("lowercaser")
-            )
+            .set_indexing_options(TextFieldIndexing::default().set_tokenizer("lowercaser"))
             .set_stored();
 
         let english = builder.add_text_field("english", text_options.clone());
@@ -142,7 +140,6 @@ impl TantivyClient {
     }
 
     pub async fn edit_word(&self, word: WordDocument) {
-        eprintln!("Edit word!");
         self.writer.send(EditWord(word)).await.unwrap()
     }
 

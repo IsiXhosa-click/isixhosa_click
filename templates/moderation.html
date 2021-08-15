@@ -15,7 +15,7 @@
 
     <div id="main_wrap">
         <header>
-            <h1>Suggested words:</h1>
+            <h1>Suggestions</h1>
         </header>
 
         <main>
@@ -153,16 +153,48 @@
                 {%- endmatch -%}
             {%- endmacro -%}
 
-            {%- macro action(method, text) -%}
+            {%- macro action(method, label, suggestion_type, suggestion_id, prompt) -%}
                 <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded"
-                        {%- if (method.to_string() != "edit".to_string()) -%}
-                            onsubmit="return confirm('Are you sure you want to {{ method }} this suggestion?')"
-                        {%- endif -%}
+                      {%- if (method.to_string() != "edit".to_string()) -%}
+                      onsubmit="return confirm('{{ prompt }}')"
+                      {%- endif -%}
                 >
-                    <select name="suggestion" hidden><option value="{{ s.suggestion_id }}"></select>
+                    <select name="suggestion_type" hidden><option value="{{ suggestion_type }}"></select>
+                    <select name="suggestion" hidden><option value="{{ suggestion_id }}"></select>
                     <select name="method" hidden><option value="{{ method }}"></select>
-                    <button type="submit">{{ text }}</button>
+                    <button type="submit">{{ label }}</button>
                 </form>
+            {%- endmacro -%}
+
+            {%- macro word_suggestion_action(method, label) -%}
+                {%- call action(
+                    method,
+                    label,
+                    "word_suggestion",
+                    s.suggestion_id,
+                    "Are you sure you want to {} this suggestion?"|format(method)
+            ) -%}
+            {%- endmacro -%}
+
+            {%- macro word_deletion_action(is_accept, label) -%}
+                {%- let prompt -%}
+                {%- let method -%}
+
+                {%- if is_accept.clone() -%}
+                    {%- let prompt = "Are you sure you want to permanently delete this word?" -%}
+                    {%- let method = "accept" -%}
+                {%- else -%}
+                    {%- let prompt = "Are you sure you want to reject this suggestion?" -%}
+                    {%- let method = "reject" -%}
+                {%- endif -%}
+
+                {%- call action(
+                    method,
+                    label,
+                    "word_deletion_suggestion",
+                    s.suggestion_id,
+                    prompt
+                ) -%}
             {%- endmacro -%}
 
             <div id="suggestions">
@@ -274,17 +306,47 @@
                                 {%- endif -%}
 
                                 <div class="row_list spaced_flex_list">
-                                    {%- call action("edit", "Edit") -%}
-                                    {%- call action("accept", "Accept") -%}
-                                    {%- call action("reject", "Reject") -%}
+                                    {%- call word_suggestion_action("edit", "Edit") -%}
+                                    {%- call word_suggestion_action("accept", "Accept") -%}
+                                    {%- call word_suggestion_action("reject", "Reject") -%}
+                                </div>
+                            </article>
+                        </li>
+                    {%- endfor -%}
+
+                    {%- for s in word_deletions -%}
+                        <li>
+                            <article class="column_list spaced_flex_list">
+                                <header>
+                                    <h3 class="suggested_word_text">{%- call macros::format_result(s.word) -%}</h3>
+                                </header>
+
+                                <div>
+                                    <table>
+                                        <caption>Details</caption>
+                                        <tr>
+                                            <th scope="row">Change type</th>
+                                            <td>Word deleted</td>
+                                        </tr>
+
+                                        <tr>
+                                            <th scope="row">Reason</th>
+                                            <td>{{ s.reason }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div class="row_list spaced_flex_list">
+                                    {%- call word_deletion_action(true, "Accept") -%}
+                                    {%- call word_deletion_action(false, "Reject") -%}
                                 </div>
                             </article>
                         </li>
                     {%- endfor -%}
                 </ol>
 
-                {%- if word_suggestions.is_empty() -%}
-                    <p>There are no suggested words.<p>
+                {%- if word_suggestions.is_empty() && word_deletions.is_empty() -%}
+                    <p>There are no suggestions to review at this time.<p>
                 {%- endif -%}
             </div>
         </main>

@@ -1,5 +1,6 @@
 .suggested_word_text {
     white-space: nowrap;
+    margin: 0;
 }
 
 td:first-child, th:first-child {
@@ -9,4 +10,8 @@ td:first-child, th:first-child {
 
 li::marker {
     font-size: 1.17em;
+}
+
+#suggestions > ol > li {
+    margin-bottom: 1em;
 }

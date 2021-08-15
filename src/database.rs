@@ -12,8 +12,8 @@ use crate::database::suggestion::{
 };
 use crate::language::{NounClassOpt, NounClassOptExt, SerializeDisplay};
 use crate::search::WordHit;
-use crate::submit::WordId;
 
+pub mod deletion;
 pub mod existing;
 pub mod suggestion;
 
@@ -23,10 +23,10 @@ pub fn get_word_hit_from_db(
     id: WordOrSuggestionId,
 ) -> Option<WordHit> {
     const SELECT_EXISTING: &str =
-        "SELECT english, xhosa, part_of_speech, is_plural, noun_class from words
+        "SELECT english, xhosa, part_of_speech, is_plural, noun_class FROM words
             WHERE word_id = ?1;";
     const SELECT_SUGGESTED: &str =
-        "SELECT english, xhosa, part_of_speech, is_plural, noun_class from word_suggestions
+        "SELECT english, xhosa, part_of_speech, is_plural, noun_class FROM word_suggestions
             WHERE suggestion_id = ?1;";
 
     let conn = db.get().unwrap();
@@ -91,7 +91,7 @@ impl WordOrSuggestionId {
             (None, Some(suggestion_id)) => Ok(WordOrSuggestionId::Suggested { suggestion_id }),
             (existing, _suggested) => {
                 panic!(
-                    "Invalid pair of exisitng/suggested ids: existing - {:?} suggested - {:?}",
+                    "Invalid pair of existing/suggested ids: existing - {:?} suggested - {:?}",
                     existing, suggested_word_id
                 )
             }
@@ -107,6 +107,7 @@ impl TryFrom<&Row<'_>> for WordOrSuggestionId {
     }
 }
 
+// TODO move to suggestedword
 pub fn accept_whole_word_suggestion(db: &Pool<SqliteConnectionManager>, s: SuggestedWord) -> u64 {
     let word_suggestion_id = s.suggestion_id;
     let word_id = accept_just_word_suggestion(&db, &s, false);
@@ -244,14 +245,4 @@ pub fn accept_example(db: &Pool<SqliteConnectionManager>, s: SuggestedExample) -
     SuggestedExample::delete(db, s.suggestion_id);
 
     id
-}
-
-pub fn delete_word(db: &Pool<SqliteConnectionManager>, word_id: WordId) {
-    const DELETE: &str = "DELETE FROM words WHERE word_id = ?1;";
-
-    let conn = db.get().unwrap();
-    conn.prepare(DELETE)
-        .unwrap()
-        .execute(params![word_id.0])
-        .unwrap();
 }

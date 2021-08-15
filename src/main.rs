@@ -1,26 +1,23 @@
 #![feature(associated_type_bounds)]
 
-// v0.1:
+// Before launch:
 // - TODO word, example, and linked word deletion
 // - TODO word, example, and linked word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
 // - TODO attributions - editing users & references & so on
-// - TODO set up certbot
 
-// v0.2:
-// - ratelimiting
+// Soon after launch, perhaps before:
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
 // - automated data-dump & backups of the database content which can be downloaded
 
-// v0.3
+// After launch:
+// - ratelimiting
 // - additional resources/links page
 // - suggestion publicising, voting & commenting
 // - conjugation tables
 // - user profiles showing statistics (for mods primarily but maybe can publicise it?)
 // - automate anki deck creation
-
-// v0.4:
 // - semantic fields/categories linking related words to browse all at once
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
@@ -36,9 +33,15 @@
 use crate::search::{TantivyClient, WordHit};
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
+use chrono::Local;
 use details::details;
 use edit::edit;
 use futures::StreamExt;
+use log::LevelFilter;
+use log4rs::append::console::ConsoleAppender;
+use log4rs::append::file::FileAppender;
+use log4rs::config::{Appender, Config as LogConfig, Root};
+use log4rs::encode::pattern::PatternEncoder;
 use moderation::accept;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -49,17 +52,11 @@ use std::sync::Arc;
 use submit::submit;
 use tokio::task;
 use warp::http::Uri;
+use warp::path::FullPath;
 use warp::reject::Reject;
 use warp::{path, Filter, Rejection};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-use warp::path::FullPath;
-use chrono::Local;
-use log4rs::append::console::ConsoleAppender;
-use log4rs::encode::pattern::PatternEncoder;
-use log4rs::append::file::FileAppender;
-use log4rs::config::{Appender, Root, Config as LogConfig};
-use log::LevelFilter;
 
 mod moderation;
 // mod auth;
@@ -110,7 +107,10 @@ impl Default for Config {
 fn init_logging(cfg: &Config) {
     const LOG_PATTERN: &str = "[{d(%Y-%m-%d %H:%M:%S)} {h({l})} {M}] {m}{n}";
 
-    let path = cfg.log_path.join(Local::now().to_rfc3339()).with_extension("log");
+    let path = cfg
+        .log_path
+        .join(Local::now().to_rfc3339())
+        .with_extension("log");
 
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new(LOG_PATTERN)))
@@ -139,7 +139,7 @@ fn init_logging(cfg: &Config) {
 async fn main() {
     let cfg: Config = confy::load("isixhosa_click").unwrap();
     init_logging(&cfg);
-    log::info!("Hello! Test!");
+    log::info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();

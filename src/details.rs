@@ -31,7 +31,7 @@ pub async fn word(
     db: Pool<SqliteConnectionManager>,
     previous_success: Option<WordChangeMethod>,
 ) -> Result<impl warp::Reply, Rejection> {
-    Ok(match ExistingWord::get_full(&db, word_id) {
+    Ok(match ExistingWord::fetch_full(&db, word_id) {
         Some(word) => WordDetails {
             word,
             previous_success,

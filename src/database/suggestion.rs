@@ -44,7 +44,7 @@ impl SuggestedWord {
         }
     }
 
-    pub fn get_all_full(db: &Pool<SqliteConnectionManager>) -> Vec<SuggestedWord> {
+    pub fn fetch_all_full(db: &Pool<SqliteConnectionManager>) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "SELECT
             suggestion_id, existing_word_id, changes_summary,
             english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -59,8 +59,9 @@ impl SuggestedWord {
         suggestions
             .map(|row| {
                 let mut w = SuggestedWord::from_row_fetch_original(row, &db);
-                w.examples = SuggestedExample::get_all_for_suggestion(&db, w.suggestion_id);
-                w.linked_words = SuggestedLinkedWord::get_all_for_suggestion(&db, w.suggestion_id);
+                w.examples = SuggestedExample::fetch_all_for_suggestion(&db, w.suggestion_id);
+                w.linked_words =
+                    SuggestedLinkedWord::fetch_all_for_suggestion(&db, w.suggestion_id);
 
                 Ok(w)
             })
@@ -69,7 +70,7 @@ impl SuggestedWord {
     }
 
     /// Returns the suggested word without examples and linked words populated.
-    pub fn get_alone(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<SuggestedWord> {
+    pub fn fetch_alone(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<SuggestedWord> {
         const SELECT_SUGGESTION: &str = "SELECT
             suggestion_id, existing_word_id, changes_summary,
             english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -91,11 +92,11 @@ impl SuggestedWord {
     }
 
     /// Returns the suggested word with examples and linked words populated.
-    pub fn get_full(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<SuggestedWord> {
-        let mut word = SuggestedWord::get_alone(&db, id);
+    pub fn fetch_full(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<SuggestedWord> {
+        let mut word = SuggestedWord::fetch_alone(&db, id);
         if let Some(w) = word.as_mut() {
-            w.examples = SuggestedExample::get_all_for_suggestion(&db, id);
-            w.linked_words = SuggestedLinkedWord::get_all_for_suggestion(&db, id);
+            w.examples = SuggestedExample::fetch_all_for_suggestion(&db, id);
+            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(&db, id);
         }
 
         word
@@ -111,7 +112,7 @@ impl SuggestedWord {
 
     fn from_row_fetch_original(row: &Row<'_>, db: &Pool<SqliteConnectionManager>) -> Self {
         let existing_id = row.get::<&str, Option<i64>>("existing_word_id").unwrap();
-        let e = existing_id.and_then(|id| ExistingWord::get_alone(db, id as u64));
+        let e = existing_id.and_then(|id| ExistingWord::fetch_alone(db, id as u64));
         let e = e.as_ref();
 
         let noun_class = row
@@ -151,6 +152,23 @@ impl SuggestedWord {
             linked_words: vec![],
         }
     }
+
+    pub fn fetch_existing_id_for_suggestion(
+        db: &Pool<SqliteConnectionManager>,
+        suggestion: u64,
+    ) -> Option<u64> {
+        const SELECT: &str =
+            "SELECT existing_word_id FROM word_suggestions WHERE suggestion_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let word_id = conn
+            .prepare(SELECT)
+            .unwrap()
+            .query_row(params![suggestion], |row| row.get("existing_word_id"))
+            .optional()
+            .unwrap();
+        word_id
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -166,7 +184,7 @@ pub struct SuggestedExample {
 }
 
 impl SuggestedExample {
-    pub fn get_all_for_suggestion(
+    pub fn fetch_all_for_suggestion(
         db: &Pool<SqliteConnectionManager>,
         suggested_word_id: u64,
     ) -> Vec<SuggestedExample> {
@@ -219,7 +237,7 @@ pub struct SuggestedLinkedWord {
 }
 
 impl SuggestedLinkedWord {
-    pub fn get_all_for_suggestion(
+    pub fn fetch_all_for_suggestion(
         db: &Pool<SqliteConnectionManager>,
         suggested_word_id: u64,
     ) -> Vec<SuggestedLinkedWord> {

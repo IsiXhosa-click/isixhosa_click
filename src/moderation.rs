@@ -1,6 +1,8 @@
 #![allow(clippy::cmp_owned)] // * is a syntax error in askama so clone has to be used
 
 use crate::database::accept_whole_word_suggestion;
+use crate::database::deletion::WordDeletionSuggestion;
+use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
 use crate::search::{TantivyClient, WordDocument};
 use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
@@ -11,14 +13,17 @@ use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use std::sync::Arc;
 use warp::{Filter, Rejection, Reply};
+use serde_with::{serde_as, DisplayFromStr};
 
-#[derive(Template)]
+#[derive(Template, Debug)]
 #[template(path = "moderation.html")]
 struct ModerationTemplate {
     previous_success: Option<Success>,
     word_suggestions: Vec<SuggestedWord>,
+    word_deletions: Vec<WordDeletionSuggestion>,
 }
 
+#[derive(Debug)]
 struct Success {
     success: bool,
     method: Option<Method>,
@@ -33,9 +38,19 @@ enum Method {
 }
 
 #[derive(Deserialize)]
-struct ModerationActionParams {
-    suggestion: u64,
+struct Action {
+    #[serde(flatten)]
+    suggestion: ActionTarget,
     method: Method,
+}
+
+#[serde_as]
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[serde(tag = "suggestion_type", content = "suggestion")]
+enum ActionTarget {
+    WordDeletionSuggestion(#[serde_as(as = "DisplayFromStr")] u64),
+    WordSuggestion(#[serde_as(as = "DisplayFromStr")] u64),
 }
 
 pub fn accept(
@@ -53,7 +68,7 @@ pub fn accept(
     let process_one = warp::post()
         .and(db.clone())
         .and(tantivy)
-        .and(warp::body::form::<ModerationActionParams>())
+        .and(warp::body::form::<Action>())
         .and_then(process_one);
 
     let submit_edit = warp::post()
@@ -95,12 +110,19 @@ async fn suggested_words(
     previous_success: Option<Success>,
 ) -> Result<impl warp::Reply, Rejection> {
     let db_clone = db.clone();
-    let suggestions = tokio::task::spawn_blocking(move || SuggestedWord::get_all_full(&db_clone))
-        .await
-        .unwrap();
+    let (word_suggestions, word_deletions) = tokio::task::spawn_blocking(move || {
+        (
+            SuggestedWord::fetch_all_full(&db_clone),
+            WordDeletionSuggestion::fetch_all(&db_clone),
+        )
+    })
+    .await
+    .unwrap();
+
     Ok(ModerationTemplate {
         previous_success,
-        word_suggestions: suggestions,
+        word_suggestions,
+        word_deletions,
     })
 }
 
@@ -128,7 +150,7 @@ async fn accept_suggested_word(
 ) -> Result<impl Reply, Rejection> {
     let (db, db_clone) = (db.clone(), db.clone());
     let (word, id) = tokio::task::spawn_blocking(move || {
-        let word = SuggestedWord::get_full(&db, suggestion).unwrap();
+        let word = SuggestedWord::fetch_full(&db, suggestion).unwrap();
         (word.clone(), accept_whole_word_suggestion(&db, word))
     })
     .await
@@ -178,20 +200,87 @@ async fn reject_suggested_word(
     .await
 }
 
+async fn accept_deletion(
+    db: &Pool<SqliteConnectionManager>,
+    tantivy: Arc<TantivyClient>,
+    suggestion: u64,
+) -> Result<impl Reply, Rejection> {
+    let word_id = WordDeletionSuggestion::fetch_word_id_for_suggestion(db, suggestion);
+    let (db, db_clone) = (db.clone(), db.clone());
+    tokio::task::spawn_blocking(move || ExistingWord::delete(&db, word_id))
+        .await
+        .unwrap();
+    tantivy.delete_word(word_id).await;
+
+    suggested_words(
+        db_clone,
+        Some(Success {
+            success: true,
+            method: Some(Method::Accept),
+        }),
+    )
+    .await
+}
+
+async fn reject_deletion(
+    db: &Pool<SqliteConnectionManager>,
+    suggestion: u64,
+) -> Result<impl Reply, Rejection> {
+    let (db, db_clone) = (db.clone(), db.clone());
+    tokio::task::spawn_blocking(move || WordDeletionSuggestion::reject(&db, suggestion))
+        .await
+        .unwrap();
+
+    suggested_words(
+        db_clone,
+        Some(Success {
+            success: true,
+            method: Some(Method::Reject),
+        }),
+    )
+    .await
+}
+
 async fn process_one(
     db: Pool<SqliteConnectionManager>,
     tantivy: Arc<TantivyClient>,
-    params: ModerationActionParams,
+    params: Action,
 ) -> Result<impl Reply, Rejection> {
-    match params.method {
-        Method::Edit => edit_suggestion_page(db, params.suggestion)
-            .await
-            .map(Reply::into_response),
-        Method::Accept => accept_suggested_word(&db, tantivy, params.suggestion)
-            .await
-            .map(Reply::into_response),
-        Method::Reject => reject_suggested_word(&db, params.suggestion)
-            .await
-            .map(Reply::into_response),
+    match params.suggestion {
+        ActionTarget::WordDeletionSuggestion(suggestion) => match params.method {
+            Method::Edit => {
+                log::warn!(
+                    "Got request to edit word deletion suggestion, but this makes no sense!\
+                        Returning error and ignoring."
+                );
+
+                suggested_words(
+                    db,
+                    Some(Success {
+                        success: false,
+                        method: Some(Method::Edit),
+                    }),
+                )
+                .await
+                .map(Reply::into_response)
+            }
+            Method::Accept => accept_deletion(&db, tantivy, suggestion)
+                .await
+                .map(Reply::into_response),
+            Method::Reject => reject_deletion(&db, suggestion)
+                .await
+                .map(Reply::into_response),
+        },
+        ActionTarget::WordSuggestion(suggestion) => match params.method {
+            Method::Edit => edit_suggestion_page(db, suggestion)
+                .await
+                .map(Reply::into_response),
+            Method::Accept => accept_suggested_word(&db, tantivy, suggestion)
+                .await
+                .map(Reply::into_response),
+            Method::Reject => reject_suggested_word(&db, suggestion)
+                .await
+                .map(Reply::into_response),
+        },
     }
 }

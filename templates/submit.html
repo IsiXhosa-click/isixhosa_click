@@ -51,7 +51,7 @@
             {%- let route -%}
 
             {%- match action -%}
-                {%- when SubmitFormAction::EditSuggestion with (id) -%}
+                {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _ } -%}
                     {%- let route = "/moderation/edit".to_string() -%}
                 {%- when SubmitFormAction::SubmitNewWord -%}
                     {%- let route = "/submit".to_string() -%}
@@ -61,8 +61,14 @@
 
             <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded" class="column_list">
                 {%- match action -%}
-                    {%- when SubmitFormAction::EditSuggestion with (id) -%}
-                        <select name="suggestion_id" hidden><option value="{{ id }}"></select>
+                    {%- when SubmitFormAction::EditSuggestion with { suggestion_id, existing_id } -%}
+                        <select name="suggestion_id" hidden><option value="{{ suggestion_id }}"></select>
+
+                        {%- match existing_id -%}
+                            {%- when Some with (existing_id) -%}
+                                <select name="existing_id" hidden><option value="{{ existing_id }}"></select>
+                            {%- when None -%}
+                        {%- endmatch -%}
                     {%- when SubmitFormAction::EditExisting with (id) -%}
                         <select name="existing_id" hidden><option value="{{ id }}"></select>
                     {%- when other -%}
@@ -191,7 +197,7 @@
                         {%- match action -%}
                             {%- when SubmitFormAction::SubmitNewWord -%}
                                 Suggest word
-                            {%- when SubmitFormAction::EditSuggestion with (_) -%}
+                            {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _ } -%}
                                 Submit edit to suggestion
                             {%- when SubmitFormAction::EditExisting with (_) -%}
                                 Suggest edit to word

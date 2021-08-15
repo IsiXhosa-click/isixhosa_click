@@ -27,17 +27,17 @@ pub struct ExistingWord {
 }
 
 impl ExistingWord {
-    pub fn get_full(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<ExistingWord> {
-        let mut word = ExistingWord::get_alone(&db, id);
+    pub fn fetch_full(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<ExistingWord> {
+        let mut word = ExistingWord::fetch_alone(&db, id);
         if let Some(word) = word.as_mut() {
-            word.examples = ExistingExample::get_all_for_word(&db, id);
-            word.linked_words = ExistingLinkedWord::get_all_for_word(db, id);
+            word.examples = ExistingExample::fetch_all_for_word(&db, id);
+            word.linked_words = ExistingLinkedWord::fetch_all_for_word(db, id);
         }
 
         word
     }
 
-    pub fn get_alone(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<ExistingWord> {
+    pub fn fetch_alone(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<ExistingWord> {
         const SELECT_ORIGINAL: &str = "
         SELECT
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -54,6 +54,13 @@ impl ExistingWord {
             .optional()
             .unwrap();
         opt
+    }
+
+    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) {
+        const DELETE: &str = "DELETE FROM words WHERE word_id = ?1;";
+
+        let conn = db.get().unwrap();
+        conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
     }
 }
 
@@ -88,7 +95,7 @@ pub struct ExistingExample {
 }
 
 impl ExistingExample {
-    pub fn get_all_for_word(
+    pub fn fetch_all_for_word(
         db: &Pool<SqliteConnectionManager>,
         word_id: u64,
     ) -> Vec<ExistingExample> {
@@ -144,7 +151,7 @@ pub struct ExistingLinkedWord {
 }
 
 impl ExistingLinkedWord {
-    pub fn get_all_for_word(
+    pub fn fetch_all_for_word(
         db: &Pool<SqliteConnectionManager>,
         word_id: u64,
     ) -> Vec<ExistingLinkedWord> {

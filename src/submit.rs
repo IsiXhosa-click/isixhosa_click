@@ -31,7 +31,10 @@ struct SubmitTemplate {
 
 #[derive(Deserialize, Debug, Copy, Clone)]
 enum SubmitFormAction {
-    EditSuggestion(u64),
+    EditSuggestion {
+        suggestion_id: u64,
+        existing_id: Option<u64>,
+    },
     SubmitNewWord,
     EditExisting(u64),
 }
@@ -204,6 +207,8 @@ pub fn qs_form<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Erro
                     #[derive(Debug)]
                     struct DeserErr(serde_qs::Error);
 
+                    log::debug!("Error deserializing query-string: {:?}", err);
+
                     impl warp::reject::Reject for DeserErr {}
 
                     warp::reject::custom(DeserErr(err))
@@ -240,9 +245,17 @@ pub fn submit(
 
 pub async fn edit_suggestion_page(
     db: Pool<SqliteConnectionManager>,
-    id: u64,
+    suggestion_id: u64,
 ) -> Result<impl Reply, Rejection> {
-    submit_word_page(db, None, SubmitFormAction::EditSuggestion(id)).await
+    let db_clone = db.clone();
+    let existing_id = tokio::task::spawn_blocking(move ||
+        SuggestedWord::fetch_existing_id_for_suggestion(&db_clone, suggestion_id)
+    ).await.unwrap();
+
+    submit_word_page(db, None, SubmitFormAction::EditSuggestion {
+        suggestion_id,
+        existing_id,
+    }).await
 }
 
 pub async fn edit_word_page(
@@ -268,18 +281,18 @@ struct WordFormTemplate {
 }
 
 impl WordFormTemplate {
-    fn get_from_db(
+    fn fetch_from_db(
         db: &Pool<SqliteConnectionManager>,
         existing: Option<u64>,
         suggested: Option<u64>,
     ) -> Option<Self> {
         match (existing, suggested) {
             (_, Some(suggestion)) => {
-                let suggested_word = SuggestedWord::get_full(db, suggestion)?;
+                let suggested_word = SuggestedWord::fetch_full(db, suggestion)?;
                 Some(WordFormTemplate::from(suggested_word))
             }
             (Some(existing), None) => {
-                let existing_word = ExistingWord::get_full(db, existing)?;
+                let existing_word = ExistingWord::fetch_full(db, existing)?;
                 Some(WordFormTemplate::from(existing_word))
             }
             _ => None,
@@ -393,11 +406,11 @@ async fn submit_word_page(
 ) -> Result<impl Reply, Rejection> {
     let db = db.clone();
     let word = tokio::task::spawn_blocking(move || match action {
-        SubmitFormAction::EditSuggestion(id) => {
-            WordFormTemplate::get_from_db(&db, None, Some(id)).unwrap_or_default()
+        SubmitFormAction::EditSuggestion { suggestion_id, existing_id } => {
+            WordFormTemplate::fetch_from_db(&db, existing_id, Some(suggestion_id)).unwrap_or_default()
         }
         SubmitFormAction::EditExisting(id) => {
-            WordFormTemplate::get_from_db(&db, Some(id), None).unwrap_or_default()
+            WordFormTemplate::fetch_from_db(&db, Some(id), None).unwrap_or_default()
         }
         SubmitFormAction::SubmitNewWord => WordFormTemplate::default(),
     })
@@ -440,7 +453,8 @@ fn diff_opt<T: PartialEq + Eq>(
 }
 
 pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionManager>) {
-    const STATEMENT: &str = "INSERT INTO word_deletion_suggestions (word_id) VALUES (?1);";
+    const STATEMENT: &str =
+        "INSERT INTO word_deletion_suggestions (word_id, reason) VALUES (?1, ?2);";
 
     let db = db.clone();
 
@@ -448,7 +462,7 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionMa
         let conn = db.get().unwrap();
         conn.prepare(STATEMENT)
             .unwrap()
-            .execute(params![word_id.0])
+            .execute(params![word_id.0, "No reason given"])
             .unwrap();
     })
     .await
@@ -462,6 +476,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
             part_of_speech, xhosa_tone_markings, infinitive, is_plural, noun_class, note
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
             ON CONFLICT(suggestion_id) DO UPDATE SET
+                existing_word_id = excluded.existing_word_id,
                 changes_summary = excluded.changes_summary,
                 english = excluded.english,
                 xhosa = excluded.xhosa,
@@ -479,11 +494,12 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
     let db = db.clone();
     let mut w = word;
 
+    log::debug!("Inserting word suggestion {:#?}", w);
+
     tokio::task::spawn_blocking(move || {
         let conn = db.get().unwrap();
 
-        let orig =
-            WordFormTemplate::get_from_db(&db, w.existing_id, w.suggestion_id).unwrap_or_default();
+        let orig = WordFormTemplate::fetch_from_db(&db, w.existing_id, None).unwrap_or_default();
         let use_submitted = w.existing_id.is_none() && w.suggestion_id.is_none();
 
         // HACK(restioson): 255 is sentinel for "no noun class" as opposed to null which is noun class
@@ -502,32 +518,20 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
         let existing_id = w.existing_id;
 
         // TODO change change type
-        // TODO change
+        // TODO this diff sets stuff to NULL sometimes which is an issue
         let params = params![
             w.suggestion_id,
             w.existing_id,
             "Word added",
-            diff(
-                w.english.clone(),
-                &orig.english,
-                use_submitted
-            ),
-            diff(
-                w.xhosa.clone(),
-                &orig.xhosa,
-                use_submitted
-            ),
+            diff(w.english.clone(), &orig.english, use_submitted),
+            diff(w.xhosa.clone()), &orig.xhosa, use_submitted),
             diff_opt(w.part_of_speech, &orig.part_of_speech, use_submitted),
             diff(
                 w.xhosa_tone_markings.clone(),
                 &orig.xhosa_tone_markings,
                 use_submitted
             ),
-            diff(
-                w.infinitive.clone(),
-                &orig.infinitive,
-                use_submitted
-            ),
+            diff(w.infinitive.clone(), &orig.infinitive, use_submitted),
             diff(w.is_plural, &orig.is_plural, use_submitted),
             noun_class,
             diff(w.note.clone(), &orig.note, use_submitted)
@@ -602,7 +606,7 @@ fn process_linked_words(
     match (w.suggestion_id, w.existing_id) {
         // Editing a new suggested word
         (Some(suggested), None) => {
-            for prev in SuggestedLinkedWord::get_all_for_suggestion(&db, suggested) {
+            for prev in SuggestedLinkedWord::fetch_all_for_suggestion(&db, suggested) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
@@ -621,7 +625,7 @@ fn process_linked_words(
         }
         // Editing an edit to an existing word, or editing an existing word
         (_, Some(existing)) => {
-            for prev in ExistingLinkedWord::get_all_for_word(&db, existing) {
+            for prev in ExistingLinkedWord::fetch_all_for_word(&db, existing) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.existing_id == Some(prev.link_id))
@@ -719,7 +723,7 @@ fn process_examples(
 
     match (w.suggestion_id, w.existing_id) {
         (Some(suggested), None) => {
-            for prev in SuggestedExample::get_all_for_suggestion(&db, suggested) {
+            for prev in SuggestedExample::fetch_all_for_suggestion(&db, suggested) {
                 if let Some(i) = examples
                     .iter()
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
@@ -735,7 +739,7 @@ fn process_examples(
             }
         }
         (_, Some(existing)) => {
-            for prev in ExistingExample::get_all_for_word(&db, existing) {
+            for prev in ExistingExample::fetch_all_for_word(&db, existing) {
                 if let Some(i) = examples
                     .iter()
                     .position(|new| new.existing_id == Some(prev.example_id))
