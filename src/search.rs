@@ -13,10 +13,12 @@ use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::doc;
 use tantivy::query::FuzzyTermQuery;
-use tantivy::schema::{Field, Schema, Value, INDEXED, STORED, STRING};
+use tantivy::tokenizer::TextAnalyzer;
+use tantivy::schema::{Field, Schema, Value, INDEXED, STORED, TextOptions, TextFieldIndexing};
 use tantivy::{DocAddress, Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
+use tantivy::tokenizer::{SimpleTokenizer, LowerCaser};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 
@@ -36,6 +38,9 @@ impl TantivyClient {
             .with_context(|| format!("Failed to open tantivy directory {:?}", path))?;
         let reindex = !Index::exists(&dir)?;
         let index = Index::open_or_create(dir, schema_info.schema.clone())?;
+
+        let lowercaser = TextAnalyzer::from(SimpleTokenizer).filter(LowerCaser);
+        index.tokenizers().register("lowercaser", lowercaser);
 
         let num_searchers = num_cpus::get(); // TODO config
         let reader = index
@@ -71,8 +76,15 @@ impl TantivyClient {
     fn build_schema() -> SchemaInfo {
         let mut builder = Schema::builder();
 
-        let english = builder.add_text_field("english", STRING | STORED);
-        let xhosa = builder.add_text_field("xhosa", STRING | STORED);
+        let text_options = TextOptions::default()
+            .set_indexing_options(
+                TextFieldIndexing::default()
+                    .set_tokenizer("lowercaser")
+            )
+            .set_stored();
+
+        let english = builder.add_text_field("english", text_options.clone());
+        let xhosa = builder.add_text_field("xhosa", text_options);
         let part_of_speech = builder.add_u64_field("part_of_speech", STORED);
         let is_plural = builder.add_u64_field("is_plural", STORED);
         let noun_class = builder.add_u64_field("noun_class", STORED);
@@ -155,8 +167,8 @@ impl WriterActor {
     fn add_word(writer: &mut IndexWriter, schema_info: &SchemaInfo, doc: WordDocument) {
         writer.add_document(tantivy::doc!(
             schema_info.id => doc.id,
-            schema_info.english => doc.english.to_lowercase(),
-            schema_info.xhosa => doc.xhosa.to_lowercase(),
+            schema_info.english => doc.english,
+            schema_info.xhosa => doc.xhosa,
             schema_info.part_of_speech => doc.part_of_speech as u64,
             schema_info.is_plural => doc.is_plural as u64,
             schema_info.noun_class => doc.noun_class.map(|x| x as u64).unwrap_or(255),
@@ -242,8 +254,6 @@ impl Handler<EditWord> for WriterActor {
             let mut writer = writer.lock().unwrap();
             let term = Term::from_field_u64(schema_info.id, edit.0.id);
             writer.delete_term(term);
-            writer.commit().unwrap();
-
             Self::add_word(&mut writer, &schema_info, edit.0);
             writer.commit().unwrap();
         })

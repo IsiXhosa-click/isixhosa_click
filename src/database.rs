@@ -158,11 +158,11 @@ pub fn accept_just_word_suggestion(
     let conn = db.get().unwrap();
     let params = params![
         s.word_id,
-        s.english.current().to_lowercase(),
-        s.xhosa.current().to_lowercase(),
+        s.english.current(),
+        s.xhosa.current(),
         s.part_of_speech.current(),
-        s.xhosa_tone_markings.current().to_lowercase(),
-        s.infinitive.current().to_lowercase(),
+        s.xhosa_tone_markings.current(),
+        s.infinitive.current(),
         s.is_plural.current(),
         s.noun_class.current(),
         s.note.current(),

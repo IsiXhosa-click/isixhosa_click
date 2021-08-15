@@ -5,6 +5,7 @@
 <head>
     <title>Submit a word - IsiXhosa.click</title>
     <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
+    {%- call macros::description("Submit a word") -%}
     <meta name="og:url" content="https://isixhosa.click/submit"/>
     <link rel="stylesheet" href="/submit.css">
     {%- call macros::meta() -%}
@@ -93,9 +94,11 @@
                     </div>
                 </fieldset>
 
-                <fieldset class="column_list">
+                <fieldset class="column_list spaced_flex_list">
                     <legend>Part of speech</legend>
-                    <label for="part_of_speech">Part of speech:
+
+                    <div class="row_or_column">
+                        <label for="part_of_speech">Part of speech:</label>
                         <select id="part_of_speech" name="part_of_speech">
                             <option value="">Choose a part of speech</option>
                             <option value=1 id="verb_selected">Verb</option>
@@ -106,7 +109,7 @@
                             <option value=7>Conjunction</option>
                             <option value=8>Preposition</option>
                         </select>
-                    </label>
+                    </div>
 
                     {%- match word.part_of_speech -%}
                         {% when Some with (part) %}

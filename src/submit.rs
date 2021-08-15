@@ -508,24 +508,24 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
             w.existing_id,
             "Word added",
             diff(
-                w.english.to_lowercase(),
-                &orig.english.to_lowercase(),
+                w.english.clone(),
+                &orig.english,
                 use_submitted
             ),
             diff(
-                w.xhosa.to_lowercase(),
-                &orig.xhosa.to_lowercase(),
+                w.xhosa.clone(),
+                &orig.xhosa,
                 use_submitted
             ),
             diff_opt(w.part_of_speech, &orig.part_of_speech, use_submitted),
             diff(
-                w.xhosa_tone_markings.to_lowercase(),
-                &orig.xhosa_tone_markings.to_lowercase(),
+                w.xhosa_tone_markings.clone(),
+                &orig.xhosa_tone_markings,
                 use_submitted
             ),
             diff(
-                w.infinitive.to_lowercase(),
-                &orig.infinitive.to_lowercase(),
+                w.infinitive.clone(),
+                &orig.infinitive,
                 use_submitted
             ),
             diff(w.is_plural, &orig.is_plural, use_submitted),

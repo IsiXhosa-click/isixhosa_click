@@ -5,13 +5,9 @@
 // - TODO word, example, and linked word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
 // - TODO attributions - editing users & references & so on
-// - TODO logging
-// - TODO config for static directories
-// - TODO redirect rest of URL
-// - TODO opengraph image embed
+// - TODO set up certbot
 
 // v0.2:
-// - set up certbot
 // - ratelimiting
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
@@ -58,6 +54,12 @@ use warp::{path, Filter, Rejection};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
 use warp::path::FullPath;
+use chrono::Local;
+use log4rs::append::console::ConsoleAppender;
+use log4rs::encode::pattern::PatternEncoder;
+use log4rs::append::file::FileAppender;
+use log4rs::config::{Appender, Root, Config as LogConfig};
+use log::LevelFilter;
 
 mod moderation;
 // mod auth;
@@ -80,6 +82,10 @@ pub struct Config {
     tantivy_path: PathBuf,
     cert_path: PathBuf,
     key_path: PathBuf,
+    static_site_files: PathBuf,
+    other_static_files: PathBuf,
+    log_path: PathBuf,
+    log_level: LevelFilter,
     http_port: u16,
     https_port: u16,
 }
@@ -91,16 +97,50 @@ impl Default for Config {
             tantivy_path: PathBuf::from("tantivy_data/"),
             cert_path: PathBuf::from("tls/cert.pem"),
             key_path: PathBuf::from("tls/key.rsa"),
+            static_site_files: PathBuf::from("static/"),
+            other_static_files: PathBuf::from("dummy_www/"),
+            log_path: PathBuf::from("log/"),
+            log_level: LevelFilter::Info,
             http_port: 8080,
             https_port: 8443,
         }
     }
 }
 
+fn init_logging(cfg: &Config) {
+    const LOG_PATTERN: &str = "[{d(%Y-%m-%d %H:%M:%S)} {h({l})} {M}] {m}{n}";
+
+    let path = cfg.log_path.join(Local::now().to_rfc3339()).with_extension("log");
+
+    let stdout = ConsoleAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(LOG_PATTERN)))
+        .build();
+
+    let file = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(LOG_PATTERN)))
+        .build(path)
+        .unwrap();
+
+    let root = Root::builder()
+        .appender("stdout")
+        .appender("file")
+        .build(cfg.log_level);
+
+    let log_config = LogConfig::builder()
+        .appender(Appender::builder().build("stdout", Box::new(stdout)))
+        .appender(Appender::builder().build("file", Box::new(file)))
+        .build(root)
+        .unwrap();
+
+    log4rs::init_config(log_config).unwrap();
+}
+
 #[tokio::main]
 async fn main() {
-    pretty_env_logger::init();
     let cfg: Config = confy::load("isixhosa_click").unwrap();
+    init_logging(&cfg);
+    log::info!("Hello! Test!");
+
     let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();
     let pool_clone = pool.clone();
@@ -147,7 +187,8 @@ async fn main() {
         .and(path::end())
         .map(|| AboutPage);
 
-    let routes = warp::fs::dir("static")
+    let routes = warp::fs::dir(cfg.static_site_files)
+        .or(warp::fs::dir(cfg.other_static_files))
         .or(search)
         .or(submit(pool.clone()))
         .or(accept(pool.clone(), tantivy))
@@ -159,7 +200,7 @@ async fn main() {
         .or(about)
         .or(warp::any().map(|| NotFound));
 
-    println!("Visit https://127.0.0.1:{}/", cfg.https_port);
+    log::info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
     let redirect = warp::path::full().map(move |path: FullPath| {
         let to = Uri::builder()

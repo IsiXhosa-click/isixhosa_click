@@ -59,6 +59,11 @@
     <meta name="theme-color" content="#ffffff">
 {%- endmacro -%}
 
+{%- macro description(desc) -%}
+    <meta name="og:description" content="{{ desc }}"/>
+    <meta name="description" content="{{ desc }}"/>
+{%- endmacro -%}
+
 {%- macro noun_class(is_plural, noun_class) -%}
     {%- match noun_class -%}
         {%- when Some with (class) %}

@@ -1,7 +1,7 @@
 /target
 .idea/
 *.iml
-data.ms/
 isixhosa_click.db
 tantivy_data/
 tls/
+log/

@@ -6,6 +6,8 @@
     <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click</title>
     <meta name="og:title" content=">{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/word/{{- word.word_id -}}"/>
+    <meta name="og:description" content="{%- call macros::format_result(word) -%}"/>
+    <meta name="description" content="{%- call macros::format_result(word) -%}"/>
     <link rel="stylesheet" href="/details.css">
     {%- call macros::meta() -%}
 </head>
