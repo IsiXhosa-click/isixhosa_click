@@ -141,8 +141,6 @@ async fn edit_suggestion_form(
     .await
 }
 
-// TODO deletion
-
 async fn accept_suggested_word(
     db: &Pool<SqliteConnectionManager>,
     tantivy: Arc<TantivyClient>,

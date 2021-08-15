@@ -469,6 +469,7 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionMa
     .unwrap()
 }
 
+// TODO don't submit if zero difference
 pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionManager>) {
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
@@ -517,14 +518,18 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
 
         let existing_id = w.existing_id;
 
-        // TODO change change type
-        // TODO this diff sets stuff to NULL sometimes which is an issue
+        let changes_summary = if w.existing_id.is_none() {
+            "Word added"
+        } else {
+            "Word edited"
+        };
+
         let params = params![
             w.suggestion_id,
             w.existing_id,
-            "Word added",
+            changes_summary,
             diff(w.english.clone(), &orig.english, use_submitted),
-            diff(w.xhosa.clone()), &orig.xhosa, use_submitted),
+            diff(w.xhosa.clone(), &orig.xhosa, use_submitted),
             diff_opt(w.part_of_speech, &orig.part_of_speech, use_submitted),
             diff(
                 w.xhosa_tone_markings.clone(),
