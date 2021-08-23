@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 use crate::database::suggestion::{
     MaybeEdited, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
@@ -58,7 +58,7 @@ pub fn get_word_hit_from_db(
     v
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum WordOrSuggestionId {
     ExistingWord { existing_id: u64 },

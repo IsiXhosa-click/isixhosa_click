@@ -92,8 +92,6 @@ export function addExample(english, xhosa, suggestion_id, existing_id) {
 
 export function addExamples(examples) {
     for (let example of examples) {
-        console.log("Adding example");
-        console.log(example);
         addExample(example.english, example.xhosa, example.suggestion_id, example.existing_id)
     }
 

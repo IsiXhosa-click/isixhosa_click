@@ -584,7 +584,7 @@ fn process_linked_words(
     let mut upsert_clone = conn.prepare(INSERT_LINKED_WORD_SUGGESTION).unwrap();
     let mut delete_suggested_link = conn.prepare(DELETE_LINKED_WORD_SUGGESTION).unwrap();
 
-    let existing_id = w.existing_id;
+    let existing_word_id = w.existing_id;
     let mut insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
         upsert_suggested_link
             .execute(params![
@@ -602,7 +602,7 @@ fn process_linked_words(
                     &old.as_ref().map(|o| o.other.id),
                     use_submitted
                 ),
-                existing_id,
+                existing_word_id,
             ])
             .unwrap();
     };
@@ -619,7 +619,7 @@ fn process_linked_words(
                     let new = linked_words.remove(i);
                     let old = new
                         .existing_id
-                        .and_then(|id| ExistingLinkedWord::get(&db, id, existing_id.unwrap()));
+                        .and_then(|id| ExistingLinkedWord::get(&db, id, existing_word_id.unwrap()));
                     insert_link(new, old);
                 } else {
                     delete_suggested_link

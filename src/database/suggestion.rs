@@ -351,8 +351,7 @@ impl SuggestedLinkedWord {
     }
 
     pub fn other(&self, this_id: &WordOrSuggestionId) -> MaybeEdited<WordHit> {
-        if matches!(*this_id, WordOrSuggestionId::ExistingWord { existing_id } if existing_id == self.first.current().0)
-        {
+        if this_id == &self.second.current().0 {
             self.first.map(|pair| pair.1.clone())
         } else {
             self.second.map(|pair| pair.1.clone())
