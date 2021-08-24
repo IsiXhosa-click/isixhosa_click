@@ -229,15 +229,15 @@ struct SearchQuery {
 }
 
 #[derive(Template)]
-#[template(path = "404.html")]
+#[template(path = "404.askama", escape = "html", ext = "html")]
 struct NotFound;
 
 #[derive(Template)]
-#[template(path = "about.html")]
+#[template(path = "about.askama", escape = "html", ext = "html")]
 struct AboutPage;
 
 #[derive(Template, Default)]
-#[template(path = "search.html")]
+#[template(path = "search.askama", escape = "html", ext = "html")]
 struct Search {
     hits: Vec<WordHit>,
     query: String,

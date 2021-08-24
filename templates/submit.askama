@@ -1,4 +1,4 @@
-{%- import "macros.html" as macros -%}
+{%- import "macros.askama" as macros -%}
 
 <!DOCTYPE html>
 <html lang="en-ZA">

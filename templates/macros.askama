@@ -64,33 +64,45 @@
     <meta name="description" content="{{ desc }}"/>
 {%- endmacro -%}
 
-{%- macro noun_class(is_plural, noun_class) -%}
+{%- macro noun_class(is_plural, noun_class, raw) -%}
     {%- match noun_class -%}
         {%- when Some with (class) %}
-            - class {% call noun_class_prefix(is_plural, class) %}
+            - class {% call noun_class_prefix(is_plural, class, raw) %}
         {%- when None -%}
     {%- endmatch -%}
 {%- endmacro -%}
 
-{%- macro noun_class_prefix(is_plural, class) -%}
+{%- macro noun_class_prefix(is_plural, class, raw) -%}
     {%- let prefixes = class.to_prefixes() -%}
 
     {%- match prefixes.plural -%}
         {%- when Some with (plural) -%}
-            {%- if is_plural.clone().clone().clone() -%} {# The wtf-clones :) #}
-                {{ prefixes.singular }}/<strong class="noun_class_prefix">{{ plural }}</strong>
+            {%- if is_plural -%}
+                {%- if raw -%}
+                    {{ prefixes.singular }}/[{{ plural }}]
+                {%- else -%}
+                    {{ prefixes.singular }}/<strong class="noun_class_prefix">{{ plural }}</strong>
+                {%- endif -%}
             {%- else -%}
-                <strong class="noun_class_prefix">{{ prefixes.singular }}</strong>/{{ plural }}
+                {%- if raw -%}
+                    [{{ prefixes.singular }}]/{{ plural }}
+                {%- else -%}
+                    <strong class="noun_class_prefix">{{ prefixes.singular }}</strong>/{{ plural }}
+                {%- endif -%}
             {%- endif -%}
         {%- when None -%}
-            <strong class="noun_class_prefix">{{ prefixes.singular }}</strong>
+            {%- if raw -%}
+                {{ prefixes.singular }}
+            {%- else -%}
+                <strong class="noun_class_prefix">{{ prefixes.singular }}</strong>
+            {%- endif -%}
     {%- endmatch -%}
 {%- endmacro -%}
 
 {# HACK(restioson): Can't get it working without manual whitespace here :/ #}
-{% macro plural(plural) %}{% if plural.clone() %}{{ "plural " }}{% endif %}{% endmacro %}
+{% macro plural(plural) %}{% if plural %}{{ "plural " }}{% endif %}{% endmacro %}
 
-{%- macro format_result(word) -%}
+{%- macro format_result(word, raw) -%}
     {{- word.english }} - {{ word.xhosa }}
-    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class) %})
+    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class, raw) %})
 {%- endmacro -%}

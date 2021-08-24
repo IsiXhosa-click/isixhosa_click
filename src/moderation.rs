@@ -16,7 +16,7 @@ use warp::{Filter, Rejection, Reply};
 use serde_with::{serde_as, DisplayFromStr};
 
 #[derive(Template, Debug)]
-#[template(path = "moderation.html")]
+#[template(path = "moderation.askama", escape = "html", ext = "html")]
 struct ModerationTemplate {
     previous_success: Option<Success>,
     word_suggestions: Vec<SuggestedWord>,

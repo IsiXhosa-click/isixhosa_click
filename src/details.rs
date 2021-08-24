@@ -20,7 +20,7 @@ pub fn details(
 }
 
 #[derive(Template)]
-#[template(path = "word_details.html")]
+#[template(path = "word_details.askama", escape = "html", ext = "html")]
 struct WordDetails {
     word: ExistingWord,
     previous_success: Option<WordChangeMethod>,

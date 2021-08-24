@@ -350,8 +350,8 @@ impl SuggestedLinkedWord {
         }
     }
 
-    pub fn other(&self, this_id: &WordOrSuggestionId) -> MaybeEdited<WordHit> {
-        if this_id == &self.second.current().0 {
+    pub fn other(&self, this_id: WordOrSuggestionId) -> MaybeEdited<WordHit> {
+        if this_id == self.second.current().0 {
             self.first.map(|pair| pair.1.clone())
         } else {
             self.second.map(|pair| pair.1.clone())

@@ -1,4 +1,4 @@
-{%- import "macros.html" as macros -%}
+{%- import "macros.askama" as macros -%}
 
 <!DOCTYPE html>
 <html lang="en-ZA">
@@ -6,8 +6,8 @@
     <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click</title>
     <meta name="og:title" content=">{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/word/{{- word.word_id -}}"/>
-    <meta name="og:description" content="{%- call macros::format_result(word) -%}"/>
-    <meta name="description" content="{%- call macros::format_result(word) -%}"/>
+    <meta name="og:description" content="{%- call macros::format_result(word, true) -%}"/>
+    <meta name="description" content="{%- call macros::format_result(word, true) -%}"/>
     <link rel="stylesheet" href="/details.css">
     {%- call macros::meta() -%}
 </head>
@@ -45,7 +45,6 @@
 
                                 // HACK(restioson): move user back to /word/id
                                 history.replaceState(null, null, window.location.origin + "/word/{{ word.word_id }}");
-                            </script>
                             </script>
 
                             <p>
@@ -92,7 +91,7 @@
                                         {%- when Some with (class) -%}
                                             <tr>
                                                 <th scope="row">Noun class</th>
-                                                <td>{%- call macros::noun_class_prefix(word.is_plural, class) -%}</td>
+                                                <td>{%- call macros::noun_class_prefix(word.is_plural, class, false) -%}</td>
                                             </tr>
                                         {%- when None -%}
                                     {%- endmatch -%}
@@ -161,7 +160,7 @@
                                         {%- for link in word.linked_words -%}
                                             <tr>
                                                 <td>{{ link.link_type }}</td>
-                                                <td><a href="/word/{{ link.other.id }}">{%- call macros::format_result(link.other) -%}</a></td>
+                                                <td><a href="/word/{{ link.other.id }}">{%- call macros::format_result(link.other, false) -%}</a></td>
                                             </tr>
                                         {%- endfor -%}
                                     </tbody>

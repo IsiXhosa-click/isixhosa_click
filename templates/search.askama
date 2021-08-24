@@ -1,5 +1,5 @@
-{%- import "search_box.html" as searchbox -%}
-{%- import "macros.html" as macros -%}
+{%- import "search_box.askama" as searchbox -%}
+{%- import "macros.askama" as macros -%}
 
 <!DOCTYPE html>
 
@@ -27,8 +27,7 @@
             <div id="hits">
                 <ol class="hits">
                     {%- for hit in hits -%}
-                    <!-- TODO(accept) test -->
-                    <li class="hit">{%- call macros::format_result(hit) -%}</li>
+                        <li class="hit">{%- call macros::format_result(hit, false) -%}</li>
                     {%- endfor -%}
                 </ol>
             </div>

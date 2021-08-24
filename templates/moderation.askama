@@ -1,4 +1,4 @@
-{%- import "macros.html" as macros -%}
+{%- import "macros.askama" as macros -%}
 
 <!DOCTYPE html>
 <html lang="en-ZA">
@@ -95,45 +95,45 @@
             {%- macro noun_class_edited(is_plural, noun_class) -%}
                 {%- match noun_class -%}
                     {%- when MaybeEdited::New with (class) -%}
-                        <ins>{%- call macros::noun_class(is_plural.current(), class) -%}</ins>
+                        <ins>{%- call macros::noun_class(is_plural.current(), class, false) -%}</ins>
                     {%- when MaybeEdited::Old with (class) -%}
                         {%- match is_plural -%}
                             {%- when MaybeEdited::New with (is_plural) -%}
-                                {%- call macros::noun_class(is_plural, class) -%}
+                                {%- call macros::noun_class(is_plural, class, false) -%}
                             {%- when MaybeEdited::Old with (is_plural) -%}
-                                {%- call macros::noun_class(is_plural, class) -%}
+                                {%- call macros::noun_class(is_plural, class, false) -%}
                             {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
-                                <ins>{%- call macros::noun_class(new_is_plural, class) -%}</ins>
-                                <del>{%- call macros::noun_class(old_is_plural, class) -%}</del>
+                                <ins>{%- call macros::noun_class(new_is_plural, class, false) -%}</ins>
+                                <del>{%- call macros::noun_class(old_is_plural, class, false) -%}</del>
                         {%- endmatch -%}
                     {%- when MaybeEdited::Edited with { old, new } -%}
                         <ins>
                             {%- if new.is_none() -%}
                                 <strong>[Removed]</strong>
                             {%- else -%}
-                                {%- call macros::noun_class(is_plural.current(), new) -%}
+                                {%- call macros::noun_class(is_plural.current(), new, false) -%}
                             {%- endif -%}
                         </ins>
-                        <del>{%- call macros::noun_class(is_plural.old(), old) -%}</del>
+                        <del>{%- call macros::noun_class(is_plural.old(), old, false) -%}</del>
                 {%- endmatch -%}
             {%- endmacro -%}
 
             {%- macro plural_edited(plural) -%}
                 {%- match plural -%}
                     {%- when MaybeEdited::New with (p) -%}
-                        <ins>{%- call macros::plural(p.clone()) -%}</ins>
+                        <ins>{%- call macros::plural(p) -%}</ins>
                     {%- when MaybeEdited::Old with (p) -%}
-                        {%- call macros::plural(p.clone()) -%}
+                        {%- call macros::plural(p) -%}
                     {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
                         <ins>
-                            {%- if old_is_plural.clone() %}
+                            {%- if old_is_plural %}
                                 plural
                             {%- else %}
                                 [singular]
                             {%- endif -%}
                         </ins>
                         <del>
-                            {%- if new_is_plural.clone() %}
+                            {%- if new_is_plural %}
                                 plural
                             {%- else %}
                                 [singular]
@@ -145,11 +145,11 @@
             {%- macro result_edited(res) -%}
                 {%- match res -%}
                     {%- when MaybeEdited::New with (w) -%}
-                        <ins>{%- call macros::format_result(w) -%}</ins>
+                        <ins>{%- call macros::format_result(w, false) -%}</ins>
                     {%- when MaybeEdited::Old with (w) -%}
-                        {%- call macros::format_result(w) -%}
+                        {%- call macros::format_result(w, false) -%}
                     {%- when MaybeEdited::Edited with { old, new } -%}
-                        <ins>{%- call macros::format_result(new) -%}</ins> <del>{%- call macros::format_result(old) -%}</del>
+                        <ins>{%- call macros::format_result(new, false) -%}</ins> <del>{%- call macros::format_result(old, false) -%}</del>
                 {%- endmatch -%}
             {%- endmacro -%}
 
@@ -180,7 +180,7 @@
                 {%- let prompt -%}
                 {%- let method -%}
 
-                {%- if is_accept.clone() -%}
+                {%- if is_accept -%}
                     {%- let prompt = "Are you sure you want to permanently delete this word?" -%}
                     {%- let method = "accept" -%}
                 {%- else -%}
@@ -318,7 +318,7 @@
                         <li>
                             <article class="column_list spaced_flex_list">
                                 <header>
-                                    <h3 class="suggested_word_text">{%- call macros::format_result(s.word) -%}</h3>
+                                    <h3 class="suggested_word_text">{%- call macros::format_result(s.word, false) -%}</h3>
                                 </header>
 
                                 <div>

@@ -22,7 +22,7 @@ use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, Suggest
 use crate::database::WordOrSuggestionId;
 
 #[derive(Template, Debug)]
-#[template(path = "submit.html")]
+#[template(path = "submit.askama", escape = "html", ext = "html")]
 struct SubmitTemplate {
     previous_success: Option<bool>,
     action: SubmitFormAction,
@@ -302,7 +302,7 @@ impl WordFormTemplate {
 
 impl From<SuggestedWord> for WordFormTemplate {
     fn from(w: SuggestedWord) -> Self {
-        let this_id = &w.this_id();
+        let this_id = w.this_id();
         WordFormTemplate {
             english: w.english.current().clone(),
             xhosa: w.xhosa.current().clone(),
@@ -378,7 +378,7 @@ struct LinkedWordTemplate {
 }
 
 impl LinkedWordTemplate {
-    fn from_suggested(suggestion: SuggestedLinkedWord, this_id: &WordOrSuggestionId) -> Self {
+    fn from_suggested(suggestion: SuggestedLinkedWord, this_id: WordOrSuggestionId) -> Self {
         LinkedWordTemplate {
             suggestion_id: Some(suggestion.suggestion_id),
             existing_id: suggestion.existing_linked_word_id,
