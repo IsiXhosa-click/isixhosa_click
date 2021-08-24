@@ -29,7 +29,3 @@ td:first-child, th:first-child {
 #word_header {
     gap: 1em;
 }
-
-main > article > div {
-    width: max-content;
-}

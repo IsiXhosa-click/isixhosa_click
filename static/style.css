@@ -98,6 +98,7 @@ header > * > strong.noun_class_prefix {
 
 th {
     text-align: left;
+    vertical-align: top;
 }
 
 tr > * + * {
