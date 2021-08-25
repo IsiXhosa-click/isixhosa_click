@@ -4,15 +4,16 @@
 // - TODO word, example, and linked word deletion
 // - TODO word, example, and linked word editing - make sure to edit *_full methods to reflect this
 // - TODO user system
-// - TODO attributions - editing users & references & so on
 
 // Soon after launch, perhaps before:
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
 // - automated data-dump & backups of the database content which can be downloaded
 // - move PartOfSpeech to isixhosa crate
+// - attributions - editing users & references & so on
+// - better search engine optimisation
 
-// After launch:
+// Well after launch:
 // - ratelimiting
 // - additional resources/links page
 // - suggestion publicising, voting & commenting
