@@ -1,5 +1,7 @@
 use crate::database::existing::ExistingWord;
+use crate::language::NounClassExt;
 use crate::language::PartOfSpeech;
+use crate::serialization::OptionMapNounClassExt;
 use crate::NotFound;
 use askama::Template;
 use r2d2::Pool;
@@ -20,7 +22,7 @@ pub fn details(
 }
 
 #[derive(Template)]
-#[template(path = "word_details.askama", escape = "html", ext = "html")]
+#[template(path = "word_details.askama.html")]
 struct WordDetails {
     word: ExistingWord,
     previous_success: Option<WordChangeMethod>,

@@ -1,5 +1,6 @@
-use crate::language::{NounClassOpt, NounClassOptExt, SerializeDisplay};
 use crate::search::WordHit;
+use crate::serialization::{NounClassOpt, NounClassOptExt};
+use crate::serialization::{SerializeDisplay, SerializePrimitive};
 use fallible_iterator::FallibleIterator;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -42,7 +43,8 @@ impl WordDeletionSuggestion {
                         noun_class: row
                             .get::<&str, Option<NounClassOpt>>("noun_class")
                             .unwrap()
-                            .flatten(),
+                            .flatten()
+                            .map(SerializePrimitive::new),
                     },
                     reason: row.get("reason").unwrap(),
                 })

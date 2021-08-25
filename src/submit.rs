@@ -2,7 +2,7 @@
 // TODO HTML sanitisation - allow markdown in text only, no html
 // TODO handle multiple examples
 
-use crate::language::{NounClass, PartOfSpeech, WordLinkType};
+use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
 use askama::Template;
 use num_enum::TryFromPrimitive;
@@ -10,7 +10,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use reqwest::header::CONTENT_TYPE;
 use rusqlite::{params, ToSql};
-use serde::de::{DeserializeOwned, Error};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::serde_as;
 use std::fmt::{self, Debug, Display, Formatter};
@@ -20,9 +20,12 @@ use warp::{body, path, Buf, Filter, Rejection, Reply};
 use crate::database::existing::{ExistingExample, ExistingLinkedWord, ExistingWord};
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::database::WordOrSuggestionId;
+use crate::language::NounClassExt;
+use isixhosa::noun::NounClass;
+use rusqlite::types::{ToSqlOutput, Value};
 
 #[derive(Template, Debug)]
-#[template(path = "submit.askama", escape = "html", ext = "html")]
+#[template(path = "submit.askama.html")]
 struct SubmitTemplate {
     previous_success: Option<bool>,
     action: SubmitFormAction,
@@ -53,43 +56,6 @@ impl Display for SubmitFormAction {
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct WordId(pub u64);
-
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
-enum FormOption<T> {
-    Some(T),
-    None,
-}
-
-impl<T> From<FormOption<T>> for Option<T> {
-    fn from(form: FormOption<T>) -> Option<T> {
-        match form {
-            FormOption::Some(v) => Some(v),
-            FormOption::None => None,
-        }
-    }
-}
-
-impl<'de, T: Deserialize<'de> + TryFromPrimitive<Primitive = u8>> Deserialize<'de>
-    for FormOption<T>
-{
-    fn deserialize<D>(deser: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let str = String::deserialize(deser)?;
-
-        if str.is_empty() {
-            Ok(FormOption::None)
-        } else {
-            let int = str
-                .parse::<u8>()
-                .map_err(|_| Error::custom("Invalid integer format"))?;
-            let inner = T::try_from_primitive(int)
-                .map_err(|_| Error::custom("Invalid integer discriminator"))?;
-            Ok(FormOption::Some(inner))
-        }
-    }
-}
 
 #[derive(Clone, Debug, Default)]
 struct LinkedWordList(Vec<LinkedWordSubmission>);
@@ -148,7 +114,7 @@ pub struct WordSubmission {
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
     is_plural: bool,
-    noun_class: FormOption<NounClass>,
+    noun_class: Option<NounClass>,
     #[serde(default)]
     examples: Vec<ExampleSubmission>,
     #[serde(default)]
@@ -248,14 +214,21 @@ pub async fn edit_suggestion_page(
     suggestion_id: u64,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
-    let existing_id = tokio::task::spawn_blocking(move ||
+    let existing_id = tokio::task::spawn_blocking(move || {
         SuggestedWord::fetch_existing_id_for_suggestion(&db_clone, suggestion_id)
-    ).await.unwrap();
+    })
+    .await
+    .unwrap();
 
-    submit_word_page(db, None, SubmitFormAction::EditSuggestion {
-        suggestion_id,
-        existing_id,
-    }).await
+    submit_word_page(
+        db,
+        None,
+        SubmitFormAction::EditSuggestion {
+            suggestion_id,
+            existing_id,
+        },
+    )
+    .await
 }
 
 pub async fn edit_word_page(
@@ -406,9 +379,11 @@ async fn submit_word_page(
 ) -> Result<impl Reply, Rejection> {
     let db = db.clone();
     let word = tokio::task::spawn_blocking(move || match action {
-        SubmitFormAction::EditSuggestion { suggestion_id, existing_id } => {
-            WordFormTemplate::fetch_from_db(&db, existing_id, Some(suggestion_id)).unwrap_or_default()
-        }
+        SubmitFormAction::EditSuggestion {
+            suggestion_id,
+            existing_id,
+        } => WordFormTemplate::fetch_from_db(&db, existing_id, Some(suggestion_id))
+            .unwrap_or_default(),
         SubmitFormAction::EditExisting(id) => {
             WordFormTemplate::fetch_from_db(&db, Some(id), None).unwrap_or_default()
         }
@@ -507,13 +482,12 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
         // not changed. It's bad I know but I don't have the energy for anything else, feel free to
         // submit a PR which implements a more principled solution and I will gladly merge it.
         let noun_class: Option<NounClass> = w.noun_class.into();
-        let no_noun_class = 255u8.to_sql().unwrap();
-        let noun_class = if noun_class.is_some() && noun_class != orig.noun_class {
-            noun_class.to_sql().unwrap()
-        } else if noun_class.is_none() {
-            no_noun_class
-        } else {
-            None::<NounClass>.to_sql().unwrap()
+        let noun_class: ToSqlOutput<'static> = match noun_class {
+            Some(class) if noun_class != orig.noun_class => {
+                ToSqlOutput::Owned(Value::Integer(class as u8 as i64))
+            }
+            Some(_) => None::<u8>.to_sql().unwrap(),
+            None => 255u8.to_sql().unwrap(),
         };
 
         let existing_id = w.existing_id;

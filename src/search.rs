@@ -1,18 +1,20 @@
-use crate::language::{NounClass, NounClassOpt, NounClassOptExt, PartOfSpeech, SerializeDisplay};
+use crate::language::PartOfSpeech;
+use crate::serialization::{NounClassOpt, NounClassOptExt};
+use crate::serialization::{SerializeDisplay, SerializePrimitive};
 use anyhow::{Context, Result};
+use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
-use ordered_float::OrderedFloat;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::convert::TryInto;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::doc;
-use tantivy::query::FuzzyTermQuery;
+use tantivy::query::{FuzzyTermQuery, BooleanQuery, Query};
 use tantivy::schema::{Field, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
@@ -24,6 +26,7 @@ const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 
 pub struct TantivyClient {
     schema_info: SchemaInfo,
+    english_tokenizer: TextAnalyzer,
     writer: Address<WriterActor>,
     searchers: Address<SearcherActor>,
 }
@@ -54,6 +57,7 @@ impl TantivyClient {
 
         let client = TantivyClient {
             schema_info: schema_info.clone(),
+            english_tokenizer: index.tokenizer_for_field(schema_info.english).unwrap(),
             writer: WriterActor::new(writer, schema_info)
                 .create(Some(16))
                 .spawn_global(),
@@ -82,7 +86,8 @@ impl TantivyClient {
             .set_stored();
 
         let english = builder.add_text_field("english", text_options.clone());
-        let xhosa = builder.add_text_field("xhosa", text_options);
+        let xhosa = builder.add_text_field("xhosa", text_options.clone());
+        let xhosa_stemmed = builder.add_text_field("xhosa", text_options);
         let part_of_speech = builder.add_u64_field("part_of_speech", STORED);
         let is_plural = builder.add_u64_field("is_plural", STORED);
         let noun_class = builder.add_u64_field("noun_class", STORED);
@@ -92,6 +97,7 @@ impl TantivyClient {
             schema: builder.build(),
             english,
             xhosa,
+            xhosa_stemmed,
             part_of_speech,
             is_plural,
             noun_class,
@@ -162,10 +168,17 @@ impl WriterActor {
     }
 
     fn add_word(writer: &mut IndexWriter, schema_info: &SchemaInfo, doc: WordDocument) {
+        let stemmed = if doc.part_of_speech == PartOfSpeech::Noun {
+            isixhosa::noun::guess_noun_base(&doc.xhosa, doc.noun_class)
+        } else {
+            doc.xhosa.clone()
+        };
+
         writer.add_document(tantivy::doc!(
             schema_info.id => doc.id,
             schema_info.english => doc.english,
             schema_info.xhosa => doc.xhosa,
+            schema_info.xhosa_stemmed => stemmed,
             schema_info.part_of_speech => doc.part_of_speech as u64,
             schema_info.is_plural => doc.is_plural as u64,
             schema_info.noun_class => doc.noun_class.map(|x| x as u64).unwrap_or(255),
@@ -308,35 +321,42 @@ impl Handler<SearchRequest> for SearcherActor {
 
         let searcher = self.reader.searcher();
         let client = self.client.clone();
-        let english = Term::from_field_text(client.schema_info.english, &req.0);
-        let xhosa = Term::from_field_text(client.schema_info.xhosa, &req.0);
 
-        let distance = match req.0.len() {
-            0..=2 => 0,
-            3..=4 => 1,
-            _ => 2,
+        // Drop BoxTokenStream which is not Send
+        let query = {
+            let mut tokenized = client.english_tokenizer.token_stream(&req.0);
+            let mut queries: Vec<Box<dyn Query + 'static>> = Vec::with_capacity(3);
+            tokenized.process(&mut |token| {
+                let distance = match token.text.len() {
+                    0..=2 => 0,
+                    3..=4 => 1,
+                    _ => 2,
+                };
+
+                let english = Term::from_field_text(client.schema_info.english, &token.text);
+                let xhosa = Term::from_field_text(client.schema_info.xhosa, &token.text);
+                let xhosa_stemmed = Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
+                let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
+                let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
+                let query_xhosa_stemmed = FuzzyTermQuery::new_prefix(xhosa_stemmed, distance, true);
+
+                queries.reserve(3);
+                queries.push(Box::new(query_english));
+                queries.push(Box::new(query_xhosa));
+                queries.push(Box::new(query_xhosa_stemmed));
+            });
+
+            BooleanQuery::union(queries)
         };
 
-        let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
-        let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
         let top_docs = TopDocs::with_limit(MAX_RESULTS);
 
         tokio::task::spawn_blocking(move || {
-            let mut results = searcher.search(&query_english, &top_docs)?;
-            let mut results2 = searcher.search(&query_xhosa, &top_docs)?;
-            results.append(&mut results2);
-
-            // Sort by doc address, deduplicate, and then sort by score.
-            // Deduplicate only works on consecutive elements so it must be sorted by doc_address
-            // first.
-            results.sort_by_key(|(_score, doc_address)| *doc_address);
-            results.dedup_by(|(_, a), (_, b)| a == b);
-            results.sort_by_key(|(score, _doc_address)| OrderedFloat(*score));
-
-            results
+            searcher
+                .search(&query, &top_docs)?
                 .into_iter()
-                .take(MAX_RESULTS)
-                .map(|(_score, doc_address)| {
+                .map(|(score, doc_address)| {
+                    dbg!(score);
                     searcher
                         .doc(doc_address)
                         .map_err(anyhow::Error::from)
@@ -355,25 +375,24 @@ struct SchemaInfo {
     schema: Schema,
     english: Field,
     xhosa: Field,
+    xhosa_stemmed: Field,
     part_of_speech: Field,
     is_plural: Field,
     noun_class: Field,
     id: Field,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct WordDocument {
     pub id: u64,
     pub english: String,
     pub xhosa: String,
     pub part_of_speech: PartOfSpeech,
     pub is_plural: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default = "option_none")]
     pub noun_class: Option<NounClass>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct WordHit {
     pub id: u64,
     pub english: String,
@@ -381,8 +400,7 @@ pub struct WordHit {
     pub part_of_speech: SerializeDisplay<PartOfSpeech>,
     pub is_plural: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default = "option_none")]
-    pub noun_class: Option<NounClass>,
+    pub noun_class: Option<SerializePrimitive<NounClass, u8>>,
 }
 
 impl WordHit {
@@ -452,7 +470,8 @@ impl WordHit {
             noun_class: document
                 .get_first(schema_info.noun_class)
                 .and_then(Value::u64_value)
-                .and_then(|ord| NounClass::try_from_primitive(ord.try_into().unwrap_or(255)).ok()),
+                .and_then(|ord| NounClass::try_from_primitive(ord.try_into().unwrap_or(255)).ok())
+                .map(SerializePrimitive::new),
         })
     }
 }
@@ -465,11 +484,7 @@ impl From<WordDocument> for WordHit {
             xhosa: d.xhosa,
             part_of_speech: SerializeDisplay(d.part_of_speech),
             is_plural: d.is_plural,
-            noun_class: d.noun_class,
+            noun_class: d.noun_class.map(SerializePrimitive::new),
         }
     }
-}
-
-fn option_none<T>() -> Option<T> {
-    None
 }

@@ -5,13 +5,14 @@ use std::convert::TryFrom;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::database::suggestion::{
     MaybeEdited, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
 };
-use crate::language::{NounClassOpt, NounClassOptExt, SerializeDisplay};
 use crate::search::WordHit;
+use crate::serialization::{NounClassOpt, NounClassOptExt};
+use crate::serialization::{SerializeDisplay, SerializePrimitive};
 
 pub mod deletion;
 pub mod existing;
@@ -50,7 +51,8 @@ pub fn get_word_hit_from_db(
                 noun_class: row
                     .get::<&str, Option<NounClassOpt>>("noun_class")
                     .unwrap()
-                    .flatten(),
+                    .flatten()
+                    .map(SerializePrimitive::new),
             })
         })
         .optional()
@@ -165,7 +167,7 @@ pub fn accept_just_word_suggestion(
         s.xhosa_tone_markings.current(),
         s.infinitive.current(),
         s.is_plural.current(),
-        s.noun_class.current(),
+        s.noun_class.current().map(|x| x as u8),
         s.note.current(),
     ];
 

@@ -1,10 +1,10 @@
-{%- import "macros.askama" as macros -%}
+{%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
     <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click</title>
-    <meta name="og:title" content=">{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click"/>
+    <meta name="og:title" content="{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/word/{{- word.word_id -}}"/>
     <meta name="og:description" content="{%- call macros::format_result(word, true) -%}"/>
     <meta name="description" content="{%- call macros::format_result(word, true) -%}"/>

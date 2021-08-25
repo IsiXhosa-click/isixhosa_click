@@ -5,9 +5,11 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
 
 use crate::database::{get_word_hit_from_db, WordOrSuggestionId};
-use crate::language::{NounClass, NounClassOpt, NounClassOptExt, PartOfSpeech, WordLinkType};
+use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
+use crate::serialization::{NounClassOpt, NounClassOptExt};
 use fallible_iterator::FallibleIterator;
+use isixhosa::noun::NounClass;
 
 #[derive(Debug)]
 pub struct ExistingWord {

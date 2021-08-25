@@ -1,9 +1,11 @@
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
 use crate::database::{get_word_hit_from_db, WordOrSuggestionId};
-use crate::language::{NounClass, NounClassOpt, NounClassOptExt, PartOfSpeech, WordLinkType};
+use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
+use crate::serialization::NounClassOpt;
 use fallible_iterator::FallibleIterator;
+use isixhosa::noun::NounClass;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::FromSql;
@@ -115,17 +117,14 @@ impl SuggestedWord {
         let e = existing_id.and_then(|id| ExistingWord::fetch_alone(db, id as u64));
         let e = e.as_ref();
 
-        let noun_class = row
-            .get::<&str, Option<NounClassOpt>>("noun_class")
-            .map(NounClassOptExt::flatten);
-        let old_noun_class = e.and_then(|e| e.noun_class);
-        let noun_class = match (noun_class, old_noun_class) {
-            (Ok(None), old) => MaybeEdited::Old(old),
-            (Ok(new @ Some(_)), old @ Some(_)) => MaybeEdited::Edited { old, new },
-            (Ok(new @ Some(_)), None) => MaybeEdited::New(new),
-            // Error is assumed to be discrim out of range (assumed to be 255) and this means deletion
-            (Err(_), old @ Some(_)) => MaybeEdited::Edited { new: None, old },
-            (Err(_), None) => MaybeEdited::Old(None),
+        let noun_class = row.get::<&str, Option<NounClassOpt>>("noun_class");
+        let old = e.and_then(|e| e.noun_class);
+        let noun_class = match noun_class {
+            Ok(Some(NounClassOpt::Remove)) if old != None => MaybeEdited::Edited { old, new: None },
+            Ok(Some(NounClassOpt::Remove)) => MaybeEdited::Old(None),
+            Ok(Some(NounClassOpt::Some(new))) => MaybeEdited::Edited { old, new: Some(new) },
+            Ok(None) => MaybeEdited::Old(old),
+            Err(e) => panic!("Invalid noun class discriminator in database: {:?}", e),
         };
 
         SuggestedWord {

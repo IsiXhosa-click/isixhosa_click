@@ -104,5 +104,5 @@
 
 {%- macro format_result(word, raw) -%}
     {{- word.english }} - {{ word.xhosa }}
-    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class, raw) %})
+    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class.map_noun_class(), raw) %})
 {%- endmacro -%}

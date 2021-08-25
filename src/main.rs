@@ -10,6 +10,7 @@
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
 // - automated data-dump & backups of the database content which can be downloaded
+// - move PartOfSpeech to isixhosa crate
 
 // After launch:
 // - ratelimiting
@@ -30,7 +31,9 @@
 // - html/css/js min
 // - see if i can replace cloning pool with cloning conn?
 
+use crate::language::NounClassExt;
 use crate::search::{TantivyClient, WordHit};
+use crate::serialization::OptionMapNounClassExt;
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
 use chrono::Local;
@@ -65,6 +68,7 @@ mod details;
 mod edit;
 mod language;
 mod search;
+mod serialization;
 mod session;
 mod submit;
 
@@ -229,15 +233,15 @@ struct SearchQuery {
 }
 
 #[derive(Template)]
-#[template(path = "404.askama", escape = "html", ext = "html")]
+#[template(path = "404.askama.html")]
 struct NotFound;
 
 #[derive(Template)]
-#[template(path = "about.askama", escape = "html", ext = "html")]
+#[template(path = "about.askama.html")]
 struct AboutPage;
 
 #[derive(Template, Default)]
-#[template(path = "search.askama", escape = "html", ext = "html")]
+#[template(path = "search.askama.html")]
 struct Search {
     hits: Vec<WordHit>,
     query: String,

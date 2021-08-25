@@ -1,54 +1,12 @@
+use crate::serialization::DiscrimOutOfRange;
+use isixhosa::noun::NounClass;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use r2d2_sqlite::rusqlite::types::{FromSqlResult, Value, ValueRef};
 use rusqlite::types::{FromSql, FromSqlError, ToSqlOutput};
 use rusqlite::ToSql;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::convert::TryInto;
-use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
-
-#[derive(Debug, Clone)]
-struct DiscrimOutOfRange(i64, &'static str);
-
-impl Display for DiscrimOutOfRange {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "discriminator {} out of range for type {}",
-            self.0, self.1
-        )
-    }
-}
-
-impl Error for DiscrimOutOfRange {}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct SerializeDisplay<T>(pub T);
-
-impl<T: Display> Display for SerializeDisplay<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<T: Display> Serialize for SerializeDisplay<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{}", self.0))
-    }
-}
-
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerializeDisplay<T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        T::deserialize(deserializer).map(SerializeDisplay)
-    }
-}
 
 #[derive(
     IntoPrimitive,
@@ -102,76 +60,7 @@ impl Display for PartOfSpeech {
     }
 }
 
-#[derive(
-    IntoPrimitive,
-    TryFromPrimitive,
-    Serialize_repr,
-    Deserialize_repr,
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-)]
-#[repr(u8)]
-#[serde(rename_all = "snake_case")]
-pub enum NounClass {
-    Class1Um = 1,
-    Aba,
-
-    U,
-    Oo,
-
-    Class3Um,
-    Imi,
-
-    Ili,
-    Ama,
-
-    Isi,
-    Izi,
-
-    In,
-    Izin,
-
-    Ulu,
-    Ubu,
-    Uku,
-}
-
-pub struct NounClassOpt(pub Option<NounClass>);
-
-pub trait NounClassOptExt {
-    fn flatten(self) -> Option<NounClass>;
-}
-
-impl NounClassOptExt for Option<NounClassOpt> {
-    fn flatten(self) -> Option<NounClass> {
-        self.and_then(|x| x.0)
-    }
-}
-
-impl FromSql for NounClassOpt {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        let v = value.as_i64()?;
-
-        if v == 255 {
-            Ok(NounClassOpt(None))
-        } else {
-            let err = || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, "NounClass")));
-            NounClass::try_from_primitive(v.try_into().map_err(|_| err())?)
-                .map_err(|_| err())
-                .map(|x| NounClassOpt(Some(x)))
-        }
-    }
-}
-
-impl ToSql for NounClass {
-    fn to_sql(&self) -> Result<ToSqlOutput<'_>, rusqlite::Error> {
-        Ok(ToSqlOutput::Owned(Value::Integer(*self as u8 as i64)))
-    }
-}
-
+/// Noun class prefixes with singular and plural
 pub struct NounClassPrefixes {
     pub singular: &'static str,
     pub plural: Option<&'static str>,
@@ -193,8 +82,13 @@ impl NounClassPrefixes {
     }
 }
 
-impl NounClass {
-    pub fn to_prefixes(&self) -> NounClassPrefixes {
+pub trait NounClassExt {
+    fn to_prefixes(&self) -> NounClassPrefixes;
+    fn to_u8(&self) -> u8;
+}
+
+impl NounClassExt for NounClass {
+    fn to_prefixes(&self) -> NounClassPrefixes {
         use NounClass::*;
 
         let both = NounClassPrefixes::from_singular_plural;
@@ -214,7 +108,7 @@ impl NounClass {
     }
 
     /// Used in askama templates
-    pub fn to_u8(&self) -> u8 {
+    fn to_u8(&self) -> u8 {
         *self as u8
     }
 }
