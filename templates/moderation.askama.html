@@ -104,7 +104,7 @@
                                 {%- call macros::noun_class(is_plural, class, false) -%}
                             {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
                                 <ins>{%- call macros::noun_class(new_is_plural, class, false) -%}</ins>
-                                <del>{%- call macros::noun_class(old_is_plural, class, false) -%}</del>
+                                {#- remove linebreak -#}<del>{%- call macros::noun_class(old_is_plural, class, false) -%}</del>
                         {%- endmatch -%}
                     {%- when MaybeEdited::Edited with { old, new } -%}
                         <ins>
@@ -126,9 +126,9 @@
                         {%- call macros::plural(p) -%}
                     {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
                         <ins>
-                            {%- if old_is_plural %}
+                            {%- if old_is_plural -%}
                                 plural
-                            {%- else %}
+                            {%- else -%}
                                 [singular]
                             {%- endif -%}
                         </ins>
@@ -145,11 +145,11 @@
             {%- macro result_edited(res) -%}
                 {%- match res -%}
                     {%- when MaybeEdited::New with (w) -%}
-                        <ins>{%- call macros::format_result(w, false) -%}</ins>
+                        <ins>{%- call macros::format_result_html(w) -%}</ins>
                     {%- when MaybeEdited::Old with (w) -%}
-                        {%- call macros::format_result(w, false) -%}
+                        {%- call macros::format_result_html(w) -%}
                     {%- when MaybeEdited::Edited with { old, new } -%}
-                        <ins>{%- call macros::format_result(new, false) -%}</ins> <del>{%- call macros::format_result(old, false) -%}</del>
+                        <ins>{%- call macros::format_result_html(new) -%}</ins> <del>{%- call macros::format_result_html(old) -%}</del>
                 {%- endmatch -%}
             {%- endmacro -%}
 
@@ -318,7 +318,7 @@
                         <li>
                             <article class="column_list spaced_flex_list">
                                 <header>
-                                    <h3 class="suggested_word_text">{%- call macros::format_result(s.word, false) -%}</h3>
+                                    <h3 class="suggested_word_text">{%- call macros::format_result_html(s.word) -%}</h3>
                                 </header>
 
                                 <div>

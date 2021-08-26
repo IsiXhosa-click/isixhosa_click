@@ -67,7 +67,7 @@
 {%- macro noun_class(is_plural, noun_class, raw) -%}
     {%- match noun_class -%}
         {%- when Some with (class) %}
-            - class {% call noun_class_prefix(is_plural, class, raw) %}
+            - class {% call noun_class_prefix(is_plural, class, raw) -%}
         {%- when None -%}
     {%- endmatch -%}
 {%- endmacro -%}
@@ -102,7 +102,13 @@
 {# HACK(restioson): Can't get it working without manual whitespace here :/ #}
 {% macro plural(plural) %}{% if plural %}{{ "plural " }}{% endif %}{% endmacro %}
 
-{%- macro format_result(word, raw) -%}
+{%- macro format_result_html(word) -%}
     {{- word.english }} - {{ word.xhosa }}
-    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class.map_noun_class(), raw) %})
+    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class.map_noun_class(), false) -%})
+{%- endmacro -%}
+
+{%- macro format_result_meta(word) -%}
+    {{- word.english }} - {{ word.xhosa -}}
+    {{ " " }}({% call plural(word.is_plural) %}{{ word.part_of_speech }}
+    {%- call noun_class(word.is_plural, word.noun_class.map_noun_class(), true) %})
 {%- endmacro -%}

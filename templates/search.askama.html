@@ -27,7 +27,7 @@
             <div id="hits">
                 <ol class="hits">
                     {%- for hit in hits -%}
-                        <li class="hit">{%- call macros::format_result(hit, false) -%}</li>
+                        <li class="hit">{%- call macros::format_result_html(hit) -%}</li>
                     {%- endfor -%}
                 </ol>
             </div>

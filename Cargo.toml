@@ -14,10 +14,10 @@ fallible-iterator = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 futures = "0.3"
 warp = { version = "0.3", features = ["tls"] }
-# Pinned to rev to stop need for random .clone()s in templates
-# TODO switch back to main - fixes template bug with Some(true) => Some(r#true)
-askama = { git = "https://github.com/Kijewski/askama", branch = "pr-issue-531", features = ["with-warp"] }
-askama_warp = { git = "https://github.com/Kijewski/askama", branch = "pr-issue-531" }
+# Pinned to rev to stop need for random .clone()s in templates - waiting for askama 0.11
+askama = { git = "https://github.com/djc/askama", rev = "ed2e640" }
+# Waiting for my PR to be merged
+html-minifier = { git = "https://github.com/Restioson/html-minifier", branch = "master" }
 rusqlite = { version = "0.25", features = ["bundled"] } # bundled to give 3.35 assuredly
 log = "0.4"
 log4rs = "1"
