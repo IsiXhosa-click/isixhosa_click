@@ -8,7 +8,6 @@ use askama::Template;
 use num_enum::TryFromPrimitive;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use reqwest::header::CONTENT_TYPE;
 use rusqlite::{params, ToSql};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -24,6 +23,7 @@ use crate::language::NounClassExt;
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
 use crate::render;
+use warp::http::header::CONTENT_TYPE;
 
 #[derive(Template, Debug)]
 #[template(path = "submit.askama.html")]
