@@ -105,10 +105,6 @@ th {
     vertical-align: top;
 }
 
-tr > * + * {
-    padding-left: 2em;
-}
-
 caption, .caption {
     text-align: left;
     font-size: large;
