@@ -30,6 +30,10 @@ td:first-child, th:first-child {
     gap: 1em;
 }
 
+h2.caption {
+    margin: 0 0 0.5em;
+}
+
 #examples > h3 {
     font-size: 1em;
     margin: 0;
