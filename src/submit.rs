@@ -22,7 +22,6 @@ use crate::database::WordOrSuggestionId;
 use crate::language::NounClassExt;
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
-use crate::render;
 use warp::http::header::CONTENT_TYPE;
 
 #[derive(Template, Debug)]
@@ -393,11 +392,11 @@ async fn submit_word_page(
     .await
     .unwrap();
 
-    Ok(render(SubmitTemplate {
+    Ok(SubmitTemplate {
         previous_success,
         action,
         word,
-    }))
+    })
 }
 
 async fn submit_new_word_form(

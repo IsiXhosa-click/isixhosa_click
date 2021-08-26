@@ -2,7 +2,7 @@ use crate::database::existing::ExistingWord;
 use crate::language::NounClassExt;
 use crate::language::PartOfSpeech;
 use crate::serialization::OptionMapNounClassExt;
-use crate::{NotFound, render};
+use crate::NotFound;
 use askama::Template;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -34,12 +34,12 @@ pub async fn word(
     previous_success: Option<WordChangeMethod>,
 ) -> Result<impl warp::Reply, Rejection> {
     Ok(match ExistingWord::fetch_full(&db, word_id) {
-        Some(word) => render(WordDetails {
+        Some(word) => WordDetails {
             word,
             previous_success,
-        })
+        }
         .into_response(),
-        None => render(NotFound).into_response(),
+        None => NotFound.into_response(),
     })
 }
 

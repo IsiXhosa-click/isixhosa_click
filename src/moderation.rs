@@ -13,7 +13,6 @@ use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use std::sync::Arc;
 use warp::{Filter, Rejection, Reply, body};
-use crate::render;
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]
@@ -119,11 +118,11 @@ async fn suggested_words(
     .await
     .unwrap();
 
-    Ok(render(ModerationTemplate {
+    Ok(ModerationTemplate {
         previous_success,
         word_suggestions,
         word_deletions,
-    }))
+    })
 }
 
 async fn edit_suggestion_form(

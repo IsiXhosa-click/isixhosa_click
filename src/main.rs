@@ -12,7 +12,6 @@
 // - move PartOfSpeech to isixhosa crate
 // - attributions - editing users & references & so on
 // - better search engine optimisation
-// - html/css/js min for static/ directory
 // - cache control headers/etags
 // - gzip compress
 
@@ -60,11 +59,14 @@ use tokio::task;
 use warp::http::Uri;
 use warp::path::FullPath;
 use warp::reject::Reject;
-use warp::{path, Filter, Rejection};
+use warp::{path, Filter, Rejection, Reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
 use std::time::Instant;
-use warp::reply::{html, Html};
+use warp::reply::Response;
+use warp::filters::compression::gzip;
+use warp::http::header::CONTENT_TYPE;
+use std::fmt::Debug;
 
 mod moderation;
 // mod auth;
@@ -144,16 +146,40 @@ fn init_logging(cfg: &Config) {
     log4rs::init_config(log_config).unwrap();
 }
 
-fn time<F: FnOnce() -> R, R>(label: &str, f: F) -> R {
-    let now = Instant::now();
-    let v = f();
-    log::debug!("{} took {}us to complete", label, now.elapsed().as_micros());
-    v
+async fn process_body<F, E>(response: Response, minify: F) -> Result<Response, Rejection>
+    where F: FnOnce(&str) -> Result<String, E>,
+          E: Debug
+{
+    let (parts, body) = response.into_parts();
+    let bytes = warp::hyper::body::to_bytes(body).await.unwrap();
+    let body_str = std::str::from_utf8(&bytes).unwrap();
+    let minified = minify(body_str).unwrap();
+    Ok(Response::from_parts(parts, minified.into()))
 }
 
-fn render<T: Template>(template: T) -> Html<String> {
-    let rendered = time("Render", || template.render().unwrap());
-    html(time("Minify", || html_minifier::minify(rendered).unwrap()))
+async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
+    struct TimeItGuard(Instant);
+
+    impl Drop for TimeItGuard {
+        fn drop(&mut self) {
+            log::debug!("Minify took {}us to complete", self.0.elapsed().as_micros());
+        }
+    }
+
+    let _g = TimeItGuard(Instant::now());
+
+    let response = reply.into_response();
+    if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
+        let content_type = content_type.to_str().unwrap();
+
+        if content_type.starts_with("text/html") {
+            return process_body(response, |s| html_minifier::minify(s)).await
+        } else if content_type.starts_with("text/css") {
+            return process_body(response, minifier::css::minify).await
+        }
+    }
+
+    Ok(response)
 }
 
 #[tokio::main]
@@ -195,7 +221,7 @@ async fn main() {
     let tantivy_cloned = tantivy.clone();
     let tantivy_filter = warp::any().map(move || tantivy_cloned.clone());
 
-    let search_page = warp::any().map(|| render(Search::default()));
+    let search_page = warp::any().map(Search::default);
     let query_search = warp::query()
         .and(tantivy_filter.clone())
         .and_then(query_search);
@@ -206,7 +232,7 @@ async fn main() {
     let about = warp::get()
         .and(warp::path("about"))
         .and(path::end())
-        .map(|| render(AboutPage));
+        .map(|| AboutPage);
 
     let routes = warp::fs::dir(cfg.static_site_files)
         .or(warp::fs::dir(cfg.other_static_files))
@@ -219,7 +245,7 @@ async fn main() {
             .and(path::end())
             .map(|| warp::redirect(Uri::from_static("/search"))))
         .or(about)
-        .or(warp::any().map(|| render(NotFound)));
+        .or(warp::any().map(|| NotFound));
 
     log::info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
@@ -236,7 +262,13 @@ async fn main() {
 
     tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
 
-    warp::serve(routes.with(warp::log("isixhosa")))
+    // Add post filters such as minification, logging, and gzip
+    let serve = routes
+        .and_then(minify)
+        .with(warp::log("isixhosa"))
+        .with(gzip());
+
+    warp::serve(serve)
         .tls()
         .cert_path(cfg.cert_path)
         .key_path(cfg.key_path)
@@ -249,11 +281,11 @@ struct SearchQuery {
     query: String,
 }
 
-#[derive(Template)]
+#[derive(Template, Clone, Copy, Debug)]
 #[template(path = "404.askama.html")]
 struct NotFound;
 
-#[derive(Template)]
+#[derive(Template, Clone, Copy, Debug)]
 #[template(path = "about.askama.html")]
 struct AboutPage;
 
@@ -270,10 +302,10 @@ async fn query_search(
 ) -> Result<impl warp::Reply, Rejection> {
     let results = tantivy.search(query.query.clone()).await.unwrap();
 
-    Ok(render(Search {
+    Ok(Search {
         query: query.query,
         hits: results,
-    }))
+    })
 }
 
 fn live_search(ws: warp::ws::Ws, tantivy: Arc<TantivyClient>) -> impl warp::Reply {
