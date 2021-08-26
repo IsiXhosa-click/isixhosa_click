@@ -1,6 +1,7 @@
 td:first-child, th:first-child {
     box-sizing: border-box;
-    width: 10.625em;
+    width: 8em;
+    padding-right: 0.5em;
 }
 
 #word_header > form {

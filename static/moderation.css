@@ -13,7 +13,8 @@ h3.suggested_word_text > strong.noun_class_prefix {
 
 td:first-child, th:first-child {
     box-sizing: border-box;
-    width: 10.625em;
+    width: 8em;
+    padding-right: 0.5em;
 }
 
 li::marker {
