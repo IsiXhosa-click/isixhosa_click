@@ -55,5 +55,6 @@ a.hit {
     border: solid 1px lightgray;
     border-top: none;
     background: white;
-    padding: 1.1rem 5px;
+    padding: 0.5rem 5px;
+    line-height: initial;
 }

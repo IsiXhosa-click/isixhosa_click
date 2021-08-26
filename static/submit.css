@@ -70,6 +70,10 @@ label > * {
     gap: 1em;
 }
 
+textarea#note {
+    width: 88%; /* Idk */
+}
+
 @media screen and (max-width: 800px) {
     .word_select_container, .select_popover {
         width: 14.5em;
@@ -77,6 +81,10 @@ label > * {
 
     .row_or_column {
         flex-direction: column;
+    }
+
+    textarea#note {
+        width: 94%; /* Idk */
     }
 }
 

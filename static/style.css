@@ -61,12 +61,16 @@ input[type='checkbox'] {
     margin: 0;
 }
 
-input {
+input, textarea {
     font-family: "Open Sans", sans-serif;
     font-size: 0.9rem;
     border-radius: 3px;
     border: solid 1px lightgray;
     padding: 5px 5px;
+}
+
+textarea {
+    resize: none;
 }
 
 select {
@@ -105,7 +109,7 @@ tr > * + * {
     padding-left: 2em;
 }
 
-caption {
+caption, .caption {
     text-align: left;
     font-size: large;
     font-weight: bold;

@@ -355,8 +355,7 @@ impl Handler<SearchRequest> for SearcherActor {
             searcher
                 .search(&query, &top_docs)?
                 .into_iter()
-                .map(|(score, doc_address)| {
-                    dbg!(score);
+                .map(|(_score, doc_address)| {
                     searcher
                         .doc(doc_address)
                         .map_err(anyhow::Error::from)

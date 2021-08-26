@@ -94,8 +94,10 @@
                         </div>
 
                         <div>
-                            <label for="note">Note (extra information):</label>
-                            <input type="text" id="note" name="note" autocomplete="off" value="{{ word.note }}">
+                            <label for="note">Note:</label>
+                            <textarea id="note" name="note" autocomplete="off">
+                                {{- word.note -}}
+                            </textarea>
                         </div>
                     </div>
                 </fieldset>

@@ -29,3 +29,12 @@ td:first-child, th:first-child {
 #word_header {
     gap: 1em;
 }
+
+#examples > h3 {
+    font-size: 1em;
+    margin: 0;
+}
+
+#examples > p {
+    margin: 0.5em 0;
+}

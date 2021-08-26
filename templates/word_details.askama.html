@@ -112,7 +112,7 @@
 
                                     {%- if !word.note.is_empty() -%}
                                         <tr>
-                                            <th scope="row">Note (extra information)</th>
+                                            <th scope="row">Note</th>
                                             <td>{{ word.note }}</td>
                                         </tr>
                                     {%- endif -%}
@@ -122,25 +122,16 @@
 
                         {%- if !word.examples.is_empty() -%}
                             <div>
-                                <table>
-                                    <caption>Examples</caption>
+                                <h2 class="caption">Examples</h2>
 
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">English</th>
-                                            <th scope="col">Xhosa</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-                                        {%- for ex in word.examples -%}
-                                            <tr>
-                                                <td>{{ ex.english }}</td>
-                                                <td>{{ ex.xhosa }}</td>
-                                            </tr>
-                                        {%- endfor -%}
-                                    </tbody>
-                                </table>
+                                {%- for ex in word.examples -%}
+                                    <div id="examples">
+                                        <h3>English</h3>
+                                        <p>{{ ex.english }}</p>
+                                        <h3>Xhosa</h3>
+                                        <p>{{ ex.xhosa }}</p>
+                                    </div>
+                                {%- endfor -%}
                             </div>
                         {%- endif -%}
 
