@@ -3,7 +3,7 @@
     margin: 0;
 }
 
-h3.suggested_word_text > * > strong.noun_class_prefix {
+h3.suggested_word_text > a > * > strong.noun_class_prefix {
     font-weight: bolder;
 }
 
@@ -21,6 +21,10 @@ li::marker {
     font-size: 1.17em;
 }
 
-#suggestions > ol > li {
+#suggestions > ul {
+    margin: 0;
+}
+
+#suggestions > ul > li {
     margin-bottom: 1em;
 }

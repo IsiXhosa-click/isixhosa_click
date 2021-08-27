@@ -1,9 +1,9 @@
-use crate::database::accept_whole_word_suggestion;
-use crate::database::deletion::WordDeletionSuggestion;
+use crate::database::deletion::{ExampleDeletionSuggestion, WordDeletionSuggestion};
 use crate::database::existing::ExistingWord;
-use crate::database::suggestion::{MaybeEdited, SuggestedWord};
+use crate::database::suggestion::{MaybeEdited, SuggestedExample, SuggestedWord};
+use crate::database::{accept_example, accept_whole_word_suggestion};
 use crate::language::NounClassExt;
-use crate::search::{TantivyClient, WordDocument};
+use crate::search::{TantivyClient, WordDocument, WordHit};
 use crate::serialization::OptionMapNounClassExt;
 use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordSubmission};
 use askama::Template;
@@ -11,8 +11,9 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
+use std::collections::HashMap;
 use std::sync::Arc;
-use warp::{Filter, Rejection, Reply, body};
+use warp::{body, Filter, Rejection, Reply};
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]
@@ -20,6 +21,17 @@ struct ModerationTemplate {
     previous_success: Option<Success>,
     word_suggestions: Vec<SuggestedWord>,
     word_deletions: Vec<WordDeletionSuggestion>,
+    example_suggestions: HashMap<WordHit, Vec<SuggestedExample>>,
+    example_deletion_suggestions: Vec<ExampleDeletionSuggestion>,
+}
+
+impl ModerationTemplate {
+    fn is_empty(&self) -> bool {
+        self.word_suggestions.is_empty()
+            && self.word_deletions.is_empty()
+            && self.example_suggestions.is_empty()
+            && self.example_deletion_suggestions.is_empty()
+    }
 }
 
 #[derive(Debug)]
@@ -48,8 +60,9 @@ struct Action {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "suggestion_type", content = "suggestion")]
 enum ActionTarget {
-    WordDeletionSuggestion(#[serde_as(as = "DisplayFromStr")] u64),
-    WordSuggestion(#[serde_as(as = "DisplayFromStr")] u64),
+    WordDeletion(#[serde_as(as = "DisplayFromStr")] u64),
+    Word(#[serde_as(as = "DisplayFromStr")] u64),
+    Example(#[serde_as(as = "DisplayFromStr")] u64),
 }
 
 pub fn accept(
@@ -108,21 +121,17 @@ async fn suggested_words(
     db: Pool<SqliteConnectionManager>,
     previous_success: Option<Success>,
 ) -> Result<impl warp::Reply, Rejection> {
-    let db_clone = db.clone();
-    let (word_suggestions, word_deletions) = tokio::task::spawn_blocking(move || {
-        (
-            SuggestedWord::fetch_all_full(&db_clone),
-            WordDeletionSuggestion::fetch_all(&db_clone),
-        )
+    tokio::task::spawn_blocking(move || {
+        Ok(ModerationTemplate {
+            previous_success,
+            word_suggestions: SuggestedWord::fetch_all_full(&db),
+            word_deletions: WordDeletionSuggestion::fetch_all(&db),
+            example_suggestions: SuggestedExample::fetch_all_for_existing_words(&db),
+            example_deletion_suggestions: ExampleDeletionSuggestion::fetch_all(&db),
+        })
     })
     .await
-    .unwrap();
-
-    Ok(ModerationTemplate {
-        previous_success,
-        word_suggestions,
-        word_deletions,
-    })
+    .unwrap()
 }
 
 async fn edit_suggestion_form(
@@ -238,13 +247,54 @@ async fn reject_deletion(
     .await
 }
 
+async fn accept_suggested_example(
+    db: &Pool<SqliteConnectionManager>,
+    suggestion: u64,
+) -> Result<impl Reply, Rejection> {
+    let (db, db_clone) = (db.clone(), db.clone());
+    tokio::task::spawn_blocking(move || {
+        accept_example(&db, SuggestedExample::fetch(&db, suggestion).unwrap())
+    })
+    .await
+    .unwrap();
+
+    suggested_words(
+        db_clone,
+        Some(Success {
+            success: true,
+            method: Some(Method::Accept),
+        }),
+    )
+    .await
+}
+
+async fn reject_suggested_example(
+    db: &Pool<SqliteConnectionManager>,
+    suggestion: u64,
+) -> Result<impl Reply, Rejection> {
+    let (db, db_clone) = (db.clone(), db.clone());
+    let success = tokio::task::spawn_blocking(move || SuggestedExample::delete(&db, suggestion))
+        .await
+        .unwrap();
+
+    suggested_words(
+        db_clone,
+        Some(Success {
+            success,
+            method: Some(Method::Reject),
+        }),
+    )
+    .await
+}
+
 async fn process_one(
     db: Pool<SqliteConnectionManager>,
     tantivy: Arc<TantivyClient>,
     params: Action,
 ) -> Result<impl Reply, Rejection> {
+    // TODO consider just extracting the previous_success from each? or just success bool
     match params.suggestion {
-        ActionTarget::WordDeletionSuggestion(suggestion) => match params.method {
+        ActionTarget::WordDeletion(suggestion) => match params.method {
             Method::Edit => {
                 log::warn!(
                     "Got request to edit word deletion suggestion, but this makes no sense!\
@@ -268,7 +318,7 @@ async fn process_one(
                 .await
                 .map(Reply::into_response),
         },
-        ActionTarget::WordSuggestion(suggestion) => match params.method {
+        ActionTarget::Word(suggestion) => match params.method {
             Method::Edit => edit_suggestion_page(db, suggestion)
                 .await
                 .map(Reply::into_response),
@@ -276,6 +326,15 @@ async fn process_one(
                 .await
                 .map(Reply::into_response),
             Method::Reject => reject_suggested_word(&db, suggestion)
+                .await
+                .map(Reply::into_response),
+        },
+        ActionTarget::Example(suggestion) => match params.method {
+            Method::Edit => todo!("Example standalone editing"),
+            Method::Accept => accept_suggested_example(&db, suggestion)
+                .await
+                .map(Reply::into_response),
+            Method::Reject => reject_suggested_example(&db, suggestion)
                 .await
                 .map(Reply::into_response),
         },

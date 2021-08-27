@@ -23,7 +23,7 @@ impl Display for DiscrimOutOfRange {
 
 impl StdError for DiscrimOutOfRange {}
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct SerializeDisplay<T>(pub T);
 
 impl<T: Display> Display for SerializeDisplay<T> {
@@ -66,7 +66,7 @@ impl OptionMapNounClassExt for Option<NounClass> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Hash, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct SerializePrimitive<T, P> {
     pub val: T,
     phantom: PhantomData<fn() -> P>,
@@ -124,7 +124,7 @@ impl NounClassOptExt for Option<NounClassOpt> {
     fn flatten(self) -> Option<NounClass> {
         self.and_then(|x| match x {
             NounClassOpt::Some(v) => Some(v),
-            NounClassOpt::Remove => None
+            NounClassOpt::Remove => None,
         })
     }
 }
@@ -139,7 +139,7 @@ impl FromSql for NounClassOpt {
             let err = || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, "NounClass")));
             NounClass::try_from_primitive(v.try_into().map_err(|_| err())?)
                 .map_err(|_| err())
-                .map(|x| NounClassOpt::Some(x))
+                .map(NounClassOpt::Some)
         }
     }
 }

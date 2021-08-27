@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::doc;
-use tantivy::query::{FuzzyTermQuery, BooleanQuery, Query};
+use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query};
 use tantivy::schema::{Field, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
@@ -335,7 +335,8 @@ impl Handler<SearchRequest> for SearcherActor {
 
                 let english = Term::from_field_text(client.schema_info.english, &token.text);
                 let xhosa = Term::from_field_text(client.schema_info.xhosa, &token.text);
-                let xhosa_stemmed = Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
+                let xhosa_stemmed =
+                    Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
                 let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
                 let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
                 let query_xhosa_stemmed = FuzzyTermQuery::new_prefix(xhosa_stemmed, distance, true);
@@ -391,7 +392,7 @@ pub struct WordDocument {
     pub noun_class: Option<NounClass>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Hash, Eq, PartialEq)]
 pub struct WordHit {
     pub id: u64,
     pub english: String,

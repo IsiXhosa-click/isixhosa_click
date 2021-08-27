@@ -34,6 +34,6 @@ tantivy = "0.15"
 anyhow = "1"
 num_cpus = "1"
 confy = "0.4"
-isixhosa = { version = "0.1.0", features = ["with-serde-1", "with-num_enum-0_5"] }
+isixhosa = { version = "0.1.1", features = ["with-serde-1", "with-num_enum-0_5"] }
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability

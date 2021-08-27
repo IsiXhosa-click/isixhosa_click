@@ -52,21 +52,21 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 use submit::submit;
 use tokio::task;
+use warp::filters::compression::gzip;
+use warp::http::header::CONTENT_TYPE;
 use warp::http::Uri;
 use warp::path::FullPath;
 use warp::reject::Reject;
+use warp::reply::Response;
 use warp::{path, Filter, Rejection, Reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-use std::time::Instant;
-use warp::reply::Response;
-use warp::filters::compression::gzip;
-use warp::http::header::CONTENT_TYPE;
-use std::fmt::Debug;
 
 mod moderation;
 // mod auth;
@@ -147,8 +147,9 @@ fn init_logging(cfg: &Config) {
 }
 
 async fn process_body<F, E>(response: Response, minify: F) -> Result<Response, Rejection>
-    where F: FnOnce(&str) -> Result<String, E>,
-          E: Debug
+where
+    F: FnOnce(&str) -> Result<String, E>,
+    E: Debug,
 {
     let (parts, body) = response.into_parts();
     let bytes = warp::hyper::body::to_bytes(body).await.unwrap();
@@ -173,9 +174,10 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
         let content_type = content_type.to_str().unwrap();
 
         if content_type.starts_with("text/html") {
-            return process_body(response, |s| html_minifier::minify(s)).await
+            #[allow(clippy::redundant_closure)] // lifetime issue
+            return process_body(response, |s| html_minifier::minify(s)).await;
         } else if content_type.starts_with("text/css") {
-            return process_body(response, minifier::css::minify).await
+            return process_body(response, minifier::css::minify).await;
         }
     }
 

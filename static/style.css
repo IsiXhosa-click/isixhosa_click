@@ -210,3 +210,12 @@ caption, .caption {
         display: inline;
     }
 }
+
+ul.examples > li > h3 {
+    font-size: 1em;
+    margin: 0;
+}
+
+ul.examples > li > p {
+    margin: 0.5em 0;
+}

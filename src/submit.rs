@@ -122,12 +122,35 @@ pub struct WordSubmission {
     note: String,
 }
 
+impl WordSubmission {
+    fn has_any_changes_in_word(&self, o: &WordFormTemplate) -> bool {
+        self.english != o.english
+            || self.xhosa != o.xhosa
+            || self.xhosa_tone_markings != o.xhosa_tone_markings
+            || self.infinitive != o.infinitive
+            || self.is_plural != o.is_plural
+            || self.noun_class != o.noun_class
+            || o.part_of_speech
+                .map(|p| p != self.part_of_speech)
+                .unwrap_or(true)
+    }
+}
+
 #[derive(Deserialize, Clone, Debug)]
 struct ExampleSubmission {
     suggestion_id: Option<u64>,
     existing_id: Option<u64>,
     english: String,
     xhosa: String,
+}
+
+impl ExampleSubmission {
+    fn has_any_changes(&self, o: &Option<ExistingExample>) -> bool {
+        match o {
+            Some(o) => o.english != self.english || o.xhosa != self.xhosa,
+            None => true,
+        }
+    }
 }
 
 #[serde_as]
@@ -481,9 +504,8 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
         // HACK(restioson): 255 is sentinel for "no noun class" as opposed to null which is noun class
         // not changed. It's bad I know but I don't have the energy for anything else, feel free to
         // submit a PR which implements a more principled solution and I will gladly merge it.
-        let noun_class: Option<NounClass> = w.noun_class.into();
-        let noun_class: ToSqlOutput<'static> = match noun_class {
-            Some(class) if noun_class != orig.noun_class => {
+        let noun_class: ToSqlOutput<'static> = match w.noun_class {
+            Some(class) if w.noun_class != orig.noun_class => {
                 ToSqlOutput::Owned(Value::Integer(class as u8 as i64))
             }
             Some(_) => None::<u8>.to_sql().unwrap(),
@@ -516,12 +538,23 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
             diff(w.note.clone(), &orig.note, use_submitted)
         ];
 
-        let suggested_word_id: i64 = conn
-            .prepare(INSERT_SUGGESTION)
-            .unwrap()
-            .query_row(params, |row| row.get("suggestion_id"))
-            .unwrap();
-        let suggested_word_id = Some(suggested_word_id).filter(|_| existing_id.is_none());
+        let orig_suggestion = WordFormTemplate::fetch_from_db(&db, None, w.suggestion_id);
+
+        let any_changes = match orig_suggestion {
+            Some(orig_suggestion) => w.has_any_changes_in_word(&orig_suggestion),
+            None => w.has_any_changes_in_word(&orig),
+        };
+
+        let suggested_word_id = if any_changes {
+            let suggested_word_id: i64 = conn
+                .prepare(INSERT_SUGGESTION)
+                .unwrap()
+                .query_row(params, |row| row.get("suggestion_id"))
+                .unwrap();
+            Some(suggested_word_id).filter(|_| existing_id.is_none())
+        } else {
+            None
+        };
 
         process_linked_words(&mut w, &db, suggested_word_id);
         process_examples(&mut w, &db, suggested_word_id);
@@ -670,20 +703,31 @@ fn process_examples(
     const DELETE_EXAMPLE_SUGGESTION: &str =
         "DELETE FROM example_suggestions WHERE suggestion_id = ?1;";
 
+    const SUGGEST_EXAMPLE_DELETION: &str = "
+        INSERT INTO example_deletion_suggestions (example_id, reason)
+            VALUES (?1, ?2)
+            ON CONFLICT(example_id) DO NOTHING;
+    ";
+
     let conn = db.get().unwrap();
     let mut upsert_example = conn.prepare(INSERT_EXAMPLE_SUGGESTION).unwrap();
-    let mut upsert_clone = conn.prepare(INSERT_EXAMPLE_SUGGESTION).unwrap();
     let mut delete_suggested_example = conn.prepare(DELETE_EXAMPLE_SUGGESTION).unwrap();
+    let mut suggest_example_deletion = conn.prepare(SUGGEST_EXAMPLE_DELETION).unwrap();
 
     let use_submitted = w.existing_id.is_none() && w.suggestion_id.is_none();
     let existing_id = w.existing_id;
     let examples = &mut w.examples;
-    let mut insert_example = |new: ExampleSubmission, old: Option<ExistingExample>| {
+    let mut maybe_insert_example = |new: ExampleSubmission, old: Option<ExistingExample>| {
+        if !new.has_any_changes(&old) {
+            dbg!("No changes!", new, old);
+            return;
+        }
+
         upsert_example
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
-                "Example added",
+                "Example edited",
                 suggested_word_id,
                 existing_id,
                 diff_opt(
@@ -709,7 +753,7 @@ fn process_examples(
                 {
                     let new = examples.remove(i);
                     let old = new.existing_id.and_then(|id| ExistingExample::get(&db, id));
-                    insert_example(new, old);
+                    maybe_insert_example(new, old);
                 } else {
                     delete_suggested_example
                         .execute(params![prev.suggestion_id])
@@ -719,30 +763,25 @@ fn process_examples(
         }
         (_, Some(existing)) => {
             for prev in ExistingExample::fetch_all_for_word(&db, existing) {
-                if let Some(i) = examples
+                let new = examples
                     .iter()
                     .position(|new| new.existing_id == Some(prev.example_id))
-                {
-                    let new = examples.remove(i);
-                    insert_example(new, Some(prev));
-                } else {
-                    // TODO deletion
-                    upsert_clone
-                        .execute(params![
-                            None::<i64>,
-                            prev.example_id,
-                            "Example removed",
-                            suggested_word_id,
-                            w.existing_id,
-                            prev.english,
-                            prev.xhosa,
-                        ])
-                        .unwrap();
+                    .map(|idx| examples.remove(idx))
+                    .filter(|new| !(new.english.is_empty() && new.xhosa.is_empty()));
+
+                match new {
+                    Some(new) => maybe_insert_example(new, Some(prev)),
+                    None => {
+                        suggest_example_deletion
+                            .execute(params![prev.example_id, "No reason given"])
+                            .unwrap();
+                    }
                 }
             }
         }
         (None, None) => {}
     }
+
     for new in &w.examples {
         if new.english.is_empty() && new.xhosa.is_empty() {
             continue;

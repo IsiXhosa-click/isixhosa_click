@@ -34,12 +34,3 @@ td:first-child, th:first-child {
 h2.caption {
     margin: 0 0 0.5em;
 }
-
-#examples > h3 {
-    font-size: 1em;
-    margin: 0;
-}
-
-#examples > p {
-    margin: 0.5em 0;
-}

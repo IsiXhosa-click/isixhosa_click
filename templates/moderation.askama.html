@@ -170,8 +170,18 @@
                 {%- call action(
                     method,
                     label,
-                    "word_suggestion",
+                    "word",
                     s.suggestion_id,
+                    "Are you sure you want to {} this suggestion?"|format(method)
+            ) -%}
+            {%- endmacro -%}
+
+            {%- macro example_suggestion_action(method, label) -%}
+                {%- call action(
+                    method,
+                    label,
+                    "example",
+                    ex.suggestion_id,
                     "Are you sure you want to {} this suggestion?"|format(method)
             ) -%}
             {%- endmacro -%}
@@ -191,25 +201,38 @@
                 {%- call action(
                     method,
                     label,
-                    "word_deletion_suggestion",
+                    "word_deletion",
                     s.suggestion_id,
                     prompt
                 ) -%}
             {%- endmacro -%}
 
             <div id="suggestions">
-                <ol>
+                {%- if !word_suggestions.is_empty() -%}
+                    <h2>Suggested words</h2>
+                {%- endif -%}
+                <ul>
                     {%- for s in word_suggestions -%}
                         <li>
                             <article class="column_list spaced_flex_list">
                                 <header>
                                    <h3 class="suggested_word_text">
+                                        {%- match s.word_id -%}
+                                            {%- when Some with (id) -%}
+                                                <a href="https://isixhosa.click/word/{{ id }}">
+                                            {%- when None -%}
+                                        {%- endmatch -%}
+
                                         {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
                                         - (
                                             {%- call plural_edited(s.is_plural) -%}
                                             {%- call maybe_edited(s.part_of_speech) -%}
                                             {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
                                         )
+
+                                        {%- if s.word_id.is_some() -%}
+                                            </a>
+                                        {%- endif -%}
                                     </h3>
                                 </header>
 
@@ -259,25 +282,18 @@
 
                                 {%- if !s.examples.is_empty() -%}
                                     <div>
-                                        <table>
-                                            <caption>Examples</caption>
+                                        <h2 class="caption">Examples</h2>
 
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col">English</th>
-                                                    <th scope="col">Xhosa</th>
-                                                </tr>
-                                            </thead>
-
-                                            <tbody>
-                                                {%- for ex in s.examples -%}
-                                                    <tr>
-                                                        <td>"{%- call maybe_edited(ex.english) -%}"</td>
-                                                        <td>"{%- call maybe_edited(ex.xhosa) -%}"</td>
-                                                    </tr>
-                                                {%- endfor -%}
-                                            </tbody>
-                                        </table>
+                                        <ul class="examples">
+                                            {%- for ex in s.examples -%}
+                                                <li>
+                                                    <h3>English</h3>
+                                                    <p>{%- call maybe_edited(s.english) -%}</p>
+                                                    <h3>Xhosa</h3>
+                                                     <p>{%- call maybe_edited(s.xhosa) -%}</p>
+                                                </li>
+                                            {%- endfor -%}
+                                        </ul>
                                     </div>
                                 {%- endif -%}
 
@@ -313,12 +329,21 @@
                             </article>
                         </li>
                     {%- endfor -%}
+                </ul>
 
+                {%- if !word_deletions.is_empty() -%}
+                    <h2>Deletion suggestions</h2>
+                {%- endif -%}
+                <ul>
                     {%- for s in word_deletions -%}
                         <li>
                             <article class="column_list spaced_flex_list">
                                 <header>
-                                    <h3 class="suggested_word_text">{%- call macros::format_result_html(s.word) -%}</h3>
+                                    <h3 class="suggested_word_text">
+                                        <a href="https://isixhosa.click/word/{{ s.word.id }}">
+                                            {%- call macros::format_result_html(s.word) -%}
+                                        </a>
+                                    </h3>
                                 </header>
 
                                 <div>
@@ -343,9 +368,53 @@
                             </article>
                         </li>
                     {%- endfor -%}
-                </ol>
+                </ul>
 
-                {%- if word_suggestions.is_empty() && word_deletions.is_empty() -%}
+                {%- if !example_suggestions.is_empty() -%}
+                    <h2>Example suggestions</h2>
+                {%- endif -%}
+                <ul>
+                    {%- for (word, examples) in example_suggestions -%}
+                        <li>
+                            <article class="column_list">
+                                <header>
+                                    <h3 class="suggested_word_text">
+                                        <a Dhref="https://isixhosa.click/word/{{ word.id }}">
+                                            {%- call macros::format_result_html(word) -%}
+                                        </a>
+                                    </h3>
+                                </header>
+
+                                {%- if !examples.is_empty() -%}
+                                    <div>
+                                        <h2 class="caption">Examples</h2>
+
+                                        <ul class="examples">
+                                            {%- for ex in examples -%}
+                                                <li>
+                                                    <h3>English</h3>
+                                                    <p>{%- call maybe_edited(ex.english) -%}</p>
+                                                    <h3>Xhosa</h3>
+                                                     <p>{%- call maybe_edited(ex.xhosa) -%}</p>
+
+                                                    <div class="row_list spaced_flex_list">
+                                                        {%- call example_suggestion_action("accept", "Accept") -%}
+                                                        {%- call example_suggestion_action("reject", "Reject") -%}
+                                                        <!-- TODO example suggestion edit form -->
+                                                    </div>
+                                                </li>
+                                            {%- endfor -%}
+                                        </ul>
+
+                                        <!-- TODO example deletions -->
+                                    </div>
+                                {%- endif -%}
+                            </article>
+                        </li>
+                    {%- endfor -%}
+                </ul>
+
+                {%- if self.is_empty() -%}
                     <p>There are no suggestions to review at this time.<p>
                 {%- endif -%}
             </div>

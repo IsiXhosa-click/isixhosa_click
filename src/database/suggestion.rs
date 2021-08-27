@@ -1,6 +1,6 @@
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
-use crate::database::{get_word_hit_from_db, WordOrSuggestionId};
+use crate::database::WordOrSuggestionId;
 use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
 use crate::serialization::NounClassOpt;
@@ -10,6 +10,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
+use std::collections::HashMap;
 use std::convert::TryInto;
 
 #[derive(Clone, Debug)]
@@ -122,7 +123,10 @@ impl SuggestedWord {
         let noun_class = match noun_class {
             Ok(Some(NounClassOpt::Remove)) if old != None => MaybeEdited::Edited { old, new: None },
             Ok(Some(NounClassOpt::Remove)) => MaybeEdited::Old(None),
-            Ok(Some(NounClassOpt::Some(new))) => MaybeEdited::Edited { old, new: Some(new) },
+            Ok(Some(NounClassOpt::Some(new))) => MaybeEdited::Edited {
+                old,
+                new: Some(new),
+            },
             Ok(None) => MaybeEdited::Old(old),
             Err(e) => panic!("Invalid noun class discriminator in database: {:?}", e),
         };
@@ -182,6 +186,55 @@ pub struct SuggestedExample {
 }
 
 impl SuggestedExample {
+    pub fn fetch_all_for_existing_words(
+        db: &Pool<SqliteConnectionManager>,
+    ) -> HashMap<WordHit, Vec<SuggestedExample>> {
+        const SELECT: &str = "
+            SELECT words.word_id,
+                   example_suggestions.suggestion_id, example_suggestions.existing_word_id,
+                   example_suggestions.existing_example_id, example_suggestions.changes_summary,
+                   example_suggestions.xhosa, example_suggestions.suggested_word_id,
+                   example_suggestions.english
+            FROM example_suggestions
+            INNER JOIN words
+            ON example_suggestions.existing_word_id = words.word_id;
+        ";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+        let examples = query.query(params![]).unwrap();
+
+        let mut map: HashMap<u64, Vec<SuggestedExample>> = HashMap::new();
+
+        examples
+            .map(|row| {
+                Ok((
+                    row.get("word_id")?,
+                    SuggestedExample::from_row_fetch_original(&row, &db),
+                ))
+            })
+            .for_each(|(word_id, example)| {
+                map.entry(word_id)
+                    .or_insert_with(|| Vec::with_capacity(1))
+                    .push(example);
+                Ok(())
+            })
+            .unwrap();
+
+        map.into_iter()
+            .map(|(id, examples)| {
+                (
+                    WordHit::fetch_from_db(
+                        db,
+                        WordOrSuggestionId::ExistingWord { existing_id: id },
+                    )
+                    .unwrap(),
+                    examples,
+                )
+            })
+            .collect()
+    }
+
     pub fn fetch_all_for_suggestion(
         db: &Pool<SqliteConnectionManager>,
         suggested_word_id: u64,
@@ -200,11 +253,33 @@ impl SuggestedExample {
             .unwrap()
     }
 
-    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) {
+    pub fn fetch(
+        db: &Pool<SqliteConnectionManager>,
+        suggestion_id: u64,
+    ) -> Option<SuggestedExample> {
+        const SELECT: &str = "
+            SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id,
+                   changes_summary, xhosa, english
+            FROM example_suggestions WHERE suggestion_id = ?1";
+
+        let conn = db.get().unwrap();
+        let ex = conn
+            .prepare(SELECT)
+            .unwrap()
+            .query_row(params![suggestion_id], |row| {
+                Ok(Self::from_row_fetch_original(row, db))
+            })
+            .optional()
+            .unwrap();
+        ex
+    }
+
+    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1";
 
         let conn = db.get().unwrap();
-        conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        modified_rows == 1
     }
 
     fn from_row_fetch_original(row: &Row<'_>, db: &Pool<SqliteConnectionManager>) -> Self {
@@ -258,11 +333,12 @@ impl SuggestedLinkedWord {
         vec
     }
 
-    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) {
+    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1";
 
         let conn = db.get().unwrap();
-        conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        modified_rows == 1
     }
 
     fn from_row_populate_both(row: &Row<'_>, db: &Pool<SqliteConnectionManager>) -> Self {
@@ -288,7 +364,7 @@ impl SuggestedLinkedWord {
         };
 
         let first_existing_word_id = row.get("first_existing_word_id").unwrap();
-        let first_hit = get_word_hit_from_db(
+        let first_hit = WordHit::fetch_from_db(
             db,
             WordOrSuggestionId::ExistingWord {
                 existing_id: first_existing_word_id,
@@ -297,7 +373,7 @@ impl SuggestedLinkedWord {
         .unwrap();
 
         let first = if let Some(other_first) = other_first {
-            let other_hit = get_word_hit_from_db(
+            let other_hit = WordHit::fetch_from_db(
                 db,
                 WordOrSuggestionId::ExistingWord {
                     existing_id: other_first,
@@ -315,10 +391,10 @@ impl SuggestedLinkedWord {
         let second =
             WordOrSuggestionId::try_from_row(row, "second_existing_word_id", "suggested_word_id")
                 .unwrap();
-        let second_hit = get_word_hit_from_db(db, second).unwrap();
+        let second_hit = WordHit::fetch_from_db(db, second).unwrap();
 
         let second = if let Some(other_second) = other_second {
-            let other_hit = get_word_hit_from_db(
+            let other_hit = WordHit::fetch_from_db(
                 db,
                 WordOrSuggestionId::ExistingWord {
                     existing_id: other_second,

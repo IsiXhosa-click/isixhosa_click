@@ -4,7 +4,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
 
-use crate::database::{get_word_hit_from_db, WordOrSuggestionId};
+use crate::database::WordOrSuggestionId;
 use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
 use crate::serialization::{NounClassOpt, NounClassOptExt};
@@ -59,11 +59,12 @@ impl ExistingWord {
         opt
     }
 
-    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) {
+    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM words WHERE word_id = ?1;";
 
         let conn = db.get().unwrap();
-        conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        modified_rows == 1
     }
 }
 
@@ -218,7 +219,7 @@ impl ExistingLinkedWord {
             first_word_id,
             second_word_id,
             link_type: row.get("link_type")?,
-            other: get_word_hit_from_db(
+            other: WordHit::fetch_from_db(
                 db,
                 WordOrSuggestionId::ExistingWord {
                     existing_id: populate,

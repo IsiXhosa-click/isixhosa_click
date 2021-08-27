@@ -985,9 +985,9 @@ dependencies = [
 
 [[package]]
 name = "isixhosa"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ee88fcfbd1c4fd2032e5594cf41d787eb82a3599ce271c0f1965f3c4f2e42ad"
+checksum = "20475615c77fb0d5131288a1da141e342dfc74b3ea0a4c0eb84a0423ffedf5d1"
 dependencies = [
  "num_enum",
  "serde",

@@ -18,46 +18,53 @@ pub mod deletion;
 pub mod existing;
 pub mod suggestion;
 
-// TODO this assumes unedited suggestion
-pub fn get_word_hit_from_db(
-    db: &Pool<SqliteConnectionManager>,
-    id: WordOrSuggestionId,
-) -> Option<WordHit> {
-    const SELECT_EXISTING: &str =
-        "SELECT english, xhosa, part_of_speech, is_plural, noun_class FROM words
+impl WordHit {
+    fn try_from_row_and_id(row: &Row<'_>, id: u64) -> Result<WordHit, rusqlite::Error> {
+        Ok(WordHit {
+            id,
+            english: row.get("english")?,
+            xhosa: row.get("xhosa")?,
+            part_of_speech: SerializeDisplay(row.get("part_of_speech")?),
+            is_plural: row.get("is_plural")?,
+            noun_class: row
+                .get::<&str, Option<NounClassOpt>>("noun_class")?
+                .flatten()
+                .map(SerializePrimitive::new),
+        })
+    }
+}
+
+impl WordHit {
+    pub fn fetch_from_db(
+        db: &Pool<SqliteConnectionManager>,
+        id: WordOrSuggestionId,
+    ) -> Option<WordHit> {
+        const SELECT_EXISTING: &str =
+            "SELECT word_id, english, xhosa, part_of_speech, is_plural, noun_class FROM words
             WHERE word_id = ?1;";
-    const SELECT_SUGGESTED: &str =
-        "SELECT english, xhosa, part_of_speech, is_plural, noun_class FROM word_suggestions
+        const SELECT_SUGGESTED: &str =
+            "SELECT english, xhosa, part_of_speech, is_plural, noun_class FROM word_suggestions
             WHERE suggestion_id = ?1;";
 
-    let conn = db.get().unwrap();
+        let conn = db.get().unwrap();
 
-    let stmt = match id {
-        WordOrSuggestionId::ExistingWord { .. } => SELECT_EXISTING,
-        WordOrSuggestionId::Suggested { .. } => SELECT_SUGGESTED,
-    };
+        let stmt = match id {
+            WordOrSuggestionId::ExistingWord { .. } => SELECT_EXISTING,
+            WordOrSuggestionId::Suggested { .. } => SELECT_SUGGESTED,
+        };
 
-    // WTF rustc?
-    let v = conn
-        .prepare(stmt)
-        .unwrap()
-        .query_row(params![id.inner()], |row| {
-            Ok(WordHit {
-                id: id.inner() as u64,
-                english: row.get("english").unwrap(),
-                xhosa: row.get("xhosa").unwrap(),
-                part_of_speech: SerializeDisplay(row.get("part_of_speech").unwrap()),
-                is_plural: row.get("is_plural").unwrap(),
-                noun_class: row
-                    .get::<&str, Option<NounClassOpt>>("noun_class")
-                    .unwrap()
-                    .flatten()
-                    .map(SerializePrimitive::new),
+        // WTF rustc?
+        #[allow(clippy::redundant_closure)] // implementation of FnOnce is not general enough
+        let v = conn
+            .prepare(stmt)
+            .unwrap()
+            .query_row(params![id.inner()], |row| {
+                WordHit::try_from_row_and_id(row, id.inner())
             })
-        })
-        .optional()
-        .unwrap();
-    v
+            .optional()
+            .unwrap();
+        v
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

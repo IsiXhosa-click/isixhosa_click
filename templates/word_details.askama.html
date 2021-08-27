@@ -124,14 +124,16 @@
                             <div>
                                 <h2 class="caption">Examples</h2>
 
+                                <ul class="examples">
                                 {%- for ex in word.examples -%}
-                                    <div id="examples">
+                                    <li>
                                         <h3>English</h3>
                                         <p>{{ ex.english }}</p>
                                         <h3>Xhosa</h3>
                                         <p>{{ ex.xhosa }}</p>
-                                    </div>
+                                    </li>
                                 {%- endfor -%}
+                                </ul>
                             </div>
                         {%- endif -%}
 
