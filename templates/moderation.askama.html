@@ -481,8 +481,8 @@
                                         <ul>
                                             {%- for l in assoc.linked_word_suggestions -%}
                                                 <li>
-                                                    {%- call result_edited(l.other(WordId(word.id.clone()).into())) -%} -
-                                                    {%- call maybe_edited(l.link_type) -%}
+                                                    {%- call result_edited(l.other(WordId(word.id.clone()).into())) %} -
+                                                    {% call maybe_edited(l.link_type) -%}
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call linked_word_suggestion_action("accept", "Accept") -%}
