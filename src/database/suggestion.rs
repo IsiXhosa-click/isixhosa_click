@@ -12,6 +12,7 @@ use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use crate::submit::WordId;
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -190,7 +191,7 @@ pub struct SuggestedExample {
 impl SuggestedExample {
     pub fn fetch_all_for_existing_words(
         db: &Pool<SqliteConnectionManager>,
-    ) -> Vec<(WordHit, Vec<SuggestedExample>)> {
+    ) -> impl Iterator<Item = (WordId, Vec<SuggestedExample>)> {
         const SELECT: &str = "
             SELECT words.word_id,
                    example_suggestions.suggestion_id, example_suggestions.existing_word_id,
@@ -206,12 +207,12 @@ impl SuggestedExample {
         let mut query = conn.prepare(SELECT).unwrap();
         let examples = query.query(params![]).unwrap();
 
-        let mut map: HashMap<u64, Vec<SuggestedExample>> = HashMap::new();
+        let mut map: HashMap<WordId, Vec<SuggestedExample>> = HashMap::new();
 
         examples
             .map(|row| {
                 Ok((
-                    row.get("word_id")?,
+                    WordId(row.get::<&str, u64>("word_id")?),
                     SuggestedExample::from_row_fetch_original(&row, &db),
                 ))
             })
@@ -223,22 +224,7 @@ impl SuggestedExample {
             })
             .unwrap();
 
-        let mut vec: Vec<(WordHit, Vec<SuggestedExample>)> = map
-            .into_iter()
-            .map(|(id, examples)| {
-                (
-                    WordHit::fetch_from_db(
-                        db,
-                        WordOrSuggestionId::ExistingWord { existing_id: id },
-                    )
-                    .unwrap(),
-                    examples,
-                )
-            })
-            .collect();
-
-        vec.sort_by_key(|(hit, _examples)| hit.id);
-        vec
+        map.into_iter()
     }
 
     pub fn fetch_all_for_suggestion(

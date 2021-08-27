@@ -1,8 +1,7 @@
 #![feature(associated_type_bounds)]
 
 // Before launch:
-// - TODO word, example, and linked word deletion
-// - TODO word, example, and linked word editing - make sure to edit *_full methods to reflect this
+// - TODO linked word deletion and editing
 // - TODO user system
 
 // Soon after launch, perhaps before:

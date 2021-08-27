@@ -173,7 +173,7 @@
                     "word",
                     s.suggestion_id,
                     "Are you sure you want to {} this suggestion?"|format(method)
-            ) -%}
+                ) -%}
             {%- endmacro -%}
 
             {%- macro example_suggestion_action(method, label) -%}
@@ -183,7 +183,28 @@
                     "example",
                     ex.suggestion_id,
                     "Are you sure you want to {} this suggestion?"|format(method)
-            ) -%}
+                ) -%}
+            {%- endmacro -%}
+
+            {%- macro example_deletion_action(is_accept, label) -%}
+                {%- let prompt -%}
+                {%- let method -%}
+
+                {%- if is_accept -%}
+                    {%- let prompt = "Are you sure you want to permanently delete this example?" -%}
+                    {%- let method = "accept" -%}
+                {%- else -%}
+                    {%- let prompt = "Are you sure you want to reject this suggestion?" -%}
+                    {%- let method = "reject" -%}
+                {%- endif -%}
+
+                {%- call action(
+                    method,
+                    label,
+                    "example_deletion",
+                    del.suggestion_id,
+                    prompt
+                ) -%}
             {%- endmacro -%}
 
             {%- macro word_deletion_action(is_accept, label) -%}
@@ -362,19 +383,19 @@
                                 </div>
 
                                 <div class="row_list spaced_flex_list">
-                                    {%- call word_deletion_action(true, "Accept") -%}
-                                    {%- call word_deletion_action(false, "Reject") -%}
+                                    {%- call word_deletion_action(true, "Accept deletion") -%}
+                                    {%- call word_deletion_action(false, "Reject deletion") -%}
                                 </div>
                             </article>
                         </li>
                     {%- endfor -%}
                 </ul>
 
-                {%- if !example_suggestions.is_empty() -%}
-                    <h2>Example suggestions</h2>
+                {%- if !word_associated_edits.is_empty() -%}
+                    <h2>Edited examples and linked words</h2>
                 {%- endif -%}
                 <ul>
-                    {%- for (word, examples) in example_suggestions -%}
+                    {%- for (word, assoc) in word_associated_edits -%}
                         <li>
                             <article class="column_list">
                                 <header>
@@ -385,12 +406,12 @@
                                     </h3>
                                 </header>
 
-                                {%- if !examples.is_empty() -%}
+                                {%- if !assoc.examples_is_empty()-%}
                                     <div>
                                         <h2 class="caption">Examples</h2>
 
                                         <ul class="examples">
-                                            {%- for ex in examples -%}
+                                            {%- for ex in assoc.example_suggestions -%}
                                                 <li>
                                                     <h3>English</h3>
                                                     <p>{%- call maybe_edited(ex.english) -%}</p>
@@ -404,9 +425,21 @@
                                                     </div>
                                                 </li>
                                             {%- endfor -%}
-                                        </ul>
 
-                                        <!-- TODO example deletions -->
+                                            {%- for del in assoc.example_deletion_suggestions -%}
+                                                <li>
+                                                    <h3><del>English</del></h3>
+                                                    <p><del>{{ del.example.english }}</del></p>
+                                                    <h3><del>Xhosa</del></h3>
+                                                    <p><del>{{ del.example.xhosa }}</del></p>
+
+                                                    <div class="row_list spaced_flex_list">
+                                                        {%- call example_deletion_action(true, "Accept deletion") -%}
+                                                        {%- call example_deletion_action(false, "Reject deletion") -%}
+                                                    </div>
+                                                </li>
+                                            {%- endfor -%}
+                                        </ul>
                                     </div>
                                 {%- endif -%}
                             </article>

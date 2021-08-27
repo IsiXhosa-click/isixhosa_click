@@ -13,6 +13,7 @@ use crate::database::suggestion::{
 use crate::search::WordHit;
 use crate::serialization::{NounClassOpt, NounClassOptExt};
 use crate::serialization::{SerializeDisplay, SerializePrimitive};
+use crate::submit::WordId;
 
 pub mod deletion;
 pub mod existing;
@@ -73,6 +74,13 @@ pub enum WordOrSuggestionId {
     ExistingWord { existing_id: u64 },
     Suggested { suggestion_id: u64 },
 }
+
+impl From<WordId> for WordOrSuggestionId {
+    fn from(id: WordId) -> Self {
+        WordOrSuggestionId::ExistingWord { existing_id: id.0 }
+    }
+}
+
 
 impl WordOrSuggestionId {
     fn inner(&self) -> u64 {

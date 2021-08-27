@@ -1,6 +1,5 @@
 // TODO form validation for extra fields & make sure not empty str (or is empty str)
 // TODO HTML sanitisation - allow markdown in text only, no html
-// TODO handle multiple examples
 
 use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
@@ -233,7 +232,7 @@ pub fn submit(
 }
 
 pub async fn edit_suggestion_page(
-    db: Pool<SqliteConnectionManager>,
+    db: &Pool<SqliteConnectionManager>,
     suggestion_id: u64,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
@@ -244,7 +243,7 @@ pub async fn edit_suggestion_page(
     .unwrap();
 
     submit_word_page(
-        db,
+        db.clone(),
         None,
         SubmitFormAction::EditSuggestion {
             suggestion_id,
@@ -467,7 +466,6 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionMa
     .unwrap()
 }
 
-// TODO don't submit if zero difference
 pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionManager>) {
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
@@ -487,8 +485,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
                 note = excluded.note
             RETURNING suggestion_id;
         ";
-
-    // TODO support update to existing words
 
     let db = db.clone();
     let mut w = word;
@@ -679,8 +675,6 @@ fn process_linked_words(
             .unwrap();
     }
 }
-
-// TODO(next time) it sometimes gives null/null
 
 fn process_examples(
     w: &mut WordSubmission,

@@ -45,7 +45,7 @@ impl TantivyClient {
         let lowercaser = TextAnalyzer::from(SimpleTokenizer).filter(LowerCaser);
         index.tokenizers().register("lowercaser", lowercaser);
 
-        let num_searchers = num_cpus::get(); // TODO config
+        let num_searchers = num_cpus::get();
         let reader = index
             .reader_builder()
             .num_searchers(num_searchers)
@@ -186,7 +186,6 @@ impl WriterActor {
     }
 }
 
-// TODO perhaps commit more infrequently?
 impl Actor for WriterActor {}
 
 #[derive(Debug)]

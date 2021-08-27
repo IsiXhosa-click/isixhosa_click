@@ -3,8 +3,10 @@ use crate::search::WordHit;
 use fallible_iterator::FallibleIterator;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
+use rusqlite::{params, Row};
 use std::convert::TryFrom;
+use crate::submit::WordId;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct WordDeletionSuggestion {
@@ -82,37 +84,52 @@ pub struct ExampleDeletionSuggestion {
     pub reason: String,
 }
 
+impl TryFrom<&Row<'_>> for ExampleDeletionSuggestion {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(ExampleDeletionSuggestion {
+            suggestion_id: row.get::<&str, i64>("suggestion_id")? as u64,
+            example: ExistingExample::try_from(row)?,
+            reason: row.get("reason")?,
+        })
+    }
+}
+
 impl ExampleDeletionSuggestion {
-    pub fn fetch_all(db: &Pool<SqliteConnectionManager>) -> Vec<Self> {
+    pub fn fetch_all(db: &Pool<SqliteConnectionManager>) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT examples.example_id, examples.word_id, examples.xhosa, examples.english,
                     example_deletion_suggestions.suggestion_id, example_deletion_suggestions.reason
             FROM examples
             INNER JOIN example_deletion_suggestions
-            ON examples.example_id = example_deletion_suggestions.example_id
-            ORDER BY examples.example_id;";
+            ON examples.example_id = example_deletion_suggestions.example_id;";
 
         let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+        let deletions = query.query(params![]).unwrap();
 
-        // thanks rustc for forcing this `let x = ...; x` very cool
-        let x = conn
-            .prepare(SELECT)
-            .unwrap()
-            .query(params![])
-            .unwrap()
+        let mut map: HashMap<WordId, Vec<Self>> = HashMap::new();
+
+        deletions
             .map(|row| {
-                Ok(ExampleDeletionSuggestion {
-                    suggestion_id: row.get::<&str, i64>("suggestion_id").unwrap() as u64,
-                    example: ExistingExample::try_from(row).unwrap(),
-                    reason: row.get("reason").unwrap(),
-                })
+                Ok((
+                    WordId(row.get::<&str, u64>("word_id")?),
+                    ExampleDeletionSuggestion::try_from(row)?,
+                ))
             })
-            .collect()
+            .for_each(|(word_id, deletion)| {
+                map.entry(word_id)
+                    .or_insert_with(|| Vec::with_capacity(1))
+                    .push(deletion);
+                Ok(())
+            })
             .unwrap();
-        x
+
+        map.into_iter()
     }
 
-    pub fn fetch_example_id_for_suggestion(
+    fn fetch_example_id_for_suggestion(
         db: &Pool<SqliteConnectionManager>,
         suggestion: u64,
     ) -> u64 {
@@ -128,7 +145,20 @@ impl ExampleDeletionSuggestion {
         word_id
     }
 
-    pub fn reject(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
+    pub fn accept(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
+        const DELETE_EXAMPLE: &str = "DELETE FROM examples WHERE example_id = ?1";
+
+        let to_delete = Self::fetch_example_id_for_suggestion(db, suggestion);
+        let conn = db.get().unwrap();
+        conn
+            .prepare(DELETE_EXAMPLE)
+            .unwrap()
+            .execute(params![to_delete])
+            .unwrap();
+        Self::delete_suggestion(db, suggestion);
+    }
+
+    pub fn delete_suggestion(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
         const DELETE: &str = "DELETE FROM example_deletion_suggestions WHERE suggestion_id = ?1";
 
         let conn = db.get().unwrap();
