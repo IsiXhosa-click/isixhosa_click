@@ -605,7 +605,6 @@ fn process_linked_words(
     let existing_word_id = w.existing_id;
     let mut maybe_insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
         if !new.has_any_changes(&old) {
-            dbg!("No changes!", new, old);
             return;
         }
 
@@ -724,7 +723,6 @@ fn process_examples(
     let examples = &mut w.examples;
     let mut maybe_insert_example = |new: ExampleSubmission, old: Option<ExistingExample>| {
         if !new.has_any_changes(&old) {
-            dbg!("No changes!", new, old);
             return;
         }
 

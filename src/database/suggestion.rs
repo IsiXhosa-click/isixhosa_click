@@ -635,8 +635,8 @@ impl SuggestedLinkedWord {
             suggestion_id: row.get("suggestion_id").unwrap(),
 
             existing_linked_word_id: row.get("existing_linked_word_id").unwrap(),
-            first: dbg!(first),
-            second: dbg!(second),
+            first,
+            second,
             link_type: MaybeEdited::from_row("link_type", row, other_type),
         }
     }
