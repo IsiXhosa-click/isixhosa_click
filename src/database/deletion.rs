@@ -1,12 +1,12 @@
-use crate::database::existing::ExistingExample;
+use crate::database::existing::{ExistingExample, ExistingLinkedWord};
 use crate::search::WordHit;
+use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, Row};
-use std::convert::TryFrom;
-use crate::submit::WordId;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 #[derive(Debug)]
 pub struct WordDeletionSuggestion {
@@ -97,7 +97,9 @@ impl TryFrom<&Row<'_>> for ExampleDeletionSuggestion {
 }
 
 impl ExampleDeletionSuggestion {
-    pub fn fetch_all(db: &Pool<SqliteConnectionManager>) -> impl Iterator<Item = (WordId, Vec<Self>)> {
+    pub fn fetch_all(
+        db: &Pool<SqliteConnectionManager>,
+    ) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT examples.example_id, examples.word_id, examples.xhosa, examples.english,
                     example_deletion_suggestions.suggestion_id, example_deletion_suggestions.reason
@@ -129,10 +131,7 @@ impl ExampleDeletionSuggestion {
         map.into_iter()
     }
 
-    fn fetch_example_id_for_suggestion(
-        db: &Pool<SqliteConnectionManager>,
-        suggestion: u64,
-    ) -> u64 {
+    fn fetch_example_id_for_suggestion(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> u64 {
         const SELECT: &str =
             "SELECT example_id FROM example_deletion_suggestions WHERE suggestion_id = ?1;";
 
@@ -150,8 +149,7 @@ impl ExampleDeletionSuggestion {
 
         let to_delete = Self::fetch_example_id_for_suggestion(db, suggestion);
         let conn = db.get().unwrap();
-        conn
-            .prepare(DELETE_EXAMPLE)
+        conn.prepare(DELETE_EXAMPLE)
             .unwrap()
             .execute(params![to_delete])
             .unwrap();
@@ -160,6 +158,100 @@ impl ExampleDeletionSuggestion {
 
     pub fn delete_suggestion(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
         const DELETE: &str = "DELETE FROM example_deletion_suggestions WHERE suggestion_id = ?1";
+
+        let conn = db.get().unwrap();
+        conn.prepare(DELETE)
+            .unwrap()
+            .execute(params![suggestion])
+            .unwrap();
+    }
+}
+
+#[derive(Debug)]
+pub struct LinkedWordDeletionSuggestion {
+    pub suggestion_id: u64,
+    pub link: ExistingLinkedWord,
+    pub reason: String,
+}
+
+impl LinkedWordDeletionSuggestion {
+    fn try_from_row_populate_other(
+        row: &Row<'_>,
+        db: &Pool<SqliteConnectionManager>,
+        skip_populating: u64,
+    ) -> Result<Self, rusqlite::Error> {
+        Ok(LinkedWordDeletionSuggestion {
+            suggestion_id: row.get::<&str, i64>("suggestion_id")? as u64,
+            link: ExistingLinkedWord::try_from_row_populate_other(row, db, skip_populating)?,
+            reason: row.get("reason")?,
+        })
+    }
+
+    pub fn fetch_all(
+        db: &Pool<SqliteConnectionManager>,
+    ) -> impl Iterator<Item = (WordId, Vec<Self>)> {
+        const SELECT: &str =
+            "SELECT linked_words.link_id, linked_words.link_type, linked_words.first_word_id,
+                    linked_words.second_word_id, linked_word_deletion_suggestions.suggestion_id,
+                    linked_word_deletion_suggestions.reason
+            FROM linked_words
+            INNER JOIN linked_word_deletion_suggestions
+            ON linked_words.link_id = linked_word_deletion_suggestions.linked_word_id;";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+        let deletions = query.query(params![]).unwrap();
+
+        let mut map: HashMap<WordId, Vec<Self>> = HashMap::new();
+
+        deletions
+            .map(|row| {
+                // Chosen is mostly arbitrary
+                let first_id = row.get::<&str, u64>("first_word_id")?;
+                Ok((
+                    WordId(first_id),
+                    LinkedWordDeletionSuggestion::try_from_row_populate_other(row, db, first_id)?,
+                ))
+            })
+            .for_each(|(word_id, deletion)| {
+                map.entry(word_id)
+                    .or_insert_with(|| Vec::with_capacity(1))
+                    .push(deletion);
+                Ok(())
+            })
+            .unwrap();
+
+        map.into_iter()
+    }
+
+    fn fetch_link_id_for_suggestion(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> u64 {
+        const SELECT: &str =
+            "SELECT linked_word_id FROM linked_word_deletion_suggestions WHERE suggestion_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let word_id = conn
+            .prepare(SELECT)
+            .unwrap()
+            .query_row(params![suggestion], |row| row.get("linked_word_id"))
+            .unwrap();
+        word_id
+    }
+
+    pub fn accept(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
+        const DELETE_EXAMPLE: &str = "DELETE FROM linked_words WHERE linked_id = ?1";
+
+        let to_delete = Self::fetch_link_id_for_suggestion(db, suggestion);
+        let conn = db.get().unwrap();
+        conn.prepare(DELETE_EXAMPLE)
+            .unwrap()
+            .execute(params![to_delete])
+            .unwrap();
+        Self::delete_suggestion(db, suggestion);
+    }
+
+    pub fn delete_suggestion(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
+        const DELETE: &str =
+            "DELETE FROM linked_word_deletion_suggestions WHERE suggestion_id = ?1";
 
         let conn = db.get().unwrap();
         conn.prepare(DELETE)

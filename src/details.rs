@@ -33,7 +33,11 @@ pub async fn word(
     db: Pool<SqliteConnectionManager>,
     previous_success: Option<WordChangeMethod>,
 ) -> Result<impl warp::Reply, Rejection> {
-    Ok(match ExistingWord::fetch_full(&db, word_id) {
+    let db = db.clone();
+    let word = tokio::task::spawn_blocking(move || ExistingWord::fetch_full(&db, word_id))
+        .await
+        .unwrap();
+    Ok(match word {
         Some(word) => WordDetails {
             word,
             previous_success,

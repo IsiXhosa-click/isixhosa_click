@@ -4,6 +4,7 @@ use crate::database::WordOrSuggestionId;
 use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
 use crate::serialization::NounClassOpt;
+use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
 use r2d2::Pool;
@@ -12,7 +13,6 @@ use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::convert::TryInto;
-use crate::submit::WordId;
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -106,6 +106,80 @@ impl SuggestedWord {
         }
 
         word
+    }
+
+    pub fn accept_just_word_suggestion(
+        &self,
+        db: &Pool<SqliteConnectionManager>,
+        delete: bool,
+    ) -> u64 {
+        const INSERT: &str = "
+            INSERT INTO words (
+                word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
+                noun_class, note
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                ON CONFLICT(word_id) DO UPDATE SET
+                    english = excluded.english,
+                    xhosa = excluded.xhosa,
+                    part_of_speech = excluded.part_of_speech,
+                    xhosa_tone_markings = excluded.xhosa_tone_markings,
+                    infinitive = excluded.infinitive,
+                    is_plural = excluded.is_plural,
+                    noun_class = excluded.noun_class,
+                    note = excluded.note
+                RETURNING word_id;
+        ";
+
+        let conn = db.get().unwrap();
+        let params = params![
+            self.word_id,
+            self.english.current(),
+            self.xhosa.current(),
+            self.part_of_speech.current(),
+            self.xhosa_tone_markings.current(),
+            self.infinitive.current(),
+            self.is_plural.current(),
+            self.noun_class.current().map(|x| x as u8),
+            self.note.current(),
+        ];
+
+        let id: i64 = conn
+            .prepare(INSERT)
+            .unwrap()
+            .query_row(params, |row| row.get("word_id"))
+            .unwrap();
+
+        if delete {
+            SuggestedWord::delete(db, self.suggestion_id);
+        }
+
+        id as u64
+    }
+
+    pub fn accept_whole_word_suggestion(self, db: &Pool<SqliteConnectionManager>) -> u64 {
+        let word_suggestion_id = self.suggestion_id;
+        let word_id = self.accept_just_word_suggestion(db, false);
+
+        for mut example in self.examples.into_iter() {
+            example.word_or_suggested_id = WordOrSuggestionId::ExistingWord {
+                existing_id: word_id,
+            };
+            example.accept(&db);
+        }
+
+        for mut linked_word in self.linked_words.into_iter() {
+            linked_word.second = MaybeEdited::New((
+                WordOrSuggestionId::ExistingWord {
+                    existing_id: word_id,
+                },
+                WordHit::empty(),
+            ));
+            linked_word.accept(db);
+        }
+
+        SuggestedWord::delete(db, word_suggestion_id);
+
+        word_id
     }
 
     pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
@@ -266,6 +340,38 @@ impl SuggestedExample {
         ex
     }
 
+    pub fn accept(&self, db: &Pool<SqliteConnectionManager>) -> i64 {
+        const INSERT: &str = "
+            INSERT INTO examples (example_id, word_id, english, xhosa) VALUES (?1, ?2, ?3, ?4)
+                ON CONFLICT(example_id) DO UPDATE SET
+                    english = excluded.english,
+                    xhosa = excluded.xhosa
+                RETURNING example_id;
+        ";
+
+        let conn = db.get().unwrap();
+        let word = match self.word_or_suggested_id {
+            WordOrSuggestionId::ExistingWord { existing_id } => existing_id,
+            _ => panic!("No existing word for suggested example {:#?}", self),
+        };
+        let params = params![
+            self.existing_example_id,
+            word,
+            self.english.current(),
+            self.xhosa.current()
+        ];
+
+        let id = conn
+            .prepare(INSERT)
+            .unwrap()
+            .query_row(params, |row| row.get("example_id"))
+            .unwrap();
+
+        SuggestedExample::delete(db, self.suggestion_id);
+
+        id
+    }
+
     pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1";
 
@@ -302,6 +408,23 @@ pub struct SuggestedLinkedWord {
 }
 
 impl SuggestedLinkedWord {
+    pub fn fetch(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> SuggestedLinkedWord {
+        const SELECT_SUGGESTION: &str = "
+        SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
+            first_existing_word_id, second_existing_word_id, suggested_word_id
+            FROM linked_word_suggestions WHERE suggestion_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let s = conn
+            .prepare(SELECT_SUGGESTION)
+            .unwrap()
+            .query_row(params![suggestion], |row| {
+                Ok(SuggestedLinkedWord::from_row_populate_both(row, db))
+            })
+            .unwrap();
+        s
+    }
+
     pub fn fetch_all_for_suggestion(
         db: &Pool<SqliteConnectionManager>,
         suggested_word_id: u64,
@@ -325,6 +448,91 @@ impl SuggestedLinkedWord {
         vec
     }
 
+    pub fn fetch_all_for_existing_words(
+        db: &Pool<SqliteConnectionManager>,
+    ) -> impl Iterator<Item = (WordId, Vec<SuggestedLinkedWord>)> {
+        const SELECT: &str = "
+            SELECT words.word_id,
+                   linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
+                   linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
+                   linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
+                   linked_word_suggestions.suggested_word_id
+                FROM linked_word_suggestions
+            JOIN words ON linked_word_suggestions.first_existing_word_id = words.word_id
+            UNION
+            SELECT words.word_id,
+                   linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
+                   linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
+                   linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
+                   linked_word_suggestions.suggested_word_id
+                FROM linked_word_suggestions
+            JOIN words ON linked_word_suggestions.second_existing_word_id = words.word_id;
+        ";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+        let examples = query.query(params![]).unwrap();
+
+        let mut map: HashMap<WordId, Vec<SuggestedLinkedWord>> = HashMap::new();
+
+        examples
+            .map(|row| {
+                let (first, second) = (
+                    row.get::<&str, Option<u64>>("first_existing_word_id")?,
+                    row.get::<&str, Option<u64>>("second_existing_word_id")?,
+                );
+
+                let chosen = first.or(second);
+
+                Ok((
+                    WordId(chosen.unwrap()),
+                    SuggestedLinkedWord::from_row_populate_both(row, db),
+                ))
+            })
+            .for_each(|(word_id, link)| {
+                map.entry(word_id)
+                    .or_insert_with(|| Vec::with_capacity(1))
+                    .push(link);
+                Ok(())
+            })
+            .unwrap();
+
+        map.into_iter()
+    }
+
+    pub fn accept(&self, db: &Pool<SqliteConnectionManager>) -> i64 {
+        const INSERT: &str = "
+            INSERT INTO linked_words (link_id, link_type, first_word_id, second_word_id)
+                VALUES (?1, ?2, ?3, ?4)
+                ON CONFLICT(link_id) DO UPDATE SET
+                    link_type = excluded.link_type
+                RETURNING link_id;
+        ";
+
+        let conn = db.get().unwrap();
+        let second_existing = match self.second.current().0 {
+            WordOrSuggestionId::ExistingWord { existing_id } => existing_id,
+            _ => panic!("No existing word for suggested linked word {:#?}", self),
+        };
+
+        let params = params![
+            self.existing_linked_word_id,
+            self.link_type.current(),
+            self.first.current().0,
+            second_existing
+        ];
+
+        let id = conn
+            .prepare(INSERT)
+            .unwrap()
+            .query_row(params, |row| row.get("link_id"))
+            .unwrap();
+
+        SuggestedLinkedWord::delete(db, self.suggestion_id);
+
+        id
+    }
+
     pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1";
 
@@ -334,17 +542,20 @@ impl SuggestedLinkedWord {
     }
 
     fn from_row_populate_both(row: &Row<'_>, db: &Pool<SqliteConnectionManager>) -> Self {
+        const SELECT: &str =
+            "SELECT link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1";
+
         let conn = db.get().unwrap();
         let existing_id = row
             .get::<&str, Option<i64>>("existing_linked_word_id")
             .unwrap();
         let (other_type, other_first, other_second) = if let Some(id) = existing_id {
             let trio = conn
-                .prepare("SELECT link_id FROM linked_words WHERE link_id = ?1")
+                .prepare(SELECT)
                 .unwrap()
                 .query_row(params![id], |r| {
                     Ok((
-                        r.get("link_id")?,
+                        r.get("link_type")?,
                         r.get("first_word_id")?,
                         r.get("second_word_id")?,
                     ))
@@ -355,29 +566,39 @@ impl SuggestedLinkedWord {
             (None, None, None)
         };
 
-        let first_existing_word_id = row.get("first_existing_word_id").unwrap();
-        let first_hit = WordHit::fetch_from_db(
-            db,
-            WordOrSuggestionId::ExistingWord {
-                existing_id: first_existing_word_id,
-            },
-        )
-        .unwrap();
+        let (first, second) = (
+            row.get::<&str, Option<u64>>("first_existing_word_id")
+                .unwrap(),
+            row.get::<&str, Option<u64>>("second_existing_word_id")
+                .unwrap(),
+        );
 
-        let first = if let Some(other_first) = other_first {
-            let other_hit = WordHit::fetch_from_db(
-                db,
-                WordOrSuggestionId::ExistingWord {
-                    existing_id: other_first,
-                },
-            )
-            .unwrap();
-            MaybeEdited::Edited {
-                new: (first_existing_word_id, first_hit),
-                old: (other_first, other_hit),
+        let existing_id = first.or(second).unwrap();
+
+        let first_hit =
+            WordHit::fetch_from_db(db, WordOrSuggestionId::ExistingWord { existing_id }).unwrap();
+
+        // TODO linked word standalone editing check this first and second logic
+        // It sometimes causes maybeedited to be edited when it should be old
+        // also the assumption that first is always existing is maybe wrong
+
+        let first = match other_first {
+            Some(other_first) if Some(other_first) != first => {
+                let other_hit = WordHit::fetch_from_db(
+                    db,
+                    WordOrSuggestionId::ExistingWord {
+                        existing_id: other_first,
+                    },
+                )
+                    .unwrap();
+                MaybeEdited::Edited {
+                    new: (existing_id, first_hit),
+                    old: (other_first, other_hit),
+                }
             }
-        } else {
-            MaybeEdited::New((first_existing_word_id, first_hit))
+            _ => {
+                MaybeEdited::New((existing_id, first_hit))
+            }
         };
 
         let second =
@@ -385,25 +606,28 @@ impl SuggestedLinkedWord {
                 .unwrap();
         let second_hit = WordHit::fetch_from_db(db, second).unwrap();
 
-        let second = if let Some(other_second) = other_second {
-            let other_hit = WordHit::fetch_from_db(
-                db,
-                WordOrSuggestionId::ExistingWord {
-                    existing_id: other_second,
-                },
-            )
-            .unwrap();
-            MaybeEdited::Edited {
-                new: (second, second_hit),
-                old: (
+        let second = match other_second {
+            Some(other_second) if (WordOrSuggestionId::from(WordId(other_second))) != second => {
+                let other_hit = WordHit::fetch_from_db(
+                    db,
                     WordOrSuggestionId::ExistingWord {
                         existing_id: other_second,
                     },
-                    other_hit,
-                ),
+                )
+                    .unwrap();
+                MaybeEdited::Edited {
+                    new: (second, second_hit),
+                    old: (
+                        WordOrSuggestionId::ExistingWord {
+                            existing_id: other_second,
+                        },
+                        other_hit,
+                    ),
+                }
             }
-        } else {
-            MaybeEdited::New((second, second_hit))
+            _ => {
+                MaybeEdited::New((second, second_hit))
+            }
         };
 
         SuggestedLinkedWord {
@@ -411,8 +635,8 @@ impl SuggestedLinkedWord {
             suggestion_id: row.get("suggestion_id").unwrap(),
 
             existing_linked_word_id: row.get("existing_linked_word_id").unwrap(),
-            first,
-            second,
+            first: dbg!(first),
+            second: dbg!(second),
             link_type: MaybeEdited::from_row("link_type", row, other_type),
         }
     }

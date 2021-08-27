@@ -155,8 +155,8 @@
 
             {%- macro action(method, label, suggestion_type, suggestion_id, prompt) -%}
                 <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded"
-                      {%- if (method.to_string() != "edit".to_string()) -%}
-                      onsubmit="return confirm('{{ prompt }}')"
+                      {%- if (method != "edit") -%}
+                        onsubmit="return confirm('{{ prompt }}')"
                       {%- endif -%}
                 >
                     <select name="suggestion_type" hidden><option value="{{ suggestion_type }}"></select>
@@ -173,6 +173,27 @@
                     "word",
                     s.suggestion_id,
                     "Are you sure you want to {} this suggestion?"|format(method)
+                ) -%}
+            {%- endmacro -%}
+
+            {%- macro word_deletion_action(is_accept, label) -%}
+                {%- let prompt -%}
+                {%- let method -%}
+
+                {%- if is_accept -%}
+                    {%- let prompt = "Are you sure you want to permanently delete this word?" -%}
+                    {%- let method = "accept" -%}
+                {%- else -%}
+                    {%- let prompt = "Are you sure you want to reject this suggestion?" -%}
+                    {%- let method = "reject" -%}
+                {%- endif -%}
+
+                {%- call action(
+                    method,
+                    label,
+                    "word_deletion",
+                    s.suggestion_id,
+                    prompt
                 ) -%}
             {%- endmacro -%}
 
@@ -207,12 +228,22 @@
                 ) -%}
             {%- endmacro -%}
 
-            {%- macro word_deletion_action(is_accept, label) -%}
+            {%- macro linked_word_suggestion_action(method, label) -%}
+                {%- call action(
+                    method,
+                    label,
+                    "linked_word",
+                    l.suggestion_id,
+                    "Are you sure you want to {} this suggestion?"|format(method)
+                ) -%}
+            {%- endmacro -%}
+
+            {%- macro linked_word_deletion_suggestion_action(is_accept, label) -%}
                 {%- let prompt -%}
                 {%- let method -%}
 
                 {%- if is_accept -%}
-                    {%- let prompt = "Are you sure you want to permanently delete this word?" -%}
+                    {%- let prompt = "Are you sure you want to permanently delete this linked word?" -%}
                     {%- let method = "accept" -%}
                 {%- else -%}
                     {%- let prompt = "Are you sure you want to reject this suggestion?" -%}
@@ -222,8 +253,8 @@
                 {%- call action(
                     method,
                     label,
-                    "word_deletion",
-                    s.suggestion_id,
+                    "linked_word_deletion",
+                    del.suggestion_id,
                     prompt
                 ) -%}
             {%- endmacro -%}
@@ -406,7 +437,7 @@
                                     </h3>
                                 </header>
 
-                                {%- if !assoc.examples_is_empty()-%}
+                                {%- if !assoc.examples_is_empty() -%}
                                     <div>
                                         <h2 class="caption">Examples</h2>
 
@@ -436,6 +467,41 @@
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_deletion_action(true, "Accept deletion") -%}
                                                         {%- call example_deletion_action(false, "Reject deletion") -%}
+                                                    </div>
+                                                </li>
+                                            {%- endfor -%}
+                                        </ul>
+                                    </div>
+                                {%- endif -%}
+
+                                {%- if !assoc.linked_words_is_empty() -%}
+                                    <div>
+                                        <h2 class="caption">Linked words</h2>
+
+                                        <ul>
+                                            {%- for l in assoc.linked_word_suggestions -%}
+                                                <li>
+                                                    {%- call result_edited(l.other(WordId(word.id.clone()).into())) -%} -
+                                                    {%- call maybe_edited(l.link_type) -%}
+
+                                                    <div class="row_list spaced_flex_list">
+                                                        {%- call linked_word_suggestion_action("accept", "Accept") -%}
+                                                        {%- call linked_word_suggestion_action("reject", "Reject") -%}
+                                                        <!-- TODO linked word suggestion edit form -->
+                                                    </div>
+                                                </li>
+                                            {%- endfor -%}
+
+                                            {%- for del in assoc.linked_word_deletion_suggestions -%}
+                                                <li>
+                                                    <del>
+                                                        {%- call macros::format_result_html(del.link.other) %} -
+                                                        {{ del.link.link_type -}}
+                                                    </del>
+
+                                                    <div class="row_list spaced_flex_list">
+                                                        {%- call linked_word_deletion_suggestion_action(true, "Accept deletion") -%}
+                                                        {%- call linked_word_deletion_suggestion_action(false, "Reject deletion") -%}
                                                     </div>
                                                 </li>
                                             {%- endfor -%}

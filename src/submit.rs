@@ -161,6 +161,15 @@ struct LinkedWordSubmission {
     other: WordId,
 }
 
+impl LinkedWordSubmission {
+    fn has_any_changes(&self, o: &Option<ExistingLinkedWord>) -> bool {
+        match o {
+            Some(o) => o.other.id != self.other.0 || o.link_type != self.link_type,
+            None => true,
+        }
+    }
+}
+
 fn false_fn() -> bool {
     false
 }
@@ -580,15 +589,26 @@ fn process_linked_words(
     const DELETE_LINKED_WORD_SUGGESTION: &str =
         "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1;";
 
+    const SUGGEST_LINKED_WORD_DELETION: &str = "
+        INSERT INTO linked_word_deletion_suggestions (linked_word_id, reason)
+            VALUES (?1, ?2)
+            ON CONFLICT(linked_word_id) DO NOTHING;
+    ";
+
     let use_submitted = w.existing_id.is_none() && w.suggestion_id.is_none();
 
     let conn = db.get().unwrap();
     let mut upsert_suggested_link = conn.prepare(INSERT_LINKED_WORD_SUGGESTION).unwrap();
-    let mut upsert_clone = conn.prepare(INSERT_LINKED_WORD_SUGGESTION).unwrap();
     let mut delete_suggested_link = conn.prepare(DELETE_LINKED_WORD_SUGGESTION).unwrap();
+    let mut suggest_link_deletion = conn.prepare(SUGGEST_LINKED_WORD_DELETION).unwrap();
 
     let existing_word_id = w.existing_id;
-    let mut insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
+    let mut maybe_insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
+        if !new.has_any_changes(&old) {
+            dbg!("No changes!", new, old);
+            return;
+        }
+
         upsert_suggested_link
             .execute(params![
                 new.suggestion_id,
@@ -623,7 +643,7 @@ fn process_linked_words(
                     let old = new
                         .existing_id
                         .and_then(|id| ExistingLinkedWord::get(&db, id, existing_word_id.unwrap()));
-                    insert_link(new, old);
+                    maybe_insert_link(new, old);
                 } else {
                     delete_suggested_link
                         .execute(params![prev.suggestion_id])
@@ -639,19 +659,10 @@ fn process_linked_words(
                     .position(|new| new.existing_id == Some(prev.link_id))
                 {
                     let new = linked_words.remove(i);
-                    insert_link(new, Some(prev));
+                    maybe_insert_link(new, Some(prev));
                 } else {
-                    // TODO deletion
-                    upsert_clone
-                        .execute(params![
-                            None::<i64>,
-                            prev.link_id,
-                            "Linked word removed",
-                            None::<i64>,
-                            prev.link_type,
-                            prev.first_word_id,
-                            prev.second_word_id,
-                        ])
+                    suggest_link_deletion
+                        .execute(params![prev.link_id])
                         .unwrap();
                 }
             }

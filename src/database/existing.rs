@@ -201,7 +201,7 @@ impl ExistingLinkedWord {
         opt
     }
 
-    fn try_from_row_populate_other(
+    pub fn try_from_row_populate_other(
         row: &Row<'_>,
         db: &Pool<SqliteConnectionManager>,
         skip_populating: u64,
