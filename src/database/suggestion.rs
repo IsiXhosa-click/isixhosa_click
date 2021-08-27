@@ -48,11 +48,13 @@ impl SuggestedWord {
     }
 
     pub fn fetch_all_full(db: &Pool<SqliteConnectionManager>) -> Vec<SuggestedWord> {
-        const SELECT_SUGGESTIONS: &str = "SELECT
-            suggestion_id, existing_word_id, changes_summary,
-            english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
-        from word_suggestions;";
+        const SELECT_SUGGESTIONS: &str = "
+            SELECT
+                suggestion_id, existing_word_id, changes_summary,
+                english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
+                noun_class, note
+            FROM word_suggestions
+            ORDER BY suggestion_id;";
 
         let conn = db.get().unwrap();
 
@@ -188,7 +190,7 @@ pub struct SuggestedExample {
 impl SuggestedExample {
     pub fn fetch_all_for_existing_words(
         db: &Pool<SqliteConnectionManager>,
-    ) -> HashMap<WordHit, Vec<SuggestedExample>> {
+    ) -> Vec<(WordHit, Vec<SuggestedExample>)> {
         const SELECT: &str = "
             SELECT words.word_id,
                    example_suggestions.suggestion_id, example_suggestions.existing_word_id,
@@ -221,7 +223,8 @@ impl SuggestedExample {
             })
             .unwrap();
 
-        map.into_iter()
+        let mut vec: Vec<(WordHit, Vec<SuggestedExample>)> = map
+            .into_iter()
             .map(|(id, examples)| {
                 (
                     WordHit::fetch_from_db(
@@ -232,7 +235,10 @@ impl SuggestedExample {
                     examples,
                 )
             })
-            .collect()
+            .collect();
+
+        vec.sort_by_key(|(hit, _examples)| hit.id);
+        vec
     }
 
     pub fn fetch_all_for_suggestion(

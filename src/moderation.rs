@@ -11,7 +11,6 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
-use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{body, Filter, Rejection, Reply};
 
@@ -21,7 +20,7 @@ struct ModerationTemplate {
     previous_success: Option<Success>,
     word_suggestions: Vec<SuggestedWord>,
     word_deletions: Vec<WordDeletionSuggestion>,
-    example_suggestions: HashMap<WordHit, Vec<SuggestedExample>>,
+    example_suggestions: Vec<(WordHit, Vec<SuggestedExample>)>,
     example_deletion_suggestions: Vec<ExampleDeletionSuggestion>,
 }
 

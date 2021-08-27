@@ -21,7 +21,8 @@ impl WordDeletionSuggestion {
                     word_deletion_suggestions.suggestion_id
             FROM words
             INNER JOIN word_deletion_suggestions
-            ON words.word_id = word_deletion_suggestions.word_id;";
+            ON words.word_id = word_deletion_suggestions.word_id
+            ORDER BY words.word_id;";
 
         let conn = db.get().unwrap();
 
@@ -88,7 +89,8 @@ impl ExampleDeletionSuggestion {
                     example_deletion_suggestions.suggestion_id, example_deletion_suggestions.reason
             FROM examples
             INNER JOIN example_deletion_suggestions
-            ON examples.example_id = example_deletion_suggestions.example_id;";
+            ON examples.example_id = example_deletion_suggestions.example_id
+            ORDER BY examples.example_id;";
 
         let conn = db.get().unwrap();
 

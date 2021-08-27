@@ -237,7 +237,7 @@
                     let linked_words_str = htmlDecode("{{ serde_json::to_string(word.linked_words).unwrap() }}");
                     addExamples(JSON.parse(examples_str));
                     addLinkedWords(JSON.parse(linked_words_str));
-                    partOfSpeechChange(); // Refresh part of speech sections
+                    partOfSpeechChange(); /* Refresh part of speech sections */
 
                     document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
                     document.getElementById("add_example").addEventListener("click", function() { addExample() });

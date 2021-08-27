@@ -17,6 +17,7 @@ function removeLinkedWord(button_id, search) {
     }
 }
 
+// TODO filter out own word if submitted already
 function createLinkedWordSearch(preset_word) {
     let input = document.createElement("input");
 
