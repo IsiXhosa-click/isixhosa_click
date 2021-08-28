@@ -13,6 +13,7 @@ use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use tracing::instrument;
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -183,7 +184,7 @@ impl SuggestedWord {
     }
 
     pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
-        const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1";
+        const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
@@ -326,7 +327,7 @@ impl SuggestedExample {
         const SELECT: &str = "
             SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id,
                    changes_summary, xhosa, english
-            FROM example_suggestions WHERE suggestion_id = ?1";
+            FROM example_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
         let ex = conn
@@ -373,7 +374,7 @@ impl SuggestedExample {
     }
 
     pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
-        const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1";
+        const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1'";
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
@@ -408,6 +409,7 @@ pub struct SuggestedLinkedWord {
 }
 
 impl SuggestedLinkedWord {
+    #[instrument]
     pub fn fetch(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "
         SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
@@ -425,6 +427,7 @@ impl SuggestedLinkedWord {
         s
     }
 
+    #[instrument]
     pub fn fetch_all_for_suggestion(
         db: &Pool<SqliteConnectionManager>,
         suggested_word_id: u64,
@@ -448,6 +451,7 @@ impl SuggestedLinkedWord {
         vec
     }
 
+    #[instrument]
     pub fn fetch_all_for_existing_words(
         db: &Pool<SqliteConnectionManager>,
     ) -> impl Iterator<Item = (WordId, Vec<SuggestedLinkedWord>)> {
@@ -500,6 +504,7 @@ impl SuggestedLinkedWord {
         map.into_iter()
     }
 
+    #[instrument]
     pub fn accept(&self, db: &Pool<SqliteConnectionManager>) -> i64 {
         const INSERT: &str = "
             INSERT INTO linked_words (link_id, link_type, first_word_id, second_word_id)
@@ -533,17 +538,20 @@ impl SuggestedLinkedWord {
         id
     }
 
+    #[instrument]
     pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
-        const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1";
+        const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1;";
 
+        tracing::debug!("Deleting linked word");
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        tracing::debug!("Linked word deleted");
         modified_rows == 1
     }
 
     fn from_row_populate_both(row: &Row<'_>, db: &Pool<SqliteConnectionManager>) -> Self {
         const SELECT: &str =
-            "SELECT link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1";
+            "SELECT link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1;";
 
         let conn = db.get().unwrap();
         let existing_id = row
@@ -641,6 +649,7 @@ impl SuggestedLinkedWord {
         }
     }
 
+    #[instrument]
     pub fn other(&self, this_id: WordOrSuggestionId) -> MaybeEdited<WordHit> {
         if this_id == self.second.current().0 {
             self.first.map(|pair| pair.1.clone())

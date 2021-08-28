@@ -17,6 +17,7 @@ use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{body, Filter, Rejection, Reply};
+use tracing::{instrument, Instrument, span, Level};
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]
@@ -108,7 +109,7 @@ enum Method {
     Reject,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Action {
     #[serde(flatten)]
     suggestion: ActionTarget,
@@ -116,7 +117,7 @@ struct Action {
 }
 
 #[serde_as]
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "suggestion_type", content = "suggestion")]
 enum ActionTarget {
@@ -144,7 +145,7 @@ pub fn accept(
         .and(db.clone())
         .and(tantivy)
         .and(warp::body::form::<Action>())
-        .and_then(process_one);
+        .and_then(|a, b, c| process_one(a, b, c).instrument(span!(Level::DEBUG, "process_one")));
 
     let submit_edit = warp::post()
         .and(body::content_length_limit(4 * 1024))
@@ -180,6 +181,7 @@ pub fn accept(
     warp::path("moderation").and(root.or(submit_edit))
 }
 
+#[instrument]
 async fn suggested_words(
     db: Pool<SqliteConnectionManager>,
     previous_success: Option<Success>,
@@ -196,6 +198,7 @@ async fn suggested_words(
     .unwrap()
 }
 
+#[instrument]
 async fn edit_suggestion_form(
     db: Pool<SqliteConnectionManager>,
     submission: WordSubmission,
@@ -211,6 +214,7 @@ async fn edit_suggestion_form(
     .await
 }
 
+#[instrument]
 async fn accept_suggested_word(
     db: &Pool<SqliteConnectionManager>,
     tantivy: Arc<TantivyClient>,
@@ -242,6 +246,7 @@ async fn accept_suggested_word(
     true
 }
 
+#[instrument]
 async fn reject_suggested_word(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || SuggestedWord::delete(&db, suggestion))
@@ -249,6 +254,7 @@ async fn reject_suggested_word(db: &Pool<SqliteConnectionManager>, suggestion: u
         .unwrap()
 }
 
+#[instrument]
 async fn accept_deletion(
     db: &Pool<SqliteConnectionManager>,
     tantivy: Arc<TantivyClient>,
@@ -264,6 +270,7 @@ async fn accept_deletion(
     true
 }
 
+#[instrument]
 async fn reject_deletion(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || WordDeletionSuggestion::reject(&db, suggestion))
@@ -273,6 +280,7 @@ async fn reject_deletion(db: &Pool<SqliteConnectionManager>, suggestion: u64) ->
     true
 }
 
+#[instrument]
 async fn accept_suggested_example(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || {
@@ -286,6 +294,7 @@ async fn accept_suggested_example(db: &Pool<SqliteConnectionManager>, suggestion
     true
 }
 
+#[instrument]
 async fn reject_suggested_example(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || SuggestedExample::delete(&db, suggestion))
@@ -293,6 +302,7 @@ async fn reject_suggested_example(db: &Pool<SqliteConnectionManager>, suggestion
         .unwrap()
 }
 
+#[instrument]
 async fn accept_example_deletion(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || ExampleDeletionSuggestion::accept(&db, suggestion))
@@ -302,6 +312,7 @@ async fn accept_example_deletion(db: &Pool<SqliteConnectionManager>, suggestion:
     true
 }
 
+#[instrument]
 async fn reject_example_deletion(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || {
@@ -313,32 +324,39 @@ async fn reject_example_deletion(db: &Pool<SqliteConnectionManager>, suggestion:
     true
 }
 
+#[instrument]
 async fn accept_linked_word(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
-    tokio::task::spawn_blocking(move || SuggestedLinkedWord::fetch(&db, suggestion).accept(&db));
+    tokio::task::spawn_blocking(move || SuggestedLinkedWord::fetch(&db, suggestion).accept(&db)).await.unwrap();
     true
 }
 
+#[instrument(skip(db))]
 async fn reject_linked_word(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
+    tracing::debug!("Rejecting linked word");
     let db = db.clone();
-    tokio::task::spawn_blocking(move || SuggestedLinkedWord::delete(&db, suggestion));
+    // TODO these should .await
+    tokio::task::spawn_blocking(move || SuggestedLinkedWord::delete(&db, suggestion)).await.unwrap();
     true
 }
 
+#[instrument]
 async fn accept_linked_word_deletion(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
-    tokio::task::spawn_blocking(move || LinkedWordDeletionSuggestion::accept(&db, suggestion));
+    tokio::task::spawn_blocking(move || LinkedWordDeletionSuggestion::accept(&db, suggestion)).await.unwrap();
     true
 }
 
+#[instrument]
 async fn reject_linked_word_deletion(db: &Pool<SqliteConnectionManager>, suggestion: u64) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || {
         LinkedWordDeletionSuggestion::delete_suggestion(&db, suggestion)
-    });
+    }).await.unwrap();
     true
 }
 
+#[instrument(skip(db))]
 async fn process_one(
     db: Pool<SqliteConnectionManager>,
     tantivy: Arc<TantivyClient>,
@@ -353,6 +371,8 @@ async fn process_one(
         );
         false
     };
+
+    tracing::debug!("Processing params");
 
     let success = match params.suggestion {
         ActionTarget::WordDeletion(suggestion) => match params.method {

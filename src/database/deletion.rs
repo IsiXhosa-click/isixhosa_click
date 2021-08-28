@@ -67,7 +67,7 @@ impl WordDeletionSuggestion {
     }
 
     pub fn reject(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
-        const DELETE: &str = "DELETE FROM word_deletion_suggestions WHERE suggestion_id = ?1";
+        const DELETE: &str = "DELETE FROM word_deletion_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
         conn.prepare(DELETE)
@@ -145,7 +145,7 @@ impl ExampleDeletionSuggestion {
     }
 
     pub fn accept(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
-        const DELETE_EXAMPLE: &str = "DELETE FROM examples WHERE example_id = ?1";
+        const DELETE_EXAMPLE: &str = "DELETE FROM examples WHERE example_id = ?1;";
 
         let to_delete = Self::fetch_example_id_for_suggestion(db, suggestion);
         let conn = db.get().unwrap();
@@ -157,7 +157,7 @@ impl ExampleDeletionSuggestion {
     }
 
     pub fn delete_suggestion(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
-        const DELETE: &str = "DELETE FROM example_deletion_suggestions WHERE suggestion_id = ?1";
+        const DELETE: &str = "DELETE FROM example_deletion_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
         conn.prepare(DELETE)
@@ -238,7 +238,7 @@ impl LinkedWordDeletionSuggestion {
     }
 
     pub fn accept(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
-        const DELETE_EXAMPLE: &str = "DELETE FROM linked_words WHERE linked_id = ?1";
+        const DELETE_EXAMPLE: &str = "DELETE FROM linked_words WHERE linked_id = ?1;";
 
         let to_delete = Self::fetch_link_id_for_suggestion(db, suggestion);
         let conn = db.get().unwrap();
