@@ -142,8 +142,7 @@ fn init_logging(cfg: &Config) {
         .build(root)
         .unwrap();
 
-    // log4rs::init_config(log_config).unwrap();
-    tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG).try_init().unwrap();
+    log4rs::init_config(log_config).unwrap();
 }
 
 async fn process_body<F, E>(response: Response, minify: F) -> Result<Response, Rejection>

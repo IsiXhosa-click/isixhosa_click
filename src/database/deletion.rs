@@ -238,11 +238,11 @@ impl LinkedWordDeletionSuggestion {
     }
 
     pub fn accept(db: &Pool<SqliteConnectionManager>, suggestion: u64) {
-        const DELETE_EXAMPLE: &str = "DELETE FROM linked_words WHERE linked_id = ?1;";
+        const DELETE: &str = "DELETE FROM linked_words WHERE linked_id = ?1;";
 
         let to_delete = Self::fetch_link_id_for_suggestion(db, suggestion);
         let conn = db.get().unwrap();
-        conn.prepare(DELETE_EXAMPLE)
+        conn.prepare(DELETE)
             .unwrap()
             .execute(params![to_delete])
             .unwrap();

@@ -35,8 +35,5 @@ anyhow = "1"
 num_cpus = "1"
 confy = "0.4"
 isixhosa = { version = "0.1.1", features = ["with-serde-1", "with-num_enum-0_5"] }
-tracing = "0.1.26"
-tracing-futures = "0.2.5"
-tracing-subscriber = { version  = "0.2.20", features = ["fmt"] }
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability
