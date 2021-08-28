@@ -54,7 +54,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Instant;
 use submit::submit;
 use tokio::task;
 use warp::filters::compression::gzip;
@@ -158,16 +157,6 @@ where
 }
 
 async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
-    struct TimeItGuard(Instant);
-
-    impl Drop for TimeItGuard {
-        fn drop(&mut self) {
-            log::debug!("Minify took {}us to complete", self.0.elapsed().as_micros());
-        }
-    }
-
-    let _g = TimeItGuard(Instant::now());
-
     let response = reply.into_response();
     if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
         let content_type = content_type.to_str().unwrap();
@@ -207,6 +196,14 @@ async fn main() {
         ];
 
         let conn = pool_clone.get().unwrap();
+
+        // See https://github.com/the-lean-crate/criner/discussions/5
+        conn.execute_batch("
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA wal_autocheckpoint = 1000;
+            PRAGMA wal_checkpoint(TRUNCATE);
+        ").unwrap();
 
         for creation in &CREATIONS {
             conn.execute(creation, params![]).unwrap();

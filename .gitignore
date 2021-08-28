@@ -2,6 +2,7 @@
 .idea/
 *.iml
 isixhosa_click.db
+isixhosa_click.db*
 tantivy_data/
 tls/
 log/

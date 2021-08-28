@@ -19,7 +19,7 @@ askama = { git = "https://github.com/djc/askama", rev = "ed2e640" }
 askama_warp = { git = "https://github.com/djc/askama", rev = "ed2e640" }
 html-minifier = "3.0.13"
 minifier = "0.0.41"
-rusqlite = { version = "0.25", features = ["bundled"] } # bundled to give 3.35 assuredly
+rusqlite = { version = "0.25", features = ["bundled", "unlock_notify"] } # bundled to give 3.35 assuredly
 log = "0.4"
 log4rs = "1"
 chrono = "0.4"

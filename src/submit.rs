@@ -498,8 +498,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
     let db = db.clone();
     let mut w = word;
 
-    log::debug!("Inserting word suggestion {:#?}", w);
-
     tokio::task::spawn_blocking(move || {
         let conn = db.get().unwrap();
 
