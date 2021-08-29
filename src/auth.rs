@@ -10,10 +10,13 @@ use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::Deserialize;
 use tokio::sync::RwLock;
+use warp::http::{uri};
 use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
+use warp::path::FullPath;
+
 
 type OpenIDClient = Client<Discovered, StandardClaims>;
 
@@ -57,35 +60,35 @@ impl Permissions {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct LoginQuery {
+pub struct LoginRedirectQuery {
+    redirect: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OpenIdLoginQuery {
     pub code: String,
     pub state: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct User {
-    pub id: String,
-    pub login: Option<String>,
-    pub first_name: Option<String>,
-    pub email: Option<String>,
-    pub activated: bool,
-    pub permissions: Permissions,
+    id: u64,
+    display_name: String,
+    email: String,
+    permissions: Permissions,
 }
 
 #[derive(Default)]
 pub struct Sessions {
-    map: HashMap<String, (User, Token, Userinfo)>,
+    map: HashMap<String, User>,
 }
 
 pub async fn auth(cfg: &Config) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
-    let redirect = cfg
-        .host_builder()
+    let redirect = Config::host_builder(&cfg.host, cfg.https_port)
         .path_and_query("/login/oauth2/code/oidc")
         .build()
         .unwrap()
         .to_string();
-
-    let host_uri = cfg.host_builder().path_and_query("").build().unwrap();
 
     let issuer = reqwest::Url::parse("https://accounts.google.com").unwrap();
 
@@ -100,13 +103,15 @@ pub async fn auth(cfg: &Config) -> impl Filter<Error = Rejection, Extract: Reply
         .unwrap(),
     );
 
+    let (host, https_port) = (cfg.host.clone(), cfg.https_port);
     let with_client_host = warp::any()
-        .map(move || (client.clone(), host_uri.to_string()))
+        .map(move || (client.clone(), Config::host_builder(&host, https_port)))
         .untuple_one();
 
     let authorize = warp::path!("login" / "oauth2" / "authorization" / "oidc")
         .and(warp::get())
         .and(with_client_host.clone())
+        .and(warp::query::<LoginRedirectQuery>())
         .and_then(reply_authorize);
 
     let logout = warp::get()
@@ -118,7 +123,7 @@ pub async fn auth(cfg: &Config) -> impl Filter<Error = Rejection, Extract: Reply
     let oidc_code = warp::path!("login" / "oauth2" / "code" / "oidc")
         .and(warp::get())
         .and(with_client_host)
-        .and(warp::query::<LoginQuery>())
+        .and(warp::query::<OpenIdLoginQuery>())
         .and_then(reply_login);
 
     authorize.or(oidc_code).or(logout)
@@ -126,7 +131,7 @@ pub async fn auth(cfg: &Config) -> impl Filter<Error = Rejection, Extract: Reply
 
 async fn request_token(
     oidc_client: Arc<OpenIDClient>,
-    login_query: &LoginQuery,
+    login_query: &OpenIdLoginQuery,
 ) -> anyhow::Result<Option<(Token, Userinfo)>> {
     let mut token: Token = oidc_client.request_token(&login_query.code).await?.into();
 
@@ -147,24 +152,20 @@ async fn request_token(
 
 async fn reply_login(
     oidc_client: Arc<OpenIDClient>,
-    host: String,
-    login_query: LoginQuery,
+    host_uri_builder: uri::Builder,
+    login_query: OpenIdLoginQuery,
 ) -> Result<impl warp::Reply, Infallible> {
     let request_token = request_token(oidc_client, &login_query).await;
     match request_token {
-        Ok(Some((token, user_info))) => {
+        Ok(Some((_token, user_info))) => {
             let id = uuid::Uuid::new_v4().to_string();
 
-            let login = user_info.preferred_username.clone();
-            let email = user_info.email.clone();
-
+            // TODO auth
             let user = User {
-                id: user_info.sub.clone().unwrap_or_default(),
-                login,
-                first_name: user_info.name.clone(),
-                email,
-                activated: user_info.email_verified,
+                id: 0,
+                email: user_info.email.clone().unwrap(),
                 permissions: Permissions::Moderator,
+                display_name: user_info.preferred_username.unwrap_or_default(),
             };
 
             // TODO correct expiry
@@ -175,13 +176,16 @@ async fn reply_login(
                 .finish()
                 .to_string();
 
-            SESSIONS
-                .write()
-                .await
-                .map
-                .insert(id, (user, token, user_info));
+            SESSIONS.write().await.map.insert(id, user);
 
-            let redirect_url = login_query.state.clone().unwrap_or(host);
+            dbg!(&login_query.state);
+            let redirect_url = login_query.state.clone().unwrap_or_else(|| {
+                host_uri_builder
+                    .path_and_query("")
+                    .build()
+                    .unwrap()
+                    .to_string()
+            });
 
             Ok(Response::builder()
                 .status(StatusCode::FOUND)
@@ -230,11 +234,15 @@ async fn reply_logout(token: String) -> Result<impl warp::Reply, Infallible> {
 
 async fn reply_authorize(
     oidc_client: Arc<OpenIDClient>,
-    origin_url: String,
+    host_uri_builder: uri::Builder,
+    redirect: LoginRedirectQuery,
 ) -> Result<impl warp::Reply, Infallible> {
     let auth_url = oidc_client.auth_url(&Options {
         scope: Some("openid email profile".into()),
-        state: Some(origin_url),
+        state: redirect
+            .redirect
+            .and_then(|path| host_uri_builder.path_and_query(path).build().ok())
+            .map(|uri| uri.to_string()),
         ..Default::default()
     });
 
@@ -250,22 +258,34 @@ async fn reply_authorize(
 }
 
 #[derive(Debug)]
-pub enum Unauthorized {
+pub struct Unauthorized {
+    pub reason: UnauthorizedReason,
+    pub redirect: String,
+}
+
+#[derive(Debug)]
+pub enum UnauthorizedReason {
     NotLoggedIn,
     NoPermissions,
 }
 
 impl reject::Reject for Unauthorized {}
 
-async fn extract_user(session_id: Option<String>) -> Result<User, Rejection> {
+async fn extract_user(redirect: String, session_id: Option<String>) -> Result<User, Rejection> {
     if let Some(session_id) = session_id {
-        if let Some((user, _, _)) = SESSIONS.read().await.map.get(&session_id) {
+        if let Some(user) = SESSIONS.read().await.map.get(&session_id) {
             Ok(user.clone())
         } else {
-            Err(warp::reject::custom(Unauthorized::NotLoggedIn))
+            Err(warp::reject::custom(Unauthorized {
+                reason: UnauthorizedReason::NotLoggedIn,
+                redirect,
+            }))
         }
     } else {
-        Err(warp::reject::custom(Unauthorized::NotLoggedIn))
+        Err(warp::reject::custom(Unauthorized {
+            reason: UnauthorizedReason::NotLoggedIn,
+            redirect,
+        }))
     }
 }
 
@@ -304,7 +324,9 @@ pub trait ModeratorAccessDb: UserAccessDb {}
 pub fn with_any_auth(
     db: DbBase,
 ) -> impl Filter<Extract = (Auth, impl PublicAccessDb), Error = Infallible> + Clone {
-    warp::cookie::optional(COOKIE)
+    warp::path::full()
+        .map(|path: FullPath| path.as_str().to_owned())
+        .and(warp::cookie::optional(COOKIE))
         .and_then(extract_user)
         .map(|user| Auth { user: Some(user) })
         .or(warp::any().map(Auth::default))
@@ -315,7 +337,9 @@ pub fn with_any_auth(
 pub fn with_user_auth(
     db: DbBase,
 ) -> impl Filter<Extract = (User, impl UserAccessDb), Error = Rejection> + Clone {
-    warp::cookie::optional(COOKIE)
+    warp::path::full()
+        .map(|path: FullPath| path.as_str().to_owned())
+        .and(warp::cookie::optional(COOKIE))
         .and_then(extract_user)
         .and(warp::any().map(move || DbImpl(db.0.clone())))
 }
@@ -323,13 +347,16 @@ pub fn with_user_auth(
 pub fn with_moderator_auth(
     db: DbBase,
 ) -> impl Filter<Extract = (User, impl ModeratorAccessDb), Error = Rejection> + Clone {
-    warp::cookie::optional(COOKIE)
-        .and_then(|token| async {
-            match extract_user(token).await {
+    warp::path::full()
+        .map(|path: FullPath| path.as_str().to_owned())
+        .and(warp::cookie::optional(COOKIE))
+        .and_then(|redirect: String, token| async {
+            match extract_user(redirect.clone(), token).await {
                 Ok(user) if user.permissions.contains(Permissions::Moderator) => Ok(user),
-                Ok(unauthorized) => {
-                    Err(warp::reject::custom(Unauthorized::NoPermissions))
-                }
+                Ok(_unauthorized) => Err(warp::reject::custom(Unauthorized {
+                    reason: UnauthorizedReason::NoPermissions,
+                    redirect,
+                })),
                 Err(e) => Err(e),
             }
         })

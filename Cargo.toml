@@ -40,5 +40,6 @@ reqwest = "0.11.4"
 uuid = "0.8.2"
 cookie = "0.16.0-rc.1"
 lazy_static = "1.4.0"
+urlencoding = "2.1.0"
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability

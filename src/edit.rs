@@ -36,10 +36,12 @@ pub fn edit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clon
         .and(with_user_auth(db.clone()))
         .and_then(delete_word_reply);
 
-    warp::path("word").and(submit_page
-        .or(submit_form)
-        .or(delete_redirect)
-        .or(failed_to_submit))
+    warp::path("word").and(
+        submit_page
+            .or(submit_form)
+            .or(delete_redirect)
+            .or(failed_to_submit),
+    )
 }
 
 async fn submit_suggestion_reply(

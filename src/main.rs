@@ -12,6 +12,7 @@
 // - config for domain
 
 // Soon after launch, perhaps before:
+// - ability to search for and ban users
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
 // - automated data-dump & backups of the database content which can be downloaded
@@ -39,7 +40,7 @@
 // Ideas:
 // - see if i can replace cloning pool with cloning conn?
 
-use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized};
+use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized, UnauthorizedReason};
 use crate::language::NounClassExt;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::OptionMapNounClassExt;
@@ -113,8 +114,8 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn host_builder(&self) -> uri::Builder {
-        let authority = Authority::from_str(&format!("{}:{}", self.host, self.https_port)).unwrap();
+    pub fn host_builder(host: &str, port: u16) -> uri::Builder {
+        let authority = Authority::from_str(&format!("{}:{}", host, port)).unwrap();
         Uri::builder().scheme("https").authority(authority)
     }
 }
@@ -200,19 +201,18 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
 
 async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
     if let Some(unauthorized) = err.find::<Unauthorized>() {
-        let login = Uri::from_static("/login/oauth2/authorization/oidc");
-        match unauthorized {
-            Unauthorized::NotLoggedIn => {
-                Ok(
-                    warp::http::Response::builder()
-                        .status(StatusCode::FOUND)
-                        .header(warp::http::header::LOCATION, login.to_string())
-                        .body("")
-                        .unwrap()
-                        .into_response()
-                )
+        let login = format!("/login/oauth2/authorization/oidc?redirect={}", urlencoding::encode(unauthorized.redirect.as_str()));
+        let login = Uri::from_str(&login).unwrap();
+        match unauthorized.reason {
+            UnauthorizedReason::NotLoggedIn => Ok(warp::http::Response::builder()
+                .status(StatusCode::FOUND)
+                .header(warp::http::header::LOCATION, login.to_string())
+                .body("")
+                .unwrap()
+                .into_response()),
+            UnauthorizedReason::NoPermissions => {
+                Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response())
             }
-            Unauthorized::NoPermissions => Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response()),
         }
     } else {
         Err(err)
@@ -230,7 +230,7 @@ async fn main() {
     let pool_clone = pool.clone();
 
     task::spawn_blocking(move || {
-        const CREATIONS: [&str; 9] = [
+        const CREATIONS: [&str; 10] = [
             include_str!("sql/words.sql"),
             include_str!("sql/word_suggestions.sql"),
             include_str!("sql/word_deletion_suggestions.sql"),
@@ -240,6 +240,7 @@ async fn main() {
             include_str!("sql/linked_words.sql"),
             include_str!("sql/linked_word_suggestions.sql"),
             include_str!("sql/linked_word_deletion_suggestions.sql"),
+            include_str!("sql/users.sql"),
         ];
 
         let conn = pool_clone.get().unwrap();

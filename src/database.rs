@@ -14,6 +14,7 @@ use crate::submit::WordId;
 pub mod deletion;
 pub mod existing;
 pub mod suggestion;
+mod user;
 
 impl WordHit {
     fn try_from_row_and_id(row: &Row<'_>, id: u64) -> Result<WordHit, rusqlite::Error> {
