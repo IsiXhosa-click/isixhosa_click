@@ -5,8 +5,7 @@ use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
 use askama::Template;
 use num_enum::TryFromPrimitive;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
+
 use rusqlite::{params, ToSql};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -15,6 +14,8 @@ use std::fmt::{self, Debug, Display, Formatter};
 use warp::hyper::body::Bytes;
 use warp::{body, path, Buf, Filter, Rejection, Reply};
 
+use crate::auth::UserAccessDb;
+use crate::auth::{with_user_auth, Auth, DbBase, User};
 use crate::database::existing::{ExistingExample, ExistingLinkedWord, ExistingWord};
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::database::WordOrSuggestionId;
@@ -26,6 +27,7 @@ use warp::http::header::CONTENT_TYPE;
 #[derive(Template, Debug)]
 #[template(path = "submit.askama.html")]
 struct SubmitTemplate {
+    auth: Auth,
     previous_success: Option<bool>,
     action: SubmitFormAction,
     word: WordFormTemplate,
@@ -162,6 +164,7 @@ struct LinkedWordSubmission {
 }
 
 impl LinkedWordSubmission {
+    #[allow(clippy::suspicious_operation_groupings)] // false positive - self.other IS id
     fn has_any_changes(&self, o: &Option<ExistingLinkedWord>) -> bool {
         match o {
             Some(o) => o.other.id != self.other.0 || o.link_type != self.link_type,
@@ -213,24 +216,21 @@ pub fn qs_form<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Erro
         })
 }
 
-pub fn submit(
-    db: Pool<SqliteConnectionManager>,
-) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
-    let db = warp::any().map(move || db.clone());
-
+pub fn submit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
+    // TODO handle unauthorized by redirect
     let submit_page = warp::get()
-        .and(db.clone())
+        .and(with_user_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is none
         .and(warp::any().map(SubmitFormAction::default))
         .and_then(submit_word_page);
 
     let submit_form = body::content_length_limit(4 * 1024)
+        .and(with_user_auth(db.clone()))
         .and(qs_form())
-        .and(db.clone())
         .and_then(submit_new_word_form);
 
     let failed_to_submit = warp::any()
-        .and(db)
+        .and(with_user_auth(db))
         .and(warp::any().map(|| Some(false))) // previous_success is Some(false)
         .and(warp::any().map(SubmitFormAction::default))
         .and_then(submit_word_page);
@@ -241,7 +241,8 @@ pub fn submit(
 }
 
 pub async fn edit_suggestion_page(
-    db: &Pool<SqliteConnectionManager>,
+    db: impl UserAccessDb,
+    user: User,
     suggestion_id: u64,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
@@ -252,7 +253,8 @@ pub async fn edit_suggestion_page(
     .unwrap();
 
     submit_word_page(
-        db.clone(),
+        user,
+        db,
         None,
         SubmitFormAction::EditSuggestion {
             suggestion_id,
@@ -263,11 +265,18 @@ pub async fn edit_suggestion_page(
 }
 
 pub async fn edit_word_page(
-    db: Pool<SqliteConnectionManager>,
+    user: User,
+    db: impl UserAccessDb,
     previous_success: Option<bool>,
     id: u64,
 ) -> Result<impl Reply, Rejection> {
-    submit_word_page(db, previous_success, SubmitFormAction::EditExisting(id)).await
+    submit_word_page(
+        user,
+        db,
+        previous_success,
+        SubmitFormAction::EditExisting(id),
+    )
+    .await
 }
 
 #[derive(Default, Debug)]
@@ -286,7 +295,7 @@ struct WordFormTemplate {
 
 impl WordFormTemplate {
     fn fetch_from_db(
-        db: &Pool<SqliteConnectionManager>,
+        db: &impl UserAccessDb,
         existing: Option<u64>,
         suggested: Option<u64>,
     ) -> Option<Self> {
@@ -404,7 +413,8 @@ impl From<ExistingLinkedWord> for LinkedWordTemplate {
 }
 
 async fn submit_word_page(
-    db: Pool<SqliteConnectionManager>,
+    user: User,
+    db: impl UserAccessDb,
     previous_success: Option<bool>,
     action: SubmitFormAction,
 ) -> Result<impl Reply, Rejection> {
@@ -424,6 +434,7 @@ async fn submit_word_page(
     .unwrap();
 
     Ok(SubmitTemplate {
+        auth: user.into(),
         previous_success,
         action,
         word,
@@ -431,11 +442,12 @@ async fn submit_word_page(
 }
 
 async fn submit_new_word_form(
+    user: User,
+    db: impl UserAccessDb,
     word: WordSubmission,
-    db: Pool<SqliteConnectionManager>,
 ) -> Result<impl warp::Reply, Rejection> {
     submit_suggestion(word, &db).await;
-    submit_word_page(db, Some(true), SubmitFormAction::SubmitNewWord).await
+    submit_word_page(user, db, Some(true), SubmitFormAction::SubmitNewWord).await
 }
 
 fn diff<T: PartialEq + Eq>(value: T, template: &T, override_use_value: bool) -> Option<T> {
@@ -458,7 +470,7 @@ fn diff_opt<T: PartialEq + Eq>(
     }
 }
 
-pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionManager>) {
+pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
     const STATEMENT: &str =
         "INSERT INTO word_deletion_suggestions (word_id, reason) VALUES (?1, ?2);";
 
@@ -475,7 +487,8 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &Pool<SqliteConnectionMa
     .unwrap()
 }
 
-pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionManager>) {
+// TODO move to db module
+pub async fn submit_suggestion(word: WordSubmission, db: &impl UserAccessDb) {
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
             suggestion_id, existing_word_id, changes_summary, english, xhosa,
@@ -568,7 +581,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: &Pool<SqliteConnectionM
 
 fn process_linked_words(
     w: &mut WordSubmission,
-    db: &Pool<SqliteConnectionManager>,
+    db: &impl UserAccessDb,
     suggested_word_id: Option<i64>,
 ) {
     const INSERT_LINKED_WORD_SUGGESTION: &str = "
@@ -587,11 +600,8 @@ fn process_linked_words(
     const DELETE_LINKED_WORD_SUGGESTION: &str =
         "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1;";
 
-    const SUGGEST_LINKED_WORD_DELETION: &str = "
-        INSERT INTO linked_word_deletion_suggestions (linked_word_id, reason)
-            VALUES (?1, ?2)
-            ON CONFLICT(linked_word_id) DO NOTHING;
-    ";
+    const SUGGEST_LINKED_WORD_DELETION: &str =
+        "INSERT INTO linked_word_deletion_suggestions (linked_word_id, reason) VALUES (?1, ?2)";
 
     let use_submitted = w.existing_id.is_none() && w.suggestion_id.is_none();
 
@@ -631,7 +641,7 @@ fn process_linked_words(
     match (w.suggestion_id, w.existing_id) {
         // Editing a new suggested word
         (Some(suggested), None) => {
-            for prev in SuggestedLinkedWord::fetch_all_for_suggestion(&db, suggested) {
+            for prev in SuggestedLinkedWord::fetch_all_for_suggestion(db, suggested) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
@@ -639,7 +649,7 @@ fn process_linked_words(
                     let new = linked_words.remove(i);
                     let old = new
                         .existing_id
-                        .and_then(|id| ExistingLinkedWord::get(&db, id, existing_word_id.unwrap()));
+                        .and_then(|id| ExistingLinkedWord::get(db, id, existing_word_id.unwrap()));
                     maybe_insert_link(new, old);
                 } else {
                     delete_suggested_link
@@ -650,7 +660,7 @@ fn process_linked_words(
         }
         // Editing an edit to an existing word, or editing an existing word
         (_, Some(existing)) => {
-            for prev in ExistingLinkedWord::fetch_all_for_word(&db, existing) {
+            for prev in ExistingLinkedWord::fetch_all_for_word(db, existing) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.existing_id == Some(prev.link_id))
@@ -686,7 +696,7 @@ fn process_linked_words(
 
 fn process_examples(
     w: &mut WordSubmission,
-    db: &Pool<SqliteConnectionManager>,
+    db: &impl UserAccessDb,
     suggested_word_id: Option<i64>,
 ) {
     const INSERT_EXAMPLE_SUGGESTION: &str = "
@@ -705,11 +715,8 @@ fn process_examples(
     const DELETE_EXAMPLE_SUGGESTION: &str =
         "DELETE FROM example_suggestions WHERE suggestion_id = ?1;";
 
-    const SUGGEST_EXAMPLE_DELETION: &str = "
-        INSERT INTO example_deletion_suggestions (example_id, reason)
-            VALUES (?1, ?2)
-            ON CONFLICT(example_id) DO NOTHING;
-    ";
+    const SUGGEST_EXAMPLE_DELETION: &str =
+        "INSERT INTO example_deletion_suggestions (example_id, reason) VALUES (?1, ?2);";
 
     let conn = db.get().unwrap();
     let mut upsert_example = conn.prepare(INSERT_EXAMPLE_SUGGESTION).unwrap();
@@ -747,13 +754,13 @@ fn process_examples(
 
     match (w.suggestion_id, w.existing_id) {
         (Some(suggested), None) => {
-            for prev in SuggestedExample::fetch_all_for_suggestion(&db, suggested) {
+            for prev in SuggestedExample::fetch_all_for_suggestion(db, suggested) {
                 if let Some(i) = examples
                     .iter()
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
                 {
                     let new = examples.remove(i);
-                    let old = new.existing_id.and_then(|id| ExistingExample::get(&db, id));
+                    let old = new.existing_id.and_then(|id| ExistingExample::get(db, id));
                     maybe_insert_example(new, old);
                 } else {
                     delete_suggested_example
@@ -763,7 +770,7 @@ fn process_examples(
             }
         }
         (_, Some(existing)) => {
-            for prev in ExistingExample::fetch_all_for_word(&db, existing) {
+            for prev in ExistingExample::fetch_all_for_word(db, existing) {
                 let new = examples
                     .iter()
                     .position(|new| new.existing_id == Some(prev.example_id))

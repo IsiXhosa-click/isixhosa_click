@@ -1,22 +1,19 @@
+use crate::auth::{with_any_auth, Auth, DbBase};
 use crate::database::existing::ExistingWord;
 use crate::language::NounClassExt;
 use crate::language::PartOfSpeech;
 use crate::serialization::OptionMapNounClassExt;
 use crate::NotFound;
 use askama::Template;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
+
+use crate::auth::PublicAccessDb;
 use warp::{Filter, Rejection, Reply};
 
-pub fn details(
-    db: Pool<SqliteConnectionManager>,
-) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
-    let db = warp::any().map(move || db.clone());
-
+pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
     warp::path!["word" / u64]
         .and(warp::path::end())
         .and(warp::get())
-        .and(db)
+        .and(with_any_auth(db))
         .and(warp::any().map(|| None)) // previous_success is None
         .and_then(word)
 }
@@ -24,13 +21,15 @@ pub fn details(
 #[derive(Template)]
 #[template(path = "word_details.askama.html")]
 struct WordDetails {
+    auth: Auth,
     word: ExistingWord,
     previous_success: Option<WordChangeMethod>,
 }
 
 pub async fn word(
     word_id: u64,
-    db: Pool<SqliteConnectionManager>,
+    auth: Auth,
+    db: impl PublicAccessDb,
     previous_success: Option<WordChangeMethod>,
 ) -> Result<impl warp::Reply, Rejection> {
     let db = db.clone();
@@ -39,11 +38,12 @@ pub async fn word(
         .unwrap();
     Ok(match word {
         Some(word) => WordDetails {
+            auth,
             word,
             previous_success,
         }
         .into_response(),
-        None => NotFound.into_response(),
+        None => NotFound { auth }.into_response(),
     })
 }
 

@@ -2,11 +2,10 @@
 
 use std::convert::TryFrom;
 
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 
+use crate::auth::PublicAccessDb;
 use crate::search::WordHit;
 use crate::serialization::{NounClassOpt, NounClassOptExt};
 use crate::serialization::{SerializeDisplay, SerializePrimitive};
@@ -31,10 +30,7 @@ impl WordHit {
         })
     }
 
-    pub fn fetch_from_db(
-        db: &Pool<SqliteConnectionManager>,
-        id: WordOrSuggestionId,
-    ) -> Option<WordHit> {
+    pub fn fetch_from_db(db: &impl PublicAccessDb, id: WordOrSuggestionId) -> Option<WordHit> {
         const SELECT_EXISTING: &str =
             "SELECT word_id, english, xhosa, part_of_speech, is_plural, noun_class FROM words
             WHERE word_id = ?1;";

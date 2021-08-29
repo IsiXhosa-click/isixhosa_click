@@ -9,6 +9,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Serialize;
 use std::convert::TryInto;
+use std::fmt::{Debug, Formatter};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tantivy::collector::TopDocs;
@@ -21,7 +22,6 @@ use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
-use std::fmt::{Debug, Formatter};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 

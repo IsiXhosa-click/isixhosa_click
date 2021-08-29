@@ -35,5 +35,10 @@ anyhow = "1"
 num_cpus = "1"
 confy = "0.4"
 isixhosa = { version = "0.1.1", features = ["with-serde-1", "with-num_enum-0_5"] }
+openid = "0.9.3"
+reqwest = "0.11.4"
+uuid = "0.8.2"
+cookie = "0.16.0-rc.1"
+lazy_static = "1.4.0"
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability

@@ -11,7 +11,15 @@
         <a href="/search">Search</a>
         <a href="/about">About</a>
         <a href="/submit">Submit a word</a>
-        <a href="/moderation">Moderation</a>
+        {%- if auth.has_permissions(crate::auth::Permissions::Moderator) -%}
+            <a href="/moderation">Moderation</a>
+        {%- endif -%}
+
+        {%- if !auth.has_permissions(crate::auth::Permissions::User) -%}
+            <a href="/login/oauth2/authorization/oidc">Log in</a>
+        {%- else -%}
+            <a href="/logout/">Log out</a>
+        {%- endif -%}
     </nav>
 
     <script type="module">

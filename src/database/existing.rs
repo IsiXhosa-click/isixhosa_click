@@ -1,9 +1,8 @@
 use std::convert::TryFrom;
 
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension, Row};
 
+use crate::auth::{ModeratorAccessDb, PublicAccessDb};
 use crate::database::WordOrSuggestionId;
 use crate::language::{PartOfSpeech, WordLinkType};
 use crate::search::WordHit;
@@ -30,17 +29,17 @@ pub struct ExistingWord {
 }
 
 impl ExistingWord {
-    pub fn fetch_full(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<ExistingWord> {
-        let mut word = ExistingWord::fetch_alone(&db, id);
+    pub fn fetch_full(db: &impl PublicAccessDb, id: u64) -> Option<ExistingWord> {
+        let mut word = ExistingWord::fetch_alone(db, id);
         if let Some(word) = word.as_mut() {
-            word.examples = ExistingExample::fetch_all_for_word(&db, id);
+            word.examples = ExistingExample::fetch_all_for_word(db, id);
             word.linked_words = ExistingLinkedWord::fetch_all_for_word(db, id);
         }
 
         word
     }
 
-    pub fn fetch_alone(db: &Pool<SqliteConnectionManager>, id: u64) -> Option<ExistingWord> {
+    pub fn fetch_alone(db: &impl PublicAccessDb, id: u64) -> Option<ExistingWord> {
         const SELECT_ORIGINAL: &str = "
         SELECT
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -59,7 +58,7 @@ impl ExistingWord {
         opt
     }
 
-    pub fn delete(db: &Pool<SqliteConnectionManager>, id: u64) -> bool {
+    pub fn delete(db: &impl ModeratorAccessDb, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM words WHERE word_id = ?1;";
 
         let conn = db.get().unwrap();
@@ -100,10 +99,7 @@ pub struct ExistingExample {
 }
 
 impl ExistingExample {
-    pub fn fetch_all_for_word(
-        db: &Pool<SqliteConnectionManager>,
-        word_id: u64,
-    ) -> Vec<ExistingExample> {
+    pub fn fetch_all_for_word(db: &impl PublicAccessDb, word_id: u64) -> Vec<ExistingExample> {
         const SELECT: &str =
             "SELECT example_id, word_id, english, xhosa FROM examples WHERE word_id = ?1";
 
@@ -117,7 +113,7 @@ impl ExistingExample {
             .unwrap()
     }
 
-    pub fn get(db: &Pool<SqliteConnectionManager>, example_id: u64) -> Option<ExistingExample> {
+    pub fn get(db: &impl PublicAccessDb, example_id: u64) -> Option<ExistingExample> {
         const SELECT: &str =
             "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1";
 
@@ -156,10 +152,7 @@ pub struct ExistingLinkedWord {
 }
 
 impl ExistingLinkedWord {
-    pub fn fetch_all_for_word(
-        db: &Pool<SqliteConnectionManager>,
-        word_id: u64,
-    ) -> Vec<ExistingLinkedWord> {
+    pub fn fetch_all_for_word(db: &impl PublicAccessDb, word_id: u64) -> Vec<ExistingLinkedWord> {
         const SELECT: &str = "
             SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words
                 WHERE first_word_id = ?1 OR second_word_id = ?1
@@ -170,7 +163,7 @@ impl ExistingLinkedWord {
         let rows = query.query(params![word_id]).unwrap();
 
         let mut vec: Vec<ExistingLinkedWord> = rows
-            .map(|row| ExistingLinkedWord::try_from_row_populate_other(row, &db, word_id))
+            .map(|row| ExistingLinkedWord::try_from_row_populate_other(row, db, word_id))
             .collect()
             .unwrap();
 
@@ -180,7 +173,7 @@ impl ExistingLinkedWord {
     }
 
     pub fn get(
-        db: &Pool<SqliteConnectionManager>,
+        db: &impl PublicAccessDb,
         id: u64,
         skip_populating: u64,
     ) -> Option<ExistingLinkedWord> {
@@ -194,7 +187,7 @@ impl ExistingLinkedWord {
             .prepare(SELECT)
             .unwrap()
             .query_row(params![id], |row| {
-                ExistingLinkedWord::try_from_row_populate_other(row, &db, skip_populating)
+                ExistingLinkedWord::try_from_row_populate_other(row, db, skip_populating)
             })
             .optional()
             .unwrap();
@@ -203,7 +196,7 @@ impl ExistingLinkedWord {
 
     pub fn try_from_row_populate_other(
         row: &Row<'_>,
-        db: &Pool<SqliteConnectionManager>,
+        db: &impl PublicAccessDb,
         skip_populating: u64,
     ) -> Result<Self, rusqlite::Error> {
         let (first_word_id, second_word_id) =

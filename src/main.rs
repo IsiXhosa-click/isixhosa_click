@@ -5,6 +5,12 @@
 // - TODO user system
 // - TODO attributions - editing users & references & so on
 
+// TODO: Auth stuff:
+// - separate privileged database type
+// - right-align login button
+// - set up separate testing api key
+// - config for domain
+
 // Soon after launch, perhaps before:
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
@@ -13,6 +19,7 @@
 // - better search engine optimisation
 // - cache control headers/etags
 // - gzip compress
+// - integration testing
 
 // Well after launch:
 // - ratelimiting
@@ -32,11 +39,13 @@
 // Ideas:
 // - see if i can replace cloning pool with cloning conn?
 
+use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized};
 use crate::language::NounClassExt;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::OptionMapNounClassExt;
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
+use auth::auth;
 use chrono::Local;
 use details::details;
 use edit::edit;
@@ -51,14 +60,17 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use submit::submit;
 use tokio::task;
 use warp::filters::compression::gzip;
 use warp::http::header::CONTENT_TYPE;
-use warp::http::Uri;
+use warp::http::uri::Authority;
+use warp::http::{uri, StatusCode, Uri};
 use warp::path::FullPath;
 use warp::reject::Reject;
 use warp::reply::Response;
@@ -66,12 +78,12 @@ use warp::{path, Filter, Rejection, Reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
 
-mod moderation;
-// mod auth;
+mod auth;
 mod database;
 mod details;
 mod edit;
 mod language;
+mod moderation;
 mod search;
 mod serialization;
 mod session;
@@ -82,6 +94,7 @@ struct TemplateError(askama::Error);
 
 impl Reject for TemplateError {}
 
+#[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     database_path: PathBuf,
@@ -94,6 +107,16 @@ pub struct Config {
     log_level: LevelFilter,
     http_port: u16,
     https_port: u16,
+    host: String,
+    oidc_client: String,
+    oidc_secret: String,
+}
+
+impl Config {
+    pub fn host_builder(&self) -> uri::Builder {
+        let authority = Authority::from_str(&format!("{}:{}", self.host, self.https_port)).unwrap();
+        Uri::builder().scheme("https").authority(authority)
+    }
 }
 
 impl Default for Config {
@@ -109,6 +132,9 @@ impl Default for Config {
             log_level: LevelFilter::Info,
             http_port: 8080,
             https_port: 8443,
+            host: "127.0.0.01".to_string(),
+            oidc_client: "".to_string(),
+            oidc_secret: "".to_string(),
         }
     }
 }
@@ -172,6 +198,27 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     Ok(response)
 }
 
+async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
+    if let Some(unauthorized) = err.find::<Unauthorized>() {
+        let login = Uri::from_static("/login/oauth2/authorization/oidc");
+        match unauthorized {
+            Unauthorized::NotLoggedIn => {
+                Ok(
+                    warp::http::Response::builder()
+                        .status(StatusCode::FOUND)
+                        .header(warp::http::header::LOCATION, login.to_string())
+                        .body("")
+                        .unwrap()
+                        .into_response()
+                )
+            }
+            Unauthorized::NoPermissions => Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response()),
+        }
+    } else {
+        Err(err)
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let cfg: Config = confy::load("isixhosa_click").unwrap();
@@ -198,12 +245,15 @@ async fn main() {
         let conn = pool_clone.get().unwrap();
 
         // See https://github.com/the-lean-crate/criner/discussions/5
-        conn.execute_batch("
+        conn.execute_batch(
+            "
             PRAGMA journal_mode = WAL;
             PRAGMA synchronous = NORMAL;
             PRAGMA wal_autocheckpoint = 1000;
             PRAGMA wal_checkpoint(TRUNCATE);
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
         for creation in &CREATIONS {
             conn.execute(creation, params![]).unwrap();
@@ -218,9 +268,15 @@ async fn main() {
 
     let tantivy_cloned = tantivy.clone();
     let tantivy_filter = warp::any().map(move || tantivy_cloned.clone());
+    let db = DbBase::new(pool);
 
-    let search_page = warp::any().map(Search::default);
+    let search_page = with_any_auth(db.clone()).map(|auth, _db| Search {
+        auth,
+        hits: Default::default(),
+        query: Default::default(),
+    });
     let query_search = warp::query()
+        .and(with_any_auth(db.clone()))
         .and(tantivy_filter.clone())
         .and_then(query_search);
     let live_search = warp::ws().and(tantivy_filter).map(live_search);
@@ -230,20 +286,26 @@ async fn main() {
     let about = warp::get()
         .and(warp::path("about"))
         .and(path::end())
-        .map(|| AboutPage);
+        .and(with_any_auth(db.clone()))
+        .map(|auth, _db| AboutPage { auth });
 
-    let routes = warp::fs::dir(cfg.static_site_files)
-        .or(warp::fs::dir(cfg.other_static_files))
+    let routes = warp::fs::dir(cfg.static_site_files.clone())
+        .or(warp::fs::dir(cfg.other_static_files.clone()))
         .or(search)
-        .or(submit(pool.clone()))
-        .or(accept(pool.clone(), tantivy))
-        .or(details(pool.clone()))
-        .or(edit(pool))
+        .or(submit(db.clone()))
+        .or(accept(db.clone(), tantivy))
+        .or(details(db.clone()))
+        .or(edit(db.clone()))
         .or(warp::get()
             .and(path::end())
             .map(|| warp::redirect(Uri::from_static("/search"))))
         .or(about)
-        .or(warp::any().map(|| NotFound));
+        .or(auth(&cfg).await)
+        .recover(handle_auth_error)
+        .or(auth::with_any_auth(db).map(|auth, _db| {
+            warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
+        }))
+    ;
 
     log::info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
@@ -279,28 +341,36 @@ struct SearchQuery {
     query: String,
 }
 
-#[derive(Template, Clone, Copy, Debug)]
+#[derive(Template, Clone, Debug)]
 #[template(path = "404.askama.html")]
-struct NotFound;
+struct NotFound {
+    auth: Auth,
+}
 
-#[derive(Template, Clone, Copy, Debug)]
+#[derive(Template, Clone, Debug)]
 #[template(path = "about.askama.html")]
-struct AboutPage;
+struct AboutPage {
+    auth: Auth,
+}
 
-#[derive(Template, Default)]
+#[derive(Template)]
 #[template(path = "search.askama.html")]
 struct Search {
+    auth: Auth,
     hits: Vec<WordHit>,
     query: String,
 }
 
 async fn query_search(
     query: SearchQuery,
+    auth: Auth,
+    _db: impl PublicAccessDb,
     tantivy: Arc<TantivyClient>,
 ) -> Result<impl warp::Reply, Rejection> {
     let results = tantivy.search(query.query.clone()).await.unwrap();
 
     Ok(Search {
+        auth,
         query: query.query,
         hits: results,
     })
