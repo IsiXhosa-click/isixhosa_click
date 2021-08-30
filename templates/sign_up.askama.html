@@ -1,0 +1,38 @@
+{%- import "macros.askama.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <title>404 - IsiXhosa.click</title>
+    <meta name="og:title" content="404 - IsiXhosa.click"/>
+    <meta name="og:description" content="Content not found">
+    <meta name="og:url" content="https://isixhosa.click/"/>
+    {%- call macros::meta() -%}
+</head>
+
+<body>
+    {%- call macros::navbar() -%}
+    <div id="main_wrap">
+        <main>
+            <header>
+                <h1>Sign up</h1>
+            </header>
+
+             <form action="/login/signup" method="post" enctype="application/x-www-form-urlencoded" class="column_list spaced_flex_list">
+                <label for="username">Username:<input id="username" type="text" value="{{ username_suggestion }}"></label>
+                <label for="display_name">
+                    Do not credit me or my username for my submissions, on the word page or anywhere else
+                <input id="display_name" type="checkbox"></label>
+                <label for="tos_agree">
+                    I agree that any content which I submit I will allow IsiXhosa.click to use indefinitely, subject to
+                    the Terms of Service and under the <a href="https://creativecommons.org/licenses/by-sa/3.0/">
+                       Creative Commons 3.0 Attribution ShareAlike (unported) License</a>
+                   <input id="tos_agree" type="checkbox">
+                </label>
+
+                <select id="redirect" hidden><option value="{{ redirect }}"></option></select>
+            </form>
+        </main>
+    </div>
+</body>
+</html>

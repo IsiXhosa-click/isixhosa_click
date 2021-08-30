@@ -340,9 +340,9 @@
                                             {%- for ex in s.examples -%}
                                                 <li>
                                                     <h3>English</h3>
-                                                    <p>{%- call maybe_edited(s.english) -%}</p>
+                                                    <p>{%- call maybe_edited(ex.english) -%}</p>
                                                     <h3>Xhosa</h3>
-                                                     <p>{%- call maybe_edited(s.xhosa) -%}</p>
+                                                     <p>{%- call maybe_edited(ex.xhosa) -%}</p>
                                                 </li>
                                             {%- endfor -%}
                                         </ul>

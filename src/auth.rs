@@ -15,8 +15,8 @@ use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
+use askama::Template;
 use warp::path::FullPath;
-
 
 type OpenIDClient = Client<Discovered, StandardClaims>;
 
@@ -73,7 +73,8 @@ pub struct OpenIdLoginQuery {
 #[derive(Debug, Clone)]
 pub struct User {
     id: u64,
-    display_name: String,
+    username: String,
+    display_name: bool,
     email: String,
     permissions: Permissions,
 }
@@ -81,6 +82,14 @@ pub struct User {
 #[derive(Default)]
 pub struct Sessions {
     map: HashMap<String, User>,
+}
+
+#[derive(Template)]
+#[template(path = "sign_up.askama.html")]
+struct SignUpTemplate {
+    auth: Auth,
+    username_suggestion: String,
+    redirect: String,
 }
 
 pub async fn auth(cfg: &Config) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
@@ -108,17 +117,11 @@ pub async fn auth(cfg: &Config) -> impl Filter<Error = Rejection, Extract: Reply
         .map(move || (client.clone(), Config::host_builder(&host, https_port)))
         .untuple_one();
 
-    let authorize = warp::path!("login" / "oauth2" / "authorization" / "oidc")
+    let login = warp::path!("login" / "oauth2" / "authorization" / "oidc")
         .and(warp::get())
         .and(with_client_host.clone())
         .and(warp::query::<LoginRedirectQuery>())
         .and_then(reply_authorize);
-
-    let logout = warp::get()
-        .and(warp::path("logout"))
-        .and(warp::path::end())
-        .and(warp::cookie::cookie(COOKIE))
-        .and_then(reply_logout);
 
     let oidc_code = warp::path!("login" / "oauth2" / "code" / "oidc")
         .and(warp::get())
@@ -126,7 +129,13 @@ pub async fn auth(cfg: &Config) -> impl Filter<Error = Rejection, Extract: Reply
         .and(warp::query::<OpenIdLoginQuery>())
         .and_then(reply_login);
 
-    authorize.or(oidc_code).or(logout)
+    let logout = warp::get()
+        .and(warp::path("logout"))
+        .and(warp::path::end())
+        .and(warp::cookie::cookie(COOKIE))
+        .and_then(reply_logout);
+
+    login.or(oidc_code).or(logout)
 }
 
 async fn request_token(
@@ -160,15 +169,16 @@ async fn reply_login(
         Ok(Some((_token, user_info))) => {
             let id = uuid::Uuid::new_v4().to_string();
 
-            // TODO auth
+            // TODO(auth)
             let user = User {
                 id: 0,
                 email: user_info.email.clone().unwrap(),
                 permissions: Permissions::Moderator,
-                display_name: user_info.preferred_username.unwrap_or_default(),
+                display_name: true,
+                username: user_info.preferred_username.unwrap_or_default()
             };
 
-            // TODO correct expiry
+            // TODO(auth) correct expiry
             let authorization_cookie = Cookie::build(COOKIE, &id)
                 .path("/")
                 .http_only(true)
@@ -187,6 +197,8 @@ async fn reply_login(
                     .to_string()
             });
 
+            // TODO(auth) show sign up page here
+            // TODO(auth) handle if the user clicks off w.r.t cookie - redirect them back - new UnauthorizedReason thingie
             Ok(Response::builder()
                 .status(StatusCode::FOUND)
                 .header(warp::http::header::LOCATION, redirect_url)
