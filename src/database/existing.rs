@@ -65,6 +65,14 @@ impl ExistingWord {
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
         modified_rows == 1
     }
+
+    pub fn count_all(db: &impl PublicAccessDb) -> u64 {
+        const COUNT: &str = "SELECT COUNT(1) FROM words;";
+
+        let conn = db.get().unwrap();
+        let count = conn.prepare(COUNT).unwrap().query_row(params![], |row| row.get(0)).unwrap();
+        count
+    }
 }
 
 impl TryFrom<&Row<'_>> for ExistingWord {

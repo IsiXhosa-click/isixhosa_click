@@ -321,8 +321,6 @@ impl Handler<SearchRequest> for SearcherActor {
         mut req: SearchRequest,
         _ctx: &mut xtra::Context<Self>,
     ) -> Vec<WordHit> {
-        const MAX_RESULTS: usize = 5;
-
         req.0 = req.0.to_lowercase();
 
         let searcher = self.reader.searcher();
@@ -341,8 +339,8 @@ impl Handler<SearchRequest> for SearcherActor {
 
                 let english = Term::from_field_text(client.schema_info.english, &token.text);
                 let xhosa = Term::from_field_text(client.schema_info.xhosa, &token.text);
-                let xhosa_stemmed =
-                    Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
+                let xhosa_stemmed = Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
+
                 let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
                 let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
                 let query_xhosa_stemmed = FuzzyTermQuery::new_prefix(xhosa_stemmed, distance, true);
@@ -356,17 +354,21 @@ impl Handler<SearchRequest> for SearcherActor {
             BooleanQuery::union(queries)
         };
 
-        let top_docs = TopDocs::with_limit(MAX_RESULTS);
+        let top_docs = TopDocs::with_limit(20);
 
         tokio::task::spawn_blocking(move || {
             searcher
                 .search(&query, &top_docs)?
                 .into_iter()
-                .map(|(_score, doc_address)| {
+                .map(|(score, doc_address)| {
                     searcher
                         .doc(doc_address)
                         .map_err(anyhow::Error::from)
                         .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
+                        .map(|x| {
+                            dbg!(&score, &x);
+                            x
+                        })
                 })
                 .collect::<Result<Vec<_>, _>>()
         })

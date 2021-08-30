@@ -75,6 +75,7 @@ pub struct User {
     id: u64,
     username: String,
     display_name: bool,
+    advanced_submit_form: bool,
     email: String,
     permissions: Permissions,
 }
@@ -175,7 +176,8 @@ async fn reply_login(
                 email: user_info.email.clone().unwrap(),
                 permissions: Permissions::Moderator,
                 display_name: true,
-                username: user_info.preferred_username.unwrap_or_default()
+                username: user_info.preferred_username.unwrap_or_default(),
+                advanced_submit_form: true
             };
 
             // TODO(auth) correct expiry

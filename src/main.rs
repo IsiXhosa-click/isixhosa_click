@@ -78,6 +78,8 @@ use warp::reply::Response;
 use warp::{path, Filter, Rejection, Reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
+use crate::database::existing::ExistingWord;
+use std::convert::Infallible;
 
 mod auth;
 mod database;
@@ -288,7 +290,12 @@ async fn main() {
         .and(warp::path("about"))
         .and(path::end())
         .and(with_any_auth(db.clone()))
-        .map(|auth, _db| AboutPage { auth });
+        .and_then(|auth, db| async move {
+            Ok::<AboutPage, Infallible>(AboutPage {
+                auth,
+                word_count: tokio::task::spawn_blocking(move || ExistingWord::count_all(&db)).await.unwrap(),
+            })
+        });
 
     let routes = warp::fs::dir(cfg.static_site_files.clone())
         .or(warp::fs::dir(cfg.other_static_files.clone()))
@@ -351,6 +358,7 @@ struct NotFound {
 #[template(path = "about.askama.html")]
 struct AboutPage {
     auth: Auth,
+    word_count: u64,
 }
 
 #[derive(Template)]
