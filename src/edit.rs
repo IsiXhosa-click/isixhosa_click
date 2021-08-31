@@ -1,7 +1,8 @@
 use crate::auth::{with_user_auth, DbBase, User, UserAccessDb};
 use crate::details::{word, WordChangeMethod};
+use crate::serialization::qs_form;
 use crate::submit::{
-    edit_word_page, qs_form, submit_suggestion, suggest_word_deletion, WordId, WordSubmission,
+    edit_word_page, submit_suggestion, suggest_word_deletion, WordId, WordSubmission,
 };
 
 use warp::{body, Filter, Rejection, Reply};
@@ -33,7 +34,7 @@ pub fn edit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clon
     let delete_redirect = warp::post()
         .and(warp::path![u64 / "delete"])
         .and(warp::path::end())
-        .and(with_user_auth(db.clone()))
+        .and(with_user_auth(db))
         .and_then(delete_word_reply);
 
     warp::path("word").and(

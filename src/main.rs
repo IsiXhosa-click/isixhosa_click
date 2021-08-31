@@ -12,6 +12,7 @@
 // - config for domain
 
 // Soon after launch, perhaps before:
+// - principled HTTP response codes with previous_success in form submit and so on
 // - ability to search for and ban users
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
@@ -23,7 +24,8 @@
 // - integration testing
 
 // Well after launch:
-// - ratelimiting
+// - rate limiting
+// - tracing for logging over log: open telemetry/ELK stack or similar?
 // - additional resources/links page
 // - suggestion publicising, voting & commenting
 // - conjugation tables
@@ -37,10 +39,8 @@
 // - forum for xhosa questions (discourse?)
 // - donations for hosting costs (maybe even to pay native speakers to submit words?)
 
-// Ideas:
-// - see if i can replace cloning pool with cloning conn?
-
 use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized, UnauthorizedReason};
+use crate::database::existing::ExistingWord;
 use crate::language::NounClassExt;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::OptionMapNounClassExt;
@@ -62,6 +62,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -78,8 +79,6 @@ use warp::reply::Response;
 use warp::{path, Filter, Rejection, Reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-use crate::database::existing::ExistingWord;
-use std::convert::Infallible;
 
 mod auth;
 mod database;
@@ -203,18 +202,28 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
 
 async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
     if let Some(unauthorized) = err.find::<Unauthorized>() {
-        let login = format!("/login/oauth2/authorization/oidc?redirect={}", urlencoding::encode(unauthorized.redirect.as_str()));
-        let login = Uri::from_str(&login).unwrap();
-        match unauthorized.reason {
-            UnauthorizedReason::NotLoggedIn => Ok(warp::http::Response::builder()
+        let redirect_to = |to| {
+            warp::http::Response::builder()
                 .status(StatusCode::FOUND)
-                .header(warp::http::header::LOCATION, login.to_string())
+                .header(warp::http::header::LOCATION, to)
                 .body("")
                 .unwrap()
-                .into_response()),
+                .into_response()
+        };
+
+        match unauthorized.reason {
+            UnauthorizedReason::NotLoggedIn => {
+                let login = format!(
+                    "/login/oauth2/authorization/oidc?redirect={}",
+                    urlencoding::encode(unauthorized.redirect.as_str())
+                );
+
+                Ok(redirect_to(login))
+            },
             UnauthorizedReason::NoPermissions => {
                 Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response())
             }
+            UnauthorizedReason::InvalidCookie => Ok(redirect_to("/login/oauth2/authorization/oidc".to_owned()))
         }
     } else {
         Err(err)
@@ -232,7 +241,8 @@ async fn main() {
     let pool_clone = pool.clone();
 
     task::spawn_blocking(move || {
-        const CREATIONS: [&str; 10] = [
+        const CREATIONS: [&str; 11] = [
+            include_str!("sql/users.sql"),
             include_str!("sql/words.sql"),
             include_str!("sql/word_suggestions.sql"),
             include_str!("sql/word_deletion_suggestions.sql"),
@@ -242,7 +252,7 @@ async fn main() {
             include_str!("sql/linked_words.sql"),
             include_str!("sql/linked_word_suggestions.sql"),
             include_str!("sql/linked_word_deletion_suggestions.sql"),
-            include_str!("sql/users.sql"),
+            include_str!("sql/login_tokens.sql"),
         ];
 
         let conn = pool_clone.get().unwrap();
@@ -293,7 +303,9 @@ async fn main() {
         .and_then(|auth, db| async move {
             Ok::<AboutPage, Infallible>(AboutPage {
                 auth,
-                word_count: tokio::task::spawn_blocking(move || ExistingWord::count_all(&db)).await.unwrap(),
+                word_count: tokio::task::spawn_blocking(move || ExistingWord::count_all(&db))
+                    .await
+                    .unwrap(),
             })
         });
 
@@ -308,7 +320,7 @@ async fn main() {
             .and(path::end())
             .map(|| warp::redirect(Uri::from_static("/search"))))
         .or(about)
-        .or(auth(&cfg).await)
+        .or(auth(db.clone(), &cfg).await)
         .recover(handle_auth_error)
         .or(auth::with_any_auth(db).map(|auth, _db| {
             warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()

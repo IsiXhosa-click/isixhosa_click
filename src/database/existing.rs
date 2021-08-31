@@ -70,7 +70,11 @@ impl ExistingWord {
         const COUNT: &str = "SELECT COUNT(1) FROM words;";
 
         let conn = db.get().unwrap();
-        let count = conn.prepare(COUNT).unwrap().query_row(params![], |row| row.get(0)).unwrap();
+        let count = conn
+            .prepare(COUNT)
+            .unwrap()
+            .query_row(params![], |row| row.get(0))
+            .unwrap();
         count
     }
 }

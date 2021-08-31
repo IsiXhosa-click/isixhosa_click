@@ -3,34 +3,66 @@
 <!DOCTYPE html>
 <html lang="en-ZA">
 <head>
-    <title>404 - IsiXhosa.click</title>
-    <meta name="og:title" content="404 - IsiXhosa.click"/>
-    <meta name="og:description" content="Content not found">
-    <meta name="og:url" content="https://isixhosa.click/"/>
+    <title>Sign up - IsiXhosa.click</title>
+    <link rel="stylesheet" href="/signup.css">
     {%- call macros::meta() -%}
 </head>
 
 <body>
     {%- call macros::navbar() -%}
     <div id="main_wrap">
-        <main>
-            <header>
-                <h1>Sign up</h1>
-            </header>
+        <header>
+            <h1>Sign up</h1>
+        </header>
 
-             <form action="/login/signup" method="post" enctype="application/x-www-form-urlencoded" class="column_list spaced_flex_list">
-                <label for="username">Username:<input id="username" type="text" value="{{ username_suggestion }}"></label>
+        <main>
+            {%- match previous_failure -%}
+                {%- when Some with (failure) -%}
+                    <div class="error">
+                    An error occurred while signing up:
+                        {% match failure -%}
+                           {%- when SignUpFailure::InvalidUsername -%}
+                                invalid username. Usernames can only contain letters, numbers, spaces, underscores, and
+                                hyphens, and they must be at least 2 characters and no more than 128 characters.
+                           {%- when SignUpFailure::DidNotAgree -%}
+                                you must agree to the Terms of Use and Privacy Policy to create an account on
+                                IsiXhosa.Click.
+                           {%- when SignUpFailure::NoEmail -%}
+                                the account you signed in to is not connected to any verified email addresses. Your
+                                email is required in case IsiXhosa.click moderators or admins need to contact you about
+                                the status of your account or for legal reasons. Try to log in again with a different
+                                Google account.
+                        {%- endmatch -%}
+                        </div>
+                {%- when None -%}
+            {%- endmatch -%}
+
+            <form action="/signup" method="post" enctype="application/x-www-form-urlencoded" class="column_list spaced_flex_list">
+                <label for="username">Username:<input id="username" name="username" type="text" data-lpignore=true></label>
                 <label for="display_name">
-                    Do not credit me or my username for my submissions, on the word page or anywhere else
-                <input id="display_name" type="checkbox"></label>
+                    <input name="display_name" type="checkbox">
+                    Do not publicly credit me or my username for my submissions, on the word page or anywhere else
+                </label>
                 <label for="tos_agree">
+                    <input name="tos_agree" type="checkbox">
                     I agree that any content which I submit I will allow IsiXhosa.click to use indefinitely, subject to
                     the Terms of Service and under the <a href="https://creativecommons.org/licenses/by-sa/3.0/">
                        Creative Commons 3.0 Attribution ShareAlike (unported) License</a>
-                   <input id="tos_agree" type="checkbox">
+                </label>
+                <label for="privacy_policy_agree">
+                    <input name=privacy_policy_agree type="checkbox">
+                    I agree to the Privacy Policy of IsiXhosa.click
                 </label>
 
-                <select id="redirect" hidden><option value="{{ redirect }}"></option></select>
+                <select name="code" hidden><option value="{{ openid_query.code }}"></option></select>
+
+                {%- match openid_query.state -%}
+                    {%- when Some with (state) -%}
+                        <select name="state" hidden><option value="{{ state }}"></option></select>
+                    {%- when None -%}
+                {%- endmatch -%}
+
+                <div><button type="submit">Sign up</button></div>
             </form>
         </main>
     </div>

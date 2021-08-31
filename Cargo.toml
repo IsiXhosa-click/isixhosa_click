@@ -19,7 +19,7 @@ askama = { git = "https://github.com/djc/askama", rev = "ed2e640" }
 askama_warp = { git = "https://github.com/djc/askama", rev = "ed2e640" }
 html-minifier = "3.0.13"
 minifier = "0.0.41"
-rusqlite = { version = "0.25", features = ["bundled", "unlock_notify"] } # bundled to give 3.35 assuredly
+rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono"] } # bundled to give 3.35 assuredly
 log = "0.4"
 log4rs = "1"
 chrono = "0.4"
@@ -37,9 +37,12 @@ confy = "0.4"
 isixhosa = { version = "0.1.1", features = ["with-serde-1", "with-num_enum-0_5"] }
 openid = "0.9.3"
 reqwest = "0.11.4"
-uuid = "0.8.2"
+rand = "0.8.3"
+sha2 = "0.9.6"
 cookie = "0.16.0-rc.1"
 lazy_static = "1.4.0"
 urlencoding = "2.1.0"
+dashmap = "4.0.2"
+argon2 = { version = "0.3.0", features = ["password-hash"] }
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability

@@ -8,8 +8,9 @@ use crate::database::suggestion::{
 };
 use crate::language::NounClassExt;
 use crate::search::{TantivyClient, WordDocument, WordHit};
+use crate::serialization::qs_form;
 use crate::serialization::OptionMapNounClassExt;
-use crate::submit::{edit_suggestion_page, qs_form, submit_suggestion, WordId, WordSubmission};
+use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
 use askama::Template;
 
 use crate::auth::ModeratorAccessDb;
@@ -362,9 +363,8 @@ async fn process_one(
     let db_clone = db.clone();
 
     let edit_unsupported = || {
-        log::warn!(
-            "Got request to edit word or example deletion suggestion, but this makes no sense!\
-                Returning error and ignoring."
+        log::error!(
+            "Got request to edit word or example deletion suggestion, but this makes no sense!"
         );
         false
     };

@@ -339,7 +339,8 @@ impl Handler<SearchRequest> for SearcherActor {
 
                 let english = Term::from_field_text(client.schema_info.english, &token.text);
                 let xhosa = Term::from_field_text(client.schema_info.xhosa, &token.text);
-                let xhosa_stemmed = Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
+                let xhosa_stemmed =
+                    Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
 
                 let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
                 let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
