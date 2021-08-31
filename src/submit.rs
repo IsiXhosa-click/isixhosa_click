@@ -193,7 +193,7 @@ pub fn submit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Cl
 
     let submit_routes = submit_page.or(submit_form).or(failed_to_submit);
 
-    warp::path("submit").and(path::end()).and(submit_routes)
+    warp::path("submit").and(path::end()).and(submit_routes).boxed()
 }
 
 pub async fn edit_suggestion_page(

@@ -16,6 +16,7 @@ pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + C
         .and(with_any_auth(db))
         .and(warp::any().map(|| None)) // previous_success is None
         .and_then(word)
+        .boxed()
 }
 
 #[derive(Template)]

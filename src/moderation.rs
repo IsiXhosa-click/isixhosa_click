@@ -180,7 +180,7 @@ pub fn accept(
         .and(warp::path::end())
         .and(submit_edit.or(edit_failed));
 
-    warp::path("moderation").and(root.or(submit_edit))
+    warp::path("moderation").and(root.or(submit_edit)).boxed()
 }
 
 async fn suggested_words(

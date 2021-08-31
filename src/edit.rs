@@ -42,7 +42,7 @@ pub fn edit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clon
             .or(submit_form)
             .or(delete_redirect)
             .or(failed_to_submit),
-    )
+    ).boxed()
 }
 
 async fn submit_suggestion_reply(

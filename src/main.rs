@@ -323,7 +323,8 @@ async fn main() {
         .recover(handle_auth_error)
         .or(auth::with_any_auth(db).map(|auth, _db| {
             warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
-        }));
+        }))
+        .boxed();
 
     log::info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 

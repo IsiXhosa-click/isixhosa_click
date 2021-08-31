@@ -241,7 +241,7 @@ pub async fn auth(
         .and(qs_form())
         .and_then(signup_form_submit);
 
-    login.or(oidc_code).or(sign_up).or(logout)
+    login.or(oidc_code).or(sign_up).or(logout).boxed()
 }
 
 fn with_session() -> impl Filter<Extract = (SignInSessionId,), Error = Rejection> + Clone {
