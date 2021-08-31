@@ -1,5 +1,4 @@
 .suggested_word_text {
-    white-space: nowrap;
     margin: 0;
 }
 
@@ -27,4 +26,10 @@ li::marker {
 
 #suggestions > ul > li {
     margin-bottom: 1em;
+}
+
+table {
+    table-layout: fixed;
+    width: 100%;
+    word-wrap: break-word;
 }
