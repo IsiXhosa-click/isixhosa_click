@@ -5,6 +5,7 @@
         window.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
             input.className = "searchbox_input";
+            input.placeholder = "Type an English or Xhosa word";
             input.setAttribute("type", "search");
             document.getElementById("searchbox").appendChild(input);
             input.value = "{{ start_query }}";
