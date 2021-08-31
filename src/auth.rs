@@ -291,8 +291,6 @@ async fn reply_authorize(
         ..Default::default()
     });
 
-    log::debug!("User redirected to for authorization: {}", auth_url);
-
     let session_id_cookie = Cookie::build(SIGN_IN_SESSION_ID, &session_id.0)
         .path("/")
         .http_only(true)
@@ -354,9 +352,7 @@ async fn request_token(
 
     if let Some(mut id_token) = token.id_token.as_mut() {
         oidc_client.decode_token(&mut id_token)?;
-        log::debug!("Token acquired: {:#?}", id_token);
         oidc_client.validate_token(&id_token, Some(&nonce), None)?;
-        log::debug!("User authorized with token: {:#?}", id_token);
     } else {
         return Ok(None);
     }

@@ -361,15 +361,11 @@ impl Handler<SearchRequest> for SearcherActor {
             searcher
                 .search(&query, &top_docs)?
                 .into_iter()
-                .map(|(score, doc_address)| {
+                .map(|(_score, doc_address)| {
                     searcher
                         .doc(doc_address)
                         .map_err(anyhow::Error::from)
                         .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
-                        .map(|x| {
-                            dbg!(&score, &x);
-                            x
-                        })
                 })
                 .collect::<Result<Vec<_>, _>>()
         })
