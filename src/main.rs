@@ -2,7 +2,6 @@
 
 // Before launch:
 // - TODO standalone example & linked word suggestion editing
-// - TODO user system
 // - TODO attributions - editing users & references & so on
 
 // TODO: Auth stuff:
