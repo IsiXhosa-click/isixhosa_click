@@ -87,6 +87,10 @@ impl Auth {
             None => false,
         }
     }
+
+    pub fn username(&self) -> Option<&str> {
+        self.user.as_ref().map(|user| &user.username as &str)
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]

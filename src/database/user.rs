@@ -93,7 +93,7 @@ impl User {
         let mut stmt = conn.prepare(INSERT).unwrap();
         let params = params![
             userinfo.sub.unwrap(),
-            username,
+            username.trim(),
             display_name,
             email,
             permissions.contains(Permissions::Moderator), // is_moderator

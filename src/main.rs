@@ -5,10 +5,7 @@
 // - TODO attributions - editing users & references & so on
 
 // TODO: Auth stuff:
-// - separate privileged database type
 // - right-align login button
-// - set up separate testing api key
-// - config for domain
 
 // Soon after launch, perhaps before:
 // - principled HTTP response codes with previous_success in form submit and so on
@@ -19,7 +16,6 @@
 // - move PartOfSpeech to isixhosa crate
 // - better search engine optimisation
 // - cache control headers/etags
-// - gzip compress
 // - integration testing
 
 // Well after launch:

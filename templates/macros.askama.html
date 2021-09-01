@@ -15,11 +15,32 @@
             <a href="/moderation">Moderation</a>
         {%- endif -%}
 
-        {%- if !auth.has_permissions(crate::auth::Permissions::User) -%}
-            <a href="/login/oauth2/authorization/oidc">Log in</a>
-        {%- else -%}
-            <a href="/logout/">Log out</a>
-        {%- endif -%}
+        {%- match auth.username() -%}
+            {%- when None -%}
+                <a id="login_bar_container" href="/login/oauth2/authorization/oidc">
+                    <div id="login_bar" class="row_list">
+                        <div class="material-icons" id="login_icon">login</div>
+                        <div id="login_bar_text">Log in with Google</div>
+                    </div>
+                </a>
+            {%- when Some with (username) -%}
+                <div id="login_bar_container">
+                    <button id="login_bar" class="row_list">
+                        <div class="material-icons" id="user_icon">account_circle</div>
+                        <div id="login_bar_text">{{ auth.username().unwrap_or_default() -}}</div>
+                    </button>
+
+                    <div id="login_popover_container">
+                        <div id="login_popover" hidden>
+                            <a href="/logout/">
+                                <div class="material-icons login_popover_icon">logout</div>
+                                <div class="login_popover_text">Log out</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+        {%- endmatch -%}
+
     </nav>
 
     <script type="module">
@@ -32,6 +53,11 @@
                 } else {
                     menu.classList.add("open");
                 }
+            });
+
+            document.getElementById("login_bar").addEventListener("click", function () {
+                let menu = document.getElementById("login_popover");
+                menu.hidden = !menu.hidden;
             })
         });
     </script>

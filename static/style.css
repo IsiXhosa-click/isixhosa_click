@@ -123,9 +123,62 @@ caption, .caption {
     width: 100%;
 }
 
-.menu > *, #site_name {
+.menu > a, #login_bar, #site_name, #login_popover > a {
     color: white;
     text-decoration: none;
+    background: #282828;
+}
+
+#login_bar_container {
+    margin-left: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#login_bar {
+    border: none;
+    border-radius: 0;
+    font-size: initial;
+    padding: 0 0 0 0.25rem;
+    height: 100%;
+    width: 100%;
+}
+
+#login_bar_text {
+    font-weight: bold;
+}
+
+#login_bar > #login_bar_text {
+    padding: 0.75rem 0.5rem;
+}
+
+#login_icon {
+    font-size: 2.5rem;
+    padding-top: 0.3rem;
+}
+
+#user_icon {
+    font-size: 3rem;
+}
+
+#login_popover_container {
+    z-index: 1;
+    position: relative;
+}
+
+#login_popover {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+#login_popover > a {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
 }
 
 .menu > * {
@@ -177,7 +230,7 @@ caption, .caption {
     color: white;
 }
 
-.menu > a:hover {
+.menu > a:hover, #login_bar:hover, #login_popover > a:hover {
     background: #484848;
 }
 
@@ -198,12 +251,24 @@ caption, .caption {
         display: none;
     }
 
+    .menu > #login_bar_container {
+        display: none;
+    }
+
     #site_name_container {
         display: inline-flex;
     }
 
     .menu.open > a {
         display: inline;
+    }
+
+    .menu.open > #login_bar_container {
+        display: flex;
+    }
+
+    .menu.open > #login_bar_container {
+        margin-left: initial;
     }
 
     #hamburger {
