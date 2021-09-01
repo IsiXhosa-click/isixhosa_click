@@ -525,7 +525,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: &impl UserAccessDb) {
                 .unwrap();
             Some(suggested_word_id).filter(|_| existing_id.is_none())
         } else {
-            None
+            w.suggestion_id.map(|id| id as i64)
         };
 
         process_linked_words(&mut w, &db, suggested_word_id);
@@ -625,7 +625,7 @@ fn process_linked_words(
                     maybe_insert_link(new, Some(prev));
                 } else {
                     suggest_link_deletion
-                        .execute(params![prev.link_id])
+                        .execute(params![prev.link_id, "No reason given"])
                         .unwrap();
                 }
             }

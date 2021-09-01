@@ -131,7 +131,7 @@ impl NounClassExt for NounClass {
 #[serde(rename_all = "snake_case")]
 pub enum WordLinkType {
     PluralOrSingular = 1,
-    Synonym = 2,
+    AlternateUse = 2,
     Antonym = 3,
     Related = 4,
     Confusable = 5,
@@ -141,10 +141,10 @@ impl WordLinkType {
     fn to_str(&self) -> &'static str {
         match self {
             WordLinkType::PluralOrSingular => "Plural or singular form",
-            WordLinkType::Synonym => "Synonym",
             WordLinkType::Antonym => "Antonym",
-            WordLinkType::Related => "Related",
+            WordLinkType::Related => "Related meaning",
             WordLinkType::Confusable => "Confusable",
+            WordLinkType::AlternateUse => "Alternate use",
         }
     }
 

@@ -231,7 +231,7 @@ impl LinkedWordDeletionSuggestion {
     }
 
     pub fn accept(db: &impl ModeratorAccessDb, suggestion: u64) {
-        const DELETE: &str = "DELETE FROM linked_words WHERE linked_id = ?1;";
+        const DELETE: &str = "DELETE FROM linked_words WHERE link_id = ?1;";
 
         let to_delete = Self::fetch_link_id_for_suggestion(db, suggestion);
         let conn = db.get().unwrap();

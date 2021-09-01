@@ -12,8 +12,8 @@ function removeLinkedWord(button_id, search) {
     search.stop();
 
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
-    if (delete_buttons.length === 1) {
-        delete_buttons.item(0).disabled = true;
+    if (delete_buttons.length === 0) {
+        addLinkedWord()
     }
 }
 
@@ -143,10 +143,10 @@ export function addLinkedWord(link_type, other, suggestion_id, existing_id) {
     const types_list = [
         { value: "", text: "Choose how the words are related" },
         { value: "1", text: "Singular or plural form" },
-        { value: "2", text: "Synonym" },
-        { value: "3", text: "Antonym" },
         { value: "4", text: "Related meaning" },
-        { value: "5", text: "Confusable" }
+        { value: "3", text: "Antonym" },
+        { value: "5", text: "Confusable" },
+        { value: "2", text: "Alternate use" },
     ];
 
     for (let i = 0; i < types_list.length; i++) {
@@ -180,13 +180,6 @@ export function addLinkedWord(link_type, other, suggestion_id, existing_id) {
     select_input_container.appendChild(linked_word);
 
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
-    if (delete_buttons.length > 1) {
-        for (let button of delete_buttons) {
-            button.disabled = false;
-        }
-    } else {
-        delete_buttons.item(0).disabled = true;
-    }
 }
 
 export function addLinkedWords(linked_words) {

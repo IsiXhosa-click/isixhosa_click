@@ -10,8 +10,8 @@ function removeExample(button_id) {
     list_item.remove();
 
     let delete_buttons = document.getElementsByClassName("delete_example");
-    if (delete_buttons.length === 1) {
-        delete_buttons.item(0).disabled = true;
+    if (delete_buttons.length === 0) {
+        addExample()
     }
 }
 
@@ -81,13 +81,6 @@ export function addExample(english, xhosa, suggestion_id, existing_id) {
     sentence.appendChild(textField(`examples[${current_example_id}][xhosa]`, "Xhosa example:", xhosa));
 
     let delete_buttons = document.getElementsByClassName("delete_example");
-    if (delete_buttons.length > 1) {
-        for (let button of delete_buttons) {
-            button.disabled = false;
-        }
-    } else {
-        delete_buttons.item(0).disabled = true;
-    }
 }
 
 export function addExamples(examples) {
