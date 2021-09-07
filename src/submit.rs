@@ -195,7 +195,10 @@ pub fn submit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Cl
 
     let submit_routes = submit_page.or(submit_form).or(failed_to_submit);
 
-    warp::path("submit").and(path::end()).and(submit_routes).boxed()
+    warp::path("submit")
+        .and(path::end())
+        .and(submit_routes)
+        .boxed()
 }
 
 pub async fn edit_suggestion_page(
@@ -261,8 +264,16 @@ impl WordFormTemplate {
             (Some(existing), Some(suggestion)) => {
                 let suggested_word = SuggestedWord::fetch_full(db, suggestion)?;
                 let mut template = WordFormTemplate::from(suggested_word);
-                template.examples.extend(ExistingExample::fetch_all_for_word(db, existing).into_iter().map(Into::into));
-                template.linked_words.extend(ExistingLinkedWord::fetch_all_for_word(db, existing).into_iter().map(Into::into));
+                template.examples.extend(
+                    ExistingExample::fetch_all_for_word(db, existing)
+                        .into_iter()
+                        .map(Into::into),
+                );
+                template.linked_words.extend(
+                    ExistingLinkedWord::fetch_all_for_word(db, existing)
+                        .into_iter()
+                        .map(Into::into),
+                );
                 Some(template)
             }
             (_, Some(suggestion)) => {

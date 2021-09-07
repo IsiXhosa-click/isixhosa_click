@@ -50,7 +50,7 @@ impl ToSql for PartOfSpeech {
 
 impl PartOfSpeech {
     /// Used in askama templates
-    pub fn to_u8(&self) -> u8 {
+    pub fn as_u8(&self) -> u8 {
         *self as u8
     }
 }
@@ -85,7 +85,7 @@ impl NounClassPrefixes {
 
 pub trait NounClassExt {
     fn to_prefixes(&self) -> NounClassPrefixes;
-    fn to_u8(&self) -> u8;
+    fn as_u8(&self) -> u8;
 }
 
 impl NounClassExt for NounClass {
@@ -109,7 +109,7 @@ impl NounClassExt for NounClass {
     }
 
     /// Used in askama templates
-    fn to_u8(&self) -> u8 {
+    fn as_u8(&self) -> u8 {
         *self as u8
     }
 }
@@ -138,7 +138,7 @@ pub enum WordLinkType {
 }
 
 impl WordLinkType {
-    fn to_str(&self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
             WordLinkType::PluralOrSingular => "Plural or singular form",
             WordLinkType::Antonym => "Antonym",
@@ -148,7 +148,7 @@ impl WordLinkType {
         }
     }
 
-    pub fn to_u8(&self) -> u8 {
+    pub fn as_u8(&self) -> u8 {
         *self as u8
     }
 }
@@ -169,6 +169,6 @@ impl ToSql for WordLinkType {
 
 impl Display for WordLinkType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_str())
+        write!(f, "{}", self.as_str())
     }
 }

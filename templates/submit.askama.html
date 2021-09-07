@@ -125,7 +125,7 @@
                                 <script type="module">
                                     window.addEventListener("DOMContentLoaded", function () {
                                         let select = document.getElementById("part_of_speech");
-                                        select.options[{{ part.to_u8() }}].selected = true;
+                                        select.options[{{ part.as_u8() }}].selected = true;
                                     });
                                 </script>
                             {% when None %}
@@ -143,7 +143,7 @@
                                 <script type="module">
                                     window.addEventListener("DOMContentLoaded", function () {
                                         let select = document.getElementById("noun_class");
-                                        select.options[{{ class.to_u8() }}].selected = true;
+                                        select.options[{{ class.as_u8() }}].selected = true;
                                     });
                                 </script>
                             {%- when None -%}

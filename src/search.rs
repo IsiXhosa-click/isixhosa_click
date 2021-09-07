@@ -4,10 +4,12 @@ use crate::serialization::{SerializeDisplay, SerializePrimitive};
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
+use ordered_float::OrderedFloat;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Serialize;
+use std::cmp::min;
 use std::convert::TryInto;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
@@ -321,7 +323,8 @@ impl Handler<SearchRequest> for SearcherActor {
         mut req: SearchRequest,
         _ctx: &mut xtra::Context<Self>,
     ) -> Vec<WordHit> {
-        req.0 = req.0.to_lowercase();
+        req.0 = req.0.to_lowercase().replace("(", "").replace(")", "");
+        req.0.truncate(32);
 
         let searcher = self.reader.searcher();
         let client = self.client.clone();
@@ -358,7 +361,7 @@ impl Handler<SearchRequest> for SearcherActor {
         let top_docs = TopDocs::with_limit(20);
 
         tokio::task::spawn_blocking(move || {
-            searcher
+            let mut results: Vec<WordHit> = searcher
                 .search(&query, &top_docs)?
                 .into_iter()
                 .map(|(_score, doc_address)| {
@@ -367,7 +370,16 @@ impl Handler<SearchRequest> for SearcherActor {
                         .map_err(anyhow::Error::from)
                         .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
                 })
-                .collect::<Result<Vec<_>, _>>()
+                .collect::<Result<_>>()?;
+
+            results.sort_by_cached_key(|hit| {
+                min(
+                    OrderedFloat(strsim::jaro_winkler(&req.0, &hit.xhosa)),
+                    OrderedFloat(strsim::jaro_winkler(&req.0, &hit.english)),
+                )
+            });
+            results.truncate(5);
+            Ok::<_, anyhow::Error>(results)
         })
         .await
         .expect("Error executing search task")

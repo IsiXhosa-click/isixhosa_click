@@ -282,7 +282,7 @@ impl SuggestedExample {
             .map(|row| {
                 Ok((
                     WordId(row.get::<&str, u64>("word_id")?),
-                    SuggestedExample::from_row_fetch_original(&row, db),
+                    SuggestedExample::from_row_fetch_original(row, db),
                 ))
             })
             .for_each(|(word_id, example)| {

@@ -44,5 +44,7 @@ lazy_static = "1.4.0"
 urlencoding = "2.1.0"
 dashmap = "4.0.2"
 argon2 = { version = "0.3.0", features = ["password-hash"] }
+strsim = "0.10.0"
+ordered-float = "2.8.0"
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability

@@ -214,11 +214,13 @@ async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
                 );
 
                 Ok(redirect_to(login))
-            },
+            }
             UnauthorizedReason::NoPermissions => {
                 Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response())
             }
-            UnauthorizedReason::InvalidCookie => Ok(redirect_to("/login/oauth2/authorization/oidc".to_owned()))
+            UnauthorizedReason::InvalidCookie => {
+                Ok(redirect_to("/login/oauth2/authorization/oidc".to_owned()))
+            }
         }
     } else {
         Err(err)

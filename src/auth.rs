@@ -10,18 +10,18 @@ use dashmap::DashMap;
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
-use serde::{Serialize, Deserialize};
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use sha2::Digest;
+use std::fmt::{Debug, Display, Formatter};
+use std::str::FromStr;
+use std::time::{Duration, Instant};
 use warp::http::uri;
 use warp::path::FullPath;
 use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-use rand::Rng;
-use std::time::{Instant, Duration};
-use sha2::Digest;
-use std::str::FromStr;
-use std::fmt::{Debug, Formatter, Display};
 
 type OpenIDClient = Client<Discovered, StandardClaims>;
 
@@ -123,7 +123,7 @@ pub enum SignInState {
         nonce: String,
     },
     WaitingForSignUp {
-        userinfo: Userinfo,
+        userinfo: Box<Userinfo>,
         state_change: Instant,
     },
 }
@@ -249,17 +249,16 @@ pub async fn auth(
 }
 
 fn with_session() -> impl Filter<Extract = (SignInSessionId,), Error = Rejection> + Clone {
-    warp::cookie(SIGN_IN_SESSION_ID)
-        .and_then(|id| async {
-            if IN_PROGRESS_SIGN_INS.contains_key(&id) {
-                Ok(id)
-            } else {
-                Err(warp::reject::custom(Unauthorized {
-                    redirect: String::new(),
-                    reason: UnauthorizedReason::InvalidCookie,
-                }))
-            }
-        })
+    warp::cookie(SIGN_IN_SESSION_ID).and_then(|id| async {
+        if IN_PROGRESS_SIGN_INS.contains_key(&id) {
+            Ok(id)
+        } else {
+            Err(warp::reject::custom(Unauthorized {
+                redirect: String::new(),
+                reason: UnauthorizedReason::InvalidCookie,
+            }))
+        }
+    })
 }
 
 pub fn random_string_token() -> String {
@@ -284,7 +283,7 @@ async fn reply_authorize(
         csrf_token: random_string_token(),
     };
 
-    let session_id = SignInSessionId(random_string_token().to_string());
+    let session_id = SignInSessionId(random_string_token());
     let nonce = random_string_token();
 
     let auth_url = oidc_client.auth_url(&Options {
@@ -303,11 +302,14 @@ async fn reply_authorize(
         .finish()
         .to_string();
 
-    IN_PROGRESS_SIGN_INS.insert(session_id, SignInState::WaitingForOpenIdResponse {
-        state_change: Instant::now(),
-        csrf_token: state.csrf_token.clone(),
-        nonce,
-    });
+    IN_PROGRESS_SIGN_INS.insert(
+        session_id,
+        SignInState::WaitingForOpenIdResponse {
+            state_change: Instant::now(),
+            csrf_token: state.csrf_token,
+            nonce,
+        },
+    );
 
     Ok(Response::builder()
         .status(StatusCode::FOUND)
@@ -315,7 +317,6 @@ async fn reply_authorize(
         .header(warp::http::header::SET_COOKIE, session_id_cookie)
         .body("")
         .unwrap())
-
 }
 
 async fn request_token(
@@ -324,39 +325,44 @@ async fn request_token(
     openid_query: &OpenIdLoginQuery,
 ) -> anyhow::Result<Option<(Token, Userinfo)>> {
     #[derive(Debug)]
-    enum SignInError {
-        InvalidSignInState,
-        InvalidSignInId,
-        InvalidCsrfToken,
+    enum SignInInvalid {
+        SignInState,
+        SignInId,
+        CsrfToken,
     }
 
-    impl Display for SignInError {
+    impl Display for SignInInvalid {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             Debug::fmt(self, f)
         }
     }
 
-    impl std::error::Error for SignInError {}
+    impl std::error::Error for SignInInvalid {}
 
-    let (csrf_token, nonce) = match IN_PROGRESS_SIGN_INS.get(&session_id).as_deref() {
-        Some(SignInState::WaitingForOpenIdResponse { csrf_token, nonce, .. }) => {
-            (csrf_token.clone(), nonce.clone())
-        },
-        Some(_) => Err(SignInError::InvalidSignInState)?,
-        None => Err(SignInError::InvalidSignInId)?,
+    let (csrf_token, nonce) = match IN_PROGRESS_SIGN_INS.get(session_id).as_deref() {
+        Some(SignInState::WaitingForOpenIdResponse {
+            csrf_token, nonce, ..
+        }) => (csrf_token.clone(), nonce.clone()),
+        Some(_) => return Err(SignInInvalid::SignInState.into()),
+        None => return Err(SignInInvalid::SignInId.into()),
     };
 
-    let state: OpenIdState = serde_json::from_str(openid_query.state.as_ref().ok_or(SignInError::InvalidCsrfToken)?)?;
+    let state: OpenIdState = serde_json::from_str(
+        openid_query
+            .state
+            .as_ref()
+            .ok_or(SignInInvalid::CsrfToken)?,
+    )?;
 
     if state.csrf_token != csrf_token {
-        Err(SignInError::InvalidCsrfToken)?
+        return Err(SignInInvalid::CsrfToken.into());
     }
 
     let mut token: Token = oidc_client.request_token(&openid_query.code).await?.into();
 
     if let Some(mut id_token) = token.id_token.as_mut() {
         oidc_client.decode_token(&mut id_token)?;
-        oidc_client.validate_token(&id_token, Some(&nonce), None)?;
+        oidc_client.validate_token(id_token, Some(&nonce), None)?;
     } else {
         return Ok(None);
     }
@@ -414,20 +420,25 @@ async fn reply_login(
     let state: OpenIdState = serde_json::from_str(openid_query.state.as_ref().unwrap()).unwrap();
 
     let response = match User::fetch_by_oidc_id(&db, token, oidc_id) {
-        Some(user) => reply_insert_session(db, session_id, user, host_builder, state.redirect).await.into_response(),
+        Some(user) => reply_insert_session(db, session_id, user, host_builder, state.redirect)
+            .await
+            .into_response(),
         None => {
-            IN_PROGRESS_SIGN_INS.insert(session_id, SignInState::WaitingForSignUp {
-                userinfo,
-                state_change: Instant::now(),
-            });
+            IN_PROGRESS_SIGN_INS.insert(
+                session_id,
+                SignInState::WaitingForSignUp {
+                    userinfo: Box::new(userinfo),
+                    state_change: Instant::now(),
+                },
+            );
 
             SignUpTemplate {
                 auth: Default::default(),
                 openid_query,
                 previous_failure: None,
             }
-                .into_response()
-        },
+            .into_response()
+        }
     };
 
     Ok(response)
@@ -450,14 +461,19 @@ async fn reply_insert_session(
             .to_string()
     });
 
-    let token = tokio::task::spawn_blocking(move || StaySignedInToken::new(&db, user.id)).await.unwrap();
-    let authorization_cookie = Cookie::build(STAY_LOGGED_IN_COOKIE, serde_json::to_string(&token).unwrap())
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .expires(OffsetDateTime::now_utc() + SIX_MONTHS)
-        .finish()
-        .to_string();
+    let token = tokio::task::spawn_blocking(move || StaySignedInToken::new(&db, user.id))
+        .await
+        .unwrap();
+    let authorization_cookie = Cookie::build(
+        STAY_LOGGED_IN_COOKIE,
+        serde_json::to_string(&(token.token, token.token_id)).unwrap(),
+    )
+    .path("/")
+    .http_only(true)
+    .secure(true)
+    .expires(OffsetDateTime::now_utc() + SIX_MONTHS)
+    .finish()
+    .to_string();
 
     IN_PROGRESS_SIGN_INS.remove(&session_id);
 
@@ -479,7 +495,7 @@ async fn signup_form_submit(
 ) -> Result<impl warp::Reply, Infallible> {
     let userinfo = match IN_PROGRESS_SIGN_INS.get(&session_id).as_deref() {
         Some(SignInState::WaitingForSignUp { userinfo, .. }) => userinfo.clone(),
-        _ => return Ok(warp::reply::with_status("",StatusCode::FORBIDDEN).into_response()),
+        _ => return Ok(warp::reply::with_status("", StatusCode::FORBIDDEN).into_response()),
     };
 
     if !form.privacy_policy_agree || !form.tos_agree {
@@ -494,8 +510,8 @@ async fn signup_form_submit(
     if !form
         .username
         .chars()
-        .all(|c| c.is_alphanumeric() || [' ', '-', '_'].contains(&c)) ||
-        !(2..=128usize).contains(&form.username.len())
+        .all(|c| c.is_alphanumeric() || [' ', '-', '_'].contains(&c))
+        || !(2..=128usize).contains(&form.username.len())
     {
         return Ok(SignUpTemplate {
             auth: Default::default(),
@@ -517,7 +533,8 @@ async fn signup_form_submit(
         }
     };
 
-    let state: OpenIdState = serde_json::from_str(form.openid_query.state.as_ref().unwrap()).unwrap();
+    let state: OpenIdState =
+        serde_json::from_str(form.openid_query.state.as_ref().unwrap()).unwrap();
     let redirect_url = state.redirect.clone();
 
     let db_clone = db.clone();
@@ -535,13 +552,17 @@ async fn signup_form_submit(
     .await
     .unwrap();
 
-    Ok(reply_insert_session(db_clone, session_id, user, host_uri_builder, redirect_url).await.into_response())
+    Ok(
+        reply_insert_session(db_clone, session_id, user, host_uri_builder, redirect_url)
+            .await
+            .into_response(),
+    )
 }
 
 async fn reply_logout(
     _user: User,
     db: impl UserAccessDb,
-    token: StaySignedInToken
+    token: StaySignedInToken,
 ) -> Result<impl warp::Reply, Infallible> {
     let deleted_cookie = Cookie::build(STAY_LOGGED_IN_COOKIE, "")
         .path("/")
@@ -580,7 +601,7 @@ impl reject::Reject for Unauthorized {}
 async fn extract_user(
     db: impl PublicAccessDb,
     redirect: String,
-    stay_signed_in: Option<StaySignedInToken>
+    stay_signed_in: Option<StaySignedInToken>,
 ) -> Result<User, Rejection> {
     tokio::task::spawn_blocking(move || {
         if let Some(stay_signed_in) = stay_signed_in {
@@ -598,7 +619,9 @@ async fn extract_user(
                 redirect,
             }))
         }
-    }).await.unwrap()
+    })
+    .await
+    .unwrap()
 }
 
 #[derive(Clone)]
