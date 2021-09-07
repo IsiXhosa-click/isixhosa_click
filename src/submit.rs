@@ -103,23 +103,24 @@ impl<'de> Deserialize<'de> for LinkedWordList {
 #[serde_as]
 #[derive(Deserialize, Clone, Debug)]
 pub struct WordSubmission {
-    english: String,
-    xhosa: String,
-    part_of_speech: PartOfSpeech,
     suggestion_id: Option<u64>,
     existing_id: Option<u64>,
 
+    english: String,
+    xhosa: String,
+    part_of_speech: PartOfSpeech,
+    note: String,
     xhosa_tone_markings: String,
     infinitive: String,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
     is_plural: bool,
     noun_class: Option<NounClass>,
+
     #[serde(default)]
     examples: Vec<ExampleSubmission>,
     #[serde(default)]
     linked_words: LinkedWordList,
-    note: String,
 }
 
 impl WordSubmission {
@@ -127,6 +128,7 @@ impl WordSubmission {
         self.english != o.english
             || self.xhosa != o.xhosa
             || self.xhosa_tone_markings != o.xhosa_tone_markings
+            || self.note != o.note
             || self.infinitive != o.infinitive
             || self.is_plural != o.is_plural
             || self.noun_class != o.noun_class
@@ -256,6 +258,13 @@ impl WordFormTemplate {
         suggested: Option<u64>,
     ) -> Option<Self> {
         match (existing, suggested) {
+            (Some(existing), Some(suggestion)) => {
+                let suggested_word = SuggestedWord::fetch_full(db, suggestion)?;
+                let mut template = WordFormTemplate::from(suggested_word);
+                template.examples.extend(ExistingExample::fetch_all_for_word(db, existing).into_iter().map(Into::into));
+                template.linked_words.extend(ExistingLinkedWord::fetch_all_for_word(db, existing).into_iter().map(Into::into));
+                Some(template)
+            }
             (_, Some(suggestion)) => {
                 let suggested_word = SuggestedWord::fetch_full(db, suggestion)?;
                 Some(WordFormTemplate::from(suggested_word))

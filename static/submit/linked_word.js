@@ -143,10 +143,10 @@ export function addLinkedWord(link_type, other, suggestion_id, existing_id) {
     const types_list = [
         { value: "", text: "Choose how the words are related" },
         { value: "1", text: "Singular or plural form" },
-        { value: "4", text: "Related meaning" },
-        { value: "3", text: "Antonym" },
-        { value: "5", text: "Confusable" },
         { value: "2", text: "Alternate use" },
+        { value: "3", text: "Antonym" },
+        { value: "4", text: "Related meaning" },
+        { value: "5", text: "Confusable" },
     ];
 
     for (let i = 0; i < types_list.length; i++) {
