@@ -9,7 +9,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Serialize;
-use std::cmp::min;
+use std::cmp::max;
 use std::convert::TryInto;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
@@ -373,7 +373,7 @@ impl Handler<SearchRequest> for SearcherActor {
                 .collect::<Result<_>>()?;
 
             results.sort_by_cached_key(|hit| {
-                min(
+                max(
                     OrderedFloat(strsim::jaro_winkler(&req.0, &hit.xhosa)),
                     OrderedFloat(strsim::jaro_winkler(&req.0, &hit.english)),
                 )
