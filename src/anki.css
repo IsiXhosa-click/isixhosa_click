@@ -1,3 +1,7 @@
+.mobile .card.night_mode a, .card.nightMode a {
+    color: lightblue;
+}
+
 .extra, .example, .translation, .example_header {
     text-align: center;
 }
