@@ -104,7 +104,7 @@ impl WordRecord {
             "English up",
             vec![
                 Field::new("NoteId"),
-                Field::new("Id"),
+                Field::new("WordId"),
                 Field::new("English"),
                 Field::new("Xhosa"),
                 Field::new("EnglishExtra"),
