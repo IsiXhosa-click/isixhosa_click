@@ -1,13 +1,13 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
 use crate::database::existing::{ExistingExample, ExistingWord};
-use crate::language::{PartOfSpeech, WordLinkType};
+use crate::language::{PartOfSpeech, WordLinkType, NounClassExt};
 use crate::serialization::{deser_from_str, ser_to_debug};
 use crate::{Config, set_up_db};
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
 use rusqlite::backup::Backup;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use rusqlite::{Connection, Row};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -18,6 +18,7 @@ use tempdir::TempDir;
 use std::process::Command;
 use std::io;
 use chrono::Utc;
+use genanki_rs::{Deck, Note, Model, Field, Template, ModelType};
 
 pub fn restore(cfg: Config) {
     let conn = Connection::open(&cfg.database_path).unwrap();
@@ -35,10 +36,10 @@ pub fn restore(cfg: Config) {
 pub fn run_daily_tasks(cfg: Config) {
     let conn = Connection::open(&cfg.database_path).unwrap();
     sweep_tokens(&conn);
-    backup(&cfg, &conn);
+    export(&cfg, &conn);
 }
 
-fn backup(cfg: &Config, src: &Connection) {
+fn export(cfg: &Config, src: &Connection) {
     let temp_dir = TempDir::new("isixhosa_click_backup").unwrap();
     let temp_db = temp_dir.path().join("isixhosa_click.bak.db");
     let mut dest = Connection::open(temp_db).unwrap();
@@ -62,7 +63,6 @@ fn backup(cfg: &Config, src: &Connection) {
 
     io::stdout().write_all(&output.stdout).unwrap();
     io::stderr().write_all(&output.stderr).unwrap();
-
 
     let output = Command::new("git")
         .current_dir(&cfg.plaintext_export_path)
@@ -89,6 +89,174 @@ pub struct WordRecord {
     pub is_plural: bool,
     pub noun_class: Option<NounClass>,
     pub note: String,
+}
+
+impl WordRecord {
+    fn render_note(
+        &self,
+        en_example: String,
+        xh_example: String
+    ) -> Result<[Note; 2], anyhow::Error> {
+        const CSS: &str = include_str!("anki.css");
+
+        let english_up = Model::new_with_options(
+            515787989,
+            "English up",
+            vec![
+                Field::new("NoteId"),
+                Field::new("Id"),
+                Field::new("English"),
+                Field::new("Xhosa"),
+                Field::new("EnglishExtra"),
+                Field::new("XhosaExtra"),
+                Field::new("EnglishExample"),
+                Field::new("XhosaExample"),
+            ],
+            vec![
+                Template::new("Card Default")
+                    .qfmt(r#"
+                        <div class="translation">{{English}}</div>
+                        <div class="extra">{{EnglishExtra}}</div>
+
+                        {{#EnglishExample}}
+                            <div class="example_header">Example</div>
+                            <div class="example">{{ EnglishExample }}</div>
+                        {{/EnglishExample}}
+                    "#)
+                    .afmt(r#"
+                        <div class="translation">{{English}}</div>
+
+                        <hr id="answer">
+
+                        <div class="translation">
+                            <a href="https://isixhosa.click/word/{{WordId}}">{{Xhosa}}</a>
+                        </div>
+
+                        <div class="extra">{{XhosaExtra}}</div>
+
+                        {{#EnglishExample}}
+                            <div class="example_header">Example</div>
+                            <div class="example">{{ EnglishExample }}</div>
+                            <div class="example">{{ XhosaExample }}</div>
+                        {{/EnglishExample}}
+                    "#)
+            ],
+            Some(CSS),
+            Some(ModelType::FrontBack),
+            None,
+            None,
+            None,
+        );
+
+        let xhosa_up = Model::new_with_options(
+            558368395,
+            "Xhosa up",
+            vec![
+                Field::new("NoteId"),
+                Field::new("WordId"),
+                Field::new("English"),
+                Field::new("Xhosa"),
+                Field::new("EnglishExtra"),
+                Field::new("XhosaExtra"),
+                Field::new("EnglishExample"),
+                Field::new("XhosaExample"),
+
+            ],
+            vec![
+                Template::new("Card Reverse")
+                    .qfmt(r#"
+                        <div class="translation">{{Xhosa}}</div>
+                        <div class="extra">{{XhosaExtra}}</div>
+                        {{#XhosaExample}}
+                            <div class="example_header">Example</div>
+                            <div class="example">{{ XhosaExample }}</div>
+                        {{/XhosaExample}}
+                    "#)
+                    .afmt(r#"
+                        <div class="translation">{{Xhosa}}</div>
+                        <div class="extra">{{XhosaExtra}}</div>
+
+                        <hr id="answer">
+
+                        <div class="translation">
+                            <a href="https://isixhosa.click/word/{{WordId}}">{{English}}</a>
+                        </div>
+
+                        {{#EnglishExample}}
+                            <div class="example_header">Example</div>
+                            <div class="example">{{ EnglishExample }}</div>
+                            <div class="example">{{ XhosaExample }}</div>
+                        {{/EnglishExample}}
+                    "#)
+            ],
+            Some(CSS),
+            Some(ModelType::FrontBack),
+            None,
+            None,
+            None,
+        );
+
+        let id = self.word_id.to_string();
+
+        let plural = if self.is_plural {
+            "plural "
+        } else {
+            ""
+        };
+
+        let en_extra = format!("{}{}", plural, self.part_of_speech);
+
+        let class = match self.noun_class {
+            Some(class) => {
+                let prefixes = class.to_prefixes();
+
+                if self.is_plural {
+                    format!(
+                        "class {}<strong>{}</strong>",
+                        prefixes.singular,
+                        prefixes.plural.unwrap_or("undefined")
+                    )
+                } else {
+                    let plural_part = match prefixes.plural {
+                        Some(plural) => format!("/{}", plural),
+                        None => String::new(),
+                    };
+
+                    format!("class <strong>{}</strong>{}", prefixes.singular, plural_part)
+                }
+            }
+            None => String::new(),
+        };
+
+        let class_formatted = if class.len() > 0 {
+            format!(" - {}", class)
+        } else {
+            String::new()
+        };
+
+        let xh_extra = format!("{}{}{}", plural, self.part_of_speech, class_formatted);
+        let en_id = format!("{}En", id);
+        let xh_id = format!("{}Xh", id);
+
+        let xh_fields: Vec<&str> = vec![
+            &xh_id,
+            &id,
+            &self.english,
+            &self.xhosa,
+            &en_extra,
+            &xh_extra,
+            &en_example,
+            &xh_example
+        ];
+
+        let mut en_fields = xh_fields.clone();
+        en_fields[0] = &en_id;
+
+        Ok([
+            Note::new(english_up, en_fields)?,
+            Note::new(xhosa_up, xh_fields)?
+        ])
+    }
 }
 
 impl From<ExistingWord> for WordRecord {
@@ -132,7 +300,9 @@ impl TryFrom<&Row<'_>> for LinkedWordRecord {
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
 fn write_words(cfg: &Config, conn: &Connection) {
-    const SELECT_ORIGINAL: &str = "
+    const ANKI_DESC: &str = "All the words on IsiXhosa.click, as of %d-%m-%Y.";
+
+    const SELECT_WORDS: &str = "
         SELECT
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
             noun_class, note
@@ -140,18 +310,46 @@ fn write_words(cfg: &Config, conn: &Connection) {
         ORDER BY word_id;
     ";
 
+    const SELECT_EXAMPLE: &str = "SELECT english, xhosa FROM examples WHERE word_id = ?1 LIMIT 1;";
+
+    let mut select_example = conn.prepare(SELECT_EXAMPLE).unwrap();
+
     let path = cfg.plaintext_export_path.join("words.csv");
     let writer = BufWriter::new(File::create(path).unwrap());
     let mut csv = csv::Writer::from_writer(writer);
 
-    conn.prepare(SELECT_ORIGINAL)
+    let mut deck = Deck::new(
+        1,
+        "IsiXhosa.click words",
+        &Utc::now().format(ANKI_DESC).to_string()
+    );
+
+    let words: Vec<WordRecord> = conn.prepare(SELECT_WORDS)
         .unwrap()
         .query(params![])
         .unwrap()
         .map(|row| Ok(WordRecord::from(ExistingWord::try_from(row)?)))
-        .map_err(|e| -> anyhow::Error { e.into() })
-        .for_each(|word| csv.serialize(word).map_err(Into::into))
+        .collect()
         .unwrap();
+
+    for word in words {
+        let (en_example, xh_example): (String, String) = select_example
+            .query_row(
+                params![word.word_id],
+                |row| Ok((row.get("english")?, row.get("xhosa")?)),
+            )
+            .optional()
+            .unwrap()
+            .unwrap_or_default();
+
+        let [note_1, note_2] = word.render_note(en_example, xh_example).unwrap();
+        deck.add_note(note_1);
+        deck.add_note(note_2);
+
+        csv.serialize(word).unwrap();
+    }
+
+    deck.write_to_file(cfg.other_static_files.join("anki_deck.apkg").to_str().unwrap()).unwrap();
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"

@@ -12,7 +12,6 @@
 // - ability to search for and ban users
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
 // - weekly drive backups
-// - automated data-dump & backups of the database content which can be downloaded
 // - move PartOfSpeech to isixhosa crate
 // - better search engine optimisation
 // - cache control headers/etags
@@ -25,7 +24,6 @@
 // - suggestion publicising, voting & commenting
 // - conjugation tables
 // - user profiles showing statistics (for mods primarily but maybe can publicise it?)
-// - automate anki deck creation
 // - semantic fields/categories linking related words to browse all at once
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
@@ -75,7 +73,7 @@ use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
 
 mod auth;
-mod backup;
+mod export;
 mod database;
 mod details;
 mod edit;
@@ -235,9 +233,9 @@ fn main() {
     let flag = flag.as_ref();
 
     if flag.map(|s| s == "--run-backup").unwrap_or(false) {
-        backup::run_daily_tasks(cfg);
+        export::run_daily_tasks(cfg);
     } else if flag.map(|s| s == "--restore-from-backup").unwrap_or(false) {
-        backup::restore(cfg);
+        export::restore(cfg);
     } else if let Some(flag) = flag {
         eprintln!("Unknown flag: {}. Accepted values are --run-backup and --restore-from-backup.", flag);
     } else {

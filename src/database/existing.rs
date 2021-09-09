@@ -115,7 +115,7 @@ pub struct ExistingExample {
 impl ExistingExample {
     pub fn fetch_all_for_word(db: &impl PublicAccessDb, word_id: u64) -> Vec<ExistingExample> {
         const SELECT: &str =
-            "SELECT example_id, word_id, english, xhosa FROM examples WHERE word_id = ?1";
+            "SELECT example_id, word_id, english, xhosa FROM examples WHERE word_id = ?1;";
 
         let conn = db.get().unwrap();
         let mut query = conn.prepare(SELECT).unwrap();
@@ -129,7 +129,7 @@ impl ExistingExample {
 
     pub fn get(db: &impl PublicAccessDb, example_id: u64) -> Option<ExistingExample> {
         const SELECT: &str =
-            "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1";
+            "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1;";
 
         let conn = db.get().unwrap();
         #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
