@@ -107,7 +107,6 @@ pub struct Config {
     oidc_client: String,
     oidc_secret: String,
     plaintext_export_path: PathBuf,
-    export_github_token: String,
 }
 
 impl Config {
@@ -134,7 +133,6 @@ impl Default for Config {
             oidc_client: "".to_string(),
             oidc_secret: "".to_string(),
             plaintext_export_path: PathBuf::from("isixhosa_click_export/"),
-            export_github_token: "some_github_token".to_owned(),
         }
     }
 }

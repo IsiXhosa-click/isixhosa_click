@@ -63,14 +63,10 @@ fn backup(cfg: &Config, src: &Connection) {
     io::stdout().write_all(&output.stdout).unwrap();
     io::stderr().write_all(&output.stderr).unwrap();
 
-    let push_url = format!(
-        "https://{}@github.com/isixhosa-click/database.git",
-        cfg.export_github_token
-    );
 
     let output = Command::new("git")
         .current_dir(&cfg.plaintext_export_path)
-        .args(["push", &push_url])
+        .arg("push")
         .output()
         .unwrap();
 
