@@ -6,8 +6,9 @@ use serde::de::{DeserializeOwned, Error};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::TryInto;
 use std::error::Error as StdError;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::marker::PhantomData;
+use std::str::FromStr;
 use warp::hyper::body::Bytes;
 use warp::{Buf, Filter, Rejection};
 
@@ -27,15 +28,15 @@ impl Display for DiscrimOutOfRange {
 impl StdError for DiscrimOutOfRange {}
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct SerializeDisplay<T>(pub T);
+pub struct SerOnlyDisplay<T>(pub T);
 
-impl<T: Display> Display for SerializeDisplay<T> {
+impl<T: Display> Display for SerOnlyDisplay<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl<T: Display> Serialize for SerializeDisplay<T> {
+impl<T: Display> Serialize for SerOnlyDisplay<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -44,12 +45,12 @@ impl<T: Display> Serialize for SerializeDisplay<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerializeDisplay<T> {
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerOnlyDisplay<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(SerializeDisplay)
+        T::deserialize(deserializer).map(SerOnlyDisplay)
     }
 }
 
@@ -163,6 +164,29 @@ where
             other
         ))),
     }
+}
+
+pub fn ser_to_debug<T, S>(v: &T, ser: S) -> Result<S::Ok, S::Error>
+where
+    T: Debug,
+    S: Serializer,
+{
+    ser.serialize_str(&format!("{:?}", v))
+}
+
+pub fn deser_from_str<'de, T, D>(deser: D) -> Result<T, D::Error>
+where
+    T: FromStr,
+    D: Deserializer<'de>,
+{
+    let string = String::deserialize(deser)?;
+    T::from_str(&string).map_err(|_| {
+        serde::de::Error::custom(format!(
+            "Invalid {} determinant {}",
+            std::any::type_name::<T>(),
+            string
+        ))
+    })
 }
 
 fn to_bytes<B: Buf>(mut b: B) -> Bytes {

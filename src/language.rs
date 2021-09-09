@@ -7,12 +7,14 @@ use rusqlite::ToSql;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::convert::TryInto;
 use std::fmt::{self, Debug, Display, Formatter};
+use strum::EnumString;
 
 #[derive(
     IntoPrimitive,
     TryFromPrimitive,
     Serialize_repr,
     Deserialize_repr,
+    EnumString,
     Copy,
     Clone,
     Debug,
@@ -126,6 +128,7 @@ impl NounClassExt for NounClass {
     Ord,
     PartialEq,
     Eq,
+    EnumString,
 )]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]

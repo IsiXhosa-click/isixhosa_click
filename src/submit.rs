@@ -8,7 +8,6 @@ use num_enum::TryFromPrimitive;
 
 use rusqlite::{params, ToSql};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::serde_as;
 use std::fmt::{self, Debug, Display, Formatter};
 
 use warp::{body, path, Filter, Rejection, Reply};
@@ -100,7 +99,6 @@ impl<'de> Deserialize<'de> for LinkedWordList {
     }
 }
 
-#[serde_as]
 #[derive(Deserialize, Clone, Debug)]
 pub struct WordSubmission {
     suggestion_id: Option<u64>,
@@ -155,7 +153,6 @@ impl ExampleSubmission {
     }
 }
 
-#[serde_as]
 #[derive(Deserialize, Clone, Debug)]
 struct LinkedWordSubmission {
     suggestion_id: Option<u64>,

@@ -212,7 +212,6 @@ pub async fn auth(
         .untuple_one();
 
     tokio::task::spawn(sweep_in_progress_sign_ins());
-    tokio::task::spawn(crate::database::user::sweep_tokens(DbImpl(db.0.clone())));
 
     let login = warp::path!("login" / "oauth2" / "authorization" / "oidc")
         .and(warp::get())

@@ -1,6 +1,6 @@
 use crate::language::PartOfSpeech;
 use crate::serialization::{NounClassOpt, NounClassOptExt};
-use crate::serialization::{SerializeDisplay, SerializePrimitive};
+use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
@@ -414,7 +414,7 @@ pub struct WordHit {
     pub id: u64,
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: SerializeDisplay<PartOfSpeech>,
+    pub part_of_speech: SerOnlyDisplay<PartOfSpeech>,
     pub is_plural: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub noun_class: Option<SerializePrimitive<NounClass, u8>>,
@@ -426,7 +426,7 @@ impl WordHit {
             id: 0,
             english: String::new(),
             xhosa: String::new(),
-            part_of_speech: SerializeDisplay(PartOfSpeech::Other),
+            part_of_speech: SerOnlyDisplay(PartOfSpeech::Other),
             is_plural: false,
             noun_class: None,
         }
@@ -443,8 +443,7 @@ impl WordHit {
                     document
                 )
             })?;
-        let part_of_speech =
-            SerializeDisplay(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
+        let part_of_speech = SerOnlyDisplay(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
 
         Ok(WordHit {
             id: document
@@ -499,7 +498,7 @@ impl From<WordDocument> for WordHit {
             id: d.id,
             english: d.english,
             xhosa: d.xhosa,
-            part_of_speech: SerializeDisplay(d.part_of_speech),
+            part_of_speech: SerOnlyDisplay(d.part_of_speech),
             is_plural: d.is_plural,
             noun_class: d.noun_class.map(SerializePrimitive::new),
         }

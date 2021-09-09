@@ -1,6 +1,5 @@
 use crate::auth::{
-    random_string_token, ModeratorAccessDb, Permissions, PublicAccessDb, StaySignedInToken, User,
-    UserAccessDb,
+    random_string_token, Permissions, PublicAccessDb, StaySignedInToken, User, UserAccessDb,
 };
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
@@ -8,7 +7,6 @@ use openid::{Token, Userinfo};
 use r2d2_sqlite::rusqlite::Row;
 use rusqlite::{params, OptionalExtension};
 use std::convert::TryFrom;
-use std::time::Duration;
 
 impl TryFrom<&Row<'_>> for User {
     type Error = rusqlite::Error;
@@ -182,21 +180,5 @@ impl StaySignedInToken {
                     .unwrap();
                 user_id as u64
             })
-    }
-}
-
-pub async fn sweep_tokens(db: impl ModeratorAccessDb) {
-    const DELETE: &str =
-        "DELETE FROM login_tokens DATE_PART('days', NOW()::timestamp - last_used) > ?1;";
-    const TOKEN_EXPIRY_DAYS: f64 = 14.0;
-    const ONE_DAY: Duration = Duration::from_secs(60 * 60 * 24);
-
-    loop {
-        tokio::time::sleep(ONE_DAY).await;
-        let conn = db.get().unwrap();
-        conn.prepare(DELETE)
-            .unwrap()
-            .execute(params![TOKEN_EXPIRY_DAYS])
-            .unwrap();
     }
 }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::auth::PublicAccessDb;
 use crate::search::WordHit;
 use crate::serialization::{NounClassOpt, NounClassOptExt};
-use crate::serialization::{SerializeDisplay, SerializePrimitive};
+use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
 use crate::submit::WordId;
 
 pub mod deletion;
@@ -22,7 +22,7 @@ impl WordHit {
             id,
             english: row.get("english")?,
             xhosa: row.get("xhosa")?,
-            part_of_speech: SerializeDisplay(row.get("part_of_speech")?),
+            part_of_speech: SerOnlyDisplay(row.get("part_of_speech")?),
             is_plural: row.get("is_plural")?,
             noun_class: row
                 .get::<&str, Option<NounClassOpt>>("noun_class")?

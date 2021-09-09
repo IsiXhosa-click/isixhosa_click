@@ -9,6 +9,7 @@ use crate::search::WordHit;
 use crate::serialization::{NounClassOpt, NounClassOptExt};
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct ExistingWord {
@@ -41,10 +42,11 @@ impl ExistingWord {
 
     pub fn fetch_alone(db: &impl PublicAccessDb, id: u64) -> Option<ExistingWord> {
         const SELECT_ORIGINAL: &str = "
-        SELECT
-            word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
-        from words WHERE word_id = ?1;";
+            SELECT
+                word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
+                noun_class, note
+            from words WHERE word_id = ?1;
+        ";
 
         let conn = db.get().unwrap();
 
@@ -101,7 +103,7 @@ impl TryFrom<&Row<'_>> for ExistingWord {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ExistingExample {
     pub example_id: u64,
     pub word_id: u64,

@@ -54,9 +54,8 @@ use log4rs::encode::pattern::PatternEncoder;
 use moderation::accept;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -76,6 +75,7 @@ use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
 
 mod auth;
+mod backup;
 mod database;
 mod details;
 mod edit;
@@ -91,7 +91,6 @@ struct TemplateError(askama::Error);
 
 impl Reject for TemplateError {}
 
-#[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     database_path: PathBuf,
@@ -107,6 +106,8 @@ pub struct Config {
     host: String,
     oidc_client: String,
     oidc_secret: String,
+    plaintext_export_path: PathBuf,
+    export_github_token: String,
 }
 
 impl Config {
@@ -132,6 +133,8 @@ impl Default for Config {
             host: "127.0.0.01".to_string(),
             oidc_client: "".to_string(),
             oidc_secret: "".to_string(),
+            plaintext_export_path: PathBuf::from("isixhosa_click_export/"),
+            export_github_token: "some_github_token".to_owned(),
         }
     }
 }
@@ -227,50 +230,66 @@ async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let cfg: Config = confy::load("isixhosa_click").unwrap();
+
+    let flag = std::env::args().nth(1);
+    let flag = flag.as_ref();
+
+    if flag.map(|s| s == "--run-backup").unwrap_or(false) {
+        backup::run_daily_tasks(cfg);
+    } else if flag.map(|s| s == "--restore-from-backup").unwrap_or(false) {
+        backup::restore(cfg);
+    } else if let Some(flag) = flag {
+        eprintln!("Unknown flag: {}. Accepted values are --run-backup and --restore-from-backup.", flag);
+    } else {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(server(cfg));
+    }
+}
+
+fn set_up_db(conn: &Connection) {
+    const CREATIONS: [&str; 11] = [
+        include_str!("sql/users.sql"),
+        include_str!("sql/words.sql"),
+        include_str!("sql/word_suggestions.sql"),
+        include_str!("sql/word_deletion_suggestions.sql"),
+        include_str!("sql/examples.sql"),
+        include_str!("sql/example_suggestions.sql"),
+        include_str!("sql/example_deletion_suggestions.sql"),
+        include_str!("sql/linked_words.sql"),
+        include_str!("sql/linked_word_suggestions.sql"),
+        include_str!("sql/linked_word_deletion_suggestions.sql"),
+        include_str!("sql/login_tokens.sql"),
+    ];
+
+    // See https://github.com/the-lean-crate/criner/discussions/5
+    conn.execute_batch(
+        "
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA wal_autocheckpoint = 1000;
+        PRAGMA wal_checkpoint(TRUNCATE);
+    ",
+    )
+        .unwrap();
+
+    for creation in &CREATIONS {
+        conn.execute(creation, params![]).unwrap();
+    }
+}
+
+async fn server(cfg: Config) {
     init_logging(&cfg);
     log::info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();
     let pool_clone = pool.clone();
-
-    task::spawn_blocking(move || {
-        const CREATIONS: [&str; 11] = [
-            include_str!("sql/users.sql"),
-            include_str!("sql/words.sql"),
-            include_str!("sql/word_suggestions.sql"),
-            include_str!("sql/word_deletion_suggestions.sql"),
-            include_str!("sql/examples.sql"),
-            include_str!("sql/example_suggestions.sql"),
-            include_str!("sql/example_deletion_suggestions.sql"),
-            include_str!("sql/linked_words.sql"),
-            include_str!("sql/linked_word_suggestions.sql"),
-            include_str!("sql/linked_word_deletion_suggestions.sql"),
-            include_str!("sql/login_tokens.sql"),
-        ];
-
-        let conn = pool_clone.get().unwrap();
-
-        // See https://github.com/the-lean-crate/criner/discussions/5
-        conn.execute_batch(
-            "
-            PRAGMA journal_mode = WAL;
-            PRAGMA synchronous = NORMAL;
-            PRAGMA wal_autocheckpoint = 1000;
-            PRAGMA wal_checkpoint(TRUNCATE);
-        ",
-        )
-        .unwrap();
-
-        for creation in &CREATIONS {
-            conn.execute(creation, params![]).unwrap();
-        }
-    })
-    .await
-    .unwrap();
+    task::spawn_blocking(move || set_up_db(&pool_clone.get().unwrap())).await.unwrap();
 
     let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone())
         .await
