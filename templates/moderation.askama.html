@@ -316,6 +316,13 @@
                                             </tr>
                                         {%- endif -%}
 
+                                        {%- if !s.noun_class.is_none() -%}
+                                            <tr>
+                                                <th scope="row">Selected noun class</th>
+                                                <td>{%- call maybe_edited(s.noun_class.map_debug()) -%}</td>
+                                            </tr>
+                                        {%- endif -%}
+
                                         {%- if !s.infinitive.is_empty() -%}
                                             <tr>
                                                 <th scope="row">Infinitive form</th>

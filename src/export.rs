@@ -1,10 +1,12 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
 use crate::database::existing::{ExistingExample, ExistingWord};
-use crate::language::{PartOfSpeech, WordLinkType, NounClassExt};
+use crate::language::{NounClassExt, PartOfSpeech, WordLinkType};
 use crate::serialization::{deser_from_str, ser_to_debug};
-use crate::{Config, set_up_db};
+use crate::{set_up_db, Config};
+use chrono::Utc;
 use fallible_iterator::FallibleIterator;
+use genanki_rs::{Deck, Field, Model, ModelType, Note, Template};
 use isixhosa::noun::NounClass;
 use rusqlite::backup::Backup;
 use rusqlite::{params, OptionalExtension};
@@ -12,13 +14,11 @@ use rusqlite::{Connection, Row};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io::{BufWriter, BufReader, Write};
+use std::io;
+use std::io::{BufReader, BufWriter, Write};
+use std::process::Command;
 use std::time::Duration;
 use tempdir::TempDir;
-use std::process::Command;
-use std::io;
-use chrono::Utc;
-use genanki_rs::{Deck, Note, Model, Field, Template, ModelType};
 
 pub fn restore(cfg: Config) {
     let conn = Connection::open(&cfg.database_path).unwrap();
@@ -57,7 +57,12 @@ fn export(cfg: &Config, src: &Connection) {
 
     let output = Command::new("git")
         .current_dir(&cfg.plaintext_export_path)
-        .args(["commit", "-a", "-m", &format!("Daily backup for {}", Utc::now().date())])
+        .args([
+            "commit",
+            "-a",
+            "-m",
+            &format!("Daily backup for {}", Utc::now().date()),
+        ])
         .output()
         .unwrap();
 
@@ -93,28 +98,45 @@ pub struct WordRecord {
 
 impl WordRecord {
     fn render_note(
-        &self,
+        self,
         en_example: String,
-        xh_example: String
-    ) -> Result<[Note; 2], anyhow::Error> {
+        xh_example: String,
+    ) -> Result<(Note, Vec<String>), anyhow::Error> {
         const CSS: &str = include_str!("anki.css");
 
-        let english_up = Model::new_with_options(
-            515787989,
-            "English up",
-            vec![
-                Field::new("NoteId"),
-                Field::new("WordId"),
-                Field::new("English"),
-                Field::new("Xhosa"),
-                Field::new("EnglishExtra"),
-                Field::new("XhosaExtra"),
-                Field::new("EnglishExample"),
-                Field::new("XhosaExample"),
-            ],
-            vec![
-                Template::new("Card Default")
-                    .qfmt(r#"
+        let xhosa_up = Template::new("Card Reverse")
+            .qfmt(
+                r#"
+                        <div class="translation">{{Xhosa}}</div>
+                        <div class="extra">{{XhosaExtra}}</div>
+                        {{#XhosaExample}}
+                            <div class="example_header">Example</div>
+                            <div class="example">{{ XhosaExample }}</div>
+                        {{/XhosaExample}}
+                    "#,
+            )
+            .afmt(
+                r#"
+                        <div class="translation">{{Xhosa}}</div>
+                        <div class="extra">{{XhosaExtra}}</div>
+
+                        <hr id="answer">
+
+                        <div class="translation">
+                            <a href="https://isixhosa.click/word/{{WordId}}">{{English}}</a>
+                        </div>
+
+                        {{#EnglishExample}}
+                            <div class="example_header">Example</div>
+                            <div class="example">{{ EnglishExample }}</div>
+                            <div class="example">{{ XhosaExample }}</div>
+                        {{/EnglishExample}}
+                    "#,
+            );
+
+        let english_up = Template::new("Card Default")
+            .qfmt(
+                r#"
                         <div class="translation">{{English}}</div>
                         <div class="extra">{{EnglishExtra}}</div>
 
@@ -122,8 +144,10 @@ impl WordRecord {
                             <div class="example_header">Example</div>
                             <div class="example">{{ EnglishExample }}</div>
                         {{/EnglishExample}}
-                    "#)
-                    .afmt(r#"
+                    "#,
+            )
+            .afmt(
+                r#"
                         <div class="translation">{{English}}</div>
 
                         <hr id="answer">
@@ -139,20 +163,13 @@ impl WordRecord {
                             <div class="example">{{ EnglishExample }}</div>
                             <div class="example">{{ XhosaExample }}</div>
                         {{/EnglishExample}}
-                    "#)
-            ],
-            Some(CSS),
-            Some(ModelType::FrontBack),
-            None,
-            None,
-            None,
-        );
+                    "#,
+            );
 
-        let xhosa_up = Model::new_with_options(
-            558368395,
-            "Xhosa up",
+        let model = Model::new_with_options(
+            515787989,
+            "IsiXhosa.click word",
             vec![
-                Field::new("NoteId"),
                 Field::new("WordId"),
                 Field::new("English"),
                 Field::new("Xhosa"),
@@ -160,35 +177,8 @@ impl WordRecord {
                 Field::new("XhosaExtra"),
                 Field::new("EnglishExample"),
                 Field::new("XhosaExample"),
-
             ],
-            vec![
-                Template::new("Card Reverse")
-                    .qfmt(r#"
-                        <div class="translation">{{Xhosa}}</div>
-                        <div class="extra">{{XhosaExtra}}</div>
-                        {{#XhosaExample}}
-                            <div class="example_header">Example</div>
-                            <div class="example">{{ XhosaExample }}</div>
-                        {{/XhosaExample}}
-                    "#)
-                    .afmt(r#"
-                        <div class="translation">{{Xhosa}}</div>
-                        <div class="extra">{{XhosaExtra}}</div>
-
-                        <hr id="answer">
-
-                        <div class="translation">
-                            <a href="https://isixhosa.click/word/{{WordId}}">{{English}}</a>
-                        </div>
-
-                        {{#EnglishExample}}
-                            <div class="example_header">Example</div>
-                            <div class="example">{{ EnglishExample }}</div>
-                            <div class="example">{{ XhosaExample }}</div>
-                        {{/EnglishExample}}
-                    "#)
-            ],
+            vec![english_up, xhosa_up],
             Some(CSS),
             Some(ModelType::FrontBack),
             None,
@@ -198,11 +188,7 @@ impl WordRecord {
 
         let id = self.word_id.to_string();
 
-        let plural = if self.is_plural {
-            "plural "
-        } else {
-            ""
-        };
+        let plural = if self.is_plural { "plural " } else { "" };
 
         let en_extra = format!("{}{}", plural, self.part_of_speech);
 
@@ -222,40 +208,54 @@ impl WordRecord {
                         None => String::new(),
                     };
 
-                    format!("class <strong>{}</strong>{}", prefixes.singular, plural_part)
+                    format!(
+                        "class <strong>{}</strong>{}",
+                        prefixes.singular, plural_part
+                    )
                 }
             }
             None => String::new(),
         };
 
-        let class_formatted = if class.len() > 0 {
-            format!(" - {}", class)
-        } else {
-            String::new()
-        };
-
-        let xh_extra = format!("{}{}{}", plural, self.part_of_speech, class_formatted);
-        let en_id = format!("{}En", id);
-        let xh_id = format!("{}Xh", id);
-
-        let xh_fields: Vec<&str> = vec![
-            &xh_id,
-            &id,
-            &self.english,
-            &self.xhosa,
-            &en_extra,
-            &xh_extra,
-            &en_example,
-            &xh_example
+        let xh_extra = [
+            self.xhosa_tone_markings,
+            format!("{}{}", plural, self.part_of_speech),
+            self.infinitive,
+            class,
         ];
 
-        let mut en_fields = xh_fields.clone();
-        en_fields[0] = &en_id;
+        let xh_extra = Self::join_if_non_empty(&xh_extra);
 
-        Ok([
-            Note::new(english_up, en_fields)?,
-            Note::new(xhosa_up, xh_fields)?
-        ])
+        let fields: Vec<String> = vec![
+            id,
+            self.english,
+            self.xhosa,
+            en_extra,
+            xh_extra,
+            en_example,
+            xh_example,
+        ];
+
+        Ok((Note::new(model, fields.iter().map(AsRef::as_ref).collect())?, fields))
+    }
+
+    fn join_if_non_empty(arr: &[String]) -> String {
+        let mut joined = String::new();
+        let mut first = true;
+
+        for string in arr {
+            if !string.is_empty() {
+                if first {
+                    first = false;
+                } else {
+                    joined.push_str(" - ");
+                }
+
+                joined.push_str(string);
+            }
+        }
+
+        joined
     }
 }
 
@@ -298,6 +298,18 @@ impl TryFrom<&Row<'_>> for LinkedWordRecord {
     }
 }
 
+fn csv_writer(cfg: &Config, file: &str) -> csv::Writer<BufWriter<File>> {
+    let path = cfg.plaintext_export_path.join(file);
+    let writer = BufWriter::new(File::create(path).unwrap());
+    csv::Writer::from_writer(writer)
+}
+
+fn csv_reader(cfg: &Config, file: &str) -> csv::Reader<BufReader<File>> {
+    let path = cfg.plaintext_export_path.join(file);
+    let reader = BufReader::new(File::open(path).unwrap());
+    csv::Reader::from_reader(reader)
+}
+
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
 fn write_words(cfg: &Config, conn: &Connection) {
     const ANKI_DESC: &str = "All the words on IsiXhosa.click, as of %d-%m-%Y.";
@@ -314,17 +326,23 @@ fn write_words(cfg: &Config, conn: &Connection) {
 
     let mut select_example = conn.prepare(SELECT_EXAMPLE).unwrap();
 
-    let path = cfg.plaintext_export_path.join("words.csv");
-    let writer = BufWriter::new(File::create(path).unwrap());
-    let mut csv = csv::Writer::from_writer(writer);
+    let mut full_word_csv = csv_writer(cfg, "words.csv");
+
+    let file = File::create(cfg.other_static_files.join("anki_deck.txt")).unwrap();
+    let writer = BufWriter::new(file);
+    let mut plaintext_deck = csv::WriterBuilder::new()
+        .delimiter(b'\t')
+        .has_headers(false)
+        .from_writer(writer);
 
     let mut deck = Deck::new(
         1,
         "IsiXhosa.click words",
-        &Utc::now().format(ANKI_DESC).to_string()
+        &Utc::now().format(ANKI_DESC).to_string(),
     );
 
-    let words: Vec<WordRecord> = conn.prepare(SELECT_WORDS)
+    let words: Vec<WordRecord> = conn
+        .prepare(SELECT_WORDS)
         .unwrap()
         .query(params![])
         .unwrap()
@@ -334,22 +352,27 @@ fn write_words(cfg: &Config, conn: &Connection) {
 
     for word in words {
         let (en_example, xh_example): (String, String) = select_example
-            .query_row(
-                params![word.word_id],
-                |row| Ok((row.get("english")?, row.get("xhosa")?)),
-            )
+            .query_row(params![word.word_id], |row| {
+                Ok((row.get("english")?, row.get("xhosa")?))
+            })
             .optional()
             .unwrap()
             .unwrap_or_default();
 
-        let [note_1, note_2] = word.render_note(en_example, xh_example).unwrap();
-        deck.add_note(note_1);
-        deck.add_note(note_2);
+        full_word_csv.serialize(&word).unwrap();
 
-        csv.serialize(word).unwrap();
+        let (note, fields) = word.render_note(en_example, xh_example).unwrap();
+        deck.add_note(note);
+        plaintext_deck.write_record(fields).unwrap();
     }
 
-    deck.write_to_file(cfg.other_static_files.join("anki_deck.apkg").to_str().unwrap()).unwrap();
+    deck.write_to_file(
+        cfg.other_static_files
+            .join("anki_deck.apkg")
+            .to_str()
+            .unwrap(),
+    )
+    .unwrap();
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
@@ -361,25 +384,25 @@ fn restore_words(cfg: &Config, conn: &Connection) {
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);
     ";
 
-    let path = cfg.plaintext_export_path.join("words.csv");
-    let reader = BufReader::new(File::open(path).unwrap());
-    let mut csv = csv::Reader::from_reader(reader);
+    let mut csv = csv_reader(cfg, "words.csv");
     let mut insert = conn.prepare(INSERT).unwrap();
 
     for res in csv.deserialize() {
         let w: WordRecord = res.unwrap();
 
-        insert.execute(params![
-            w.word_id,
-            w.english,
-            w.xhosa,
-            w.part_of_speech,
-            w.xhosa_tone_markings,
-            w.infinitive,
-            w.is_plural,
-            w.noun_class.map(|x| x as u8),
-            w.note
-        ]).unwrap();
+        insert
+            .execute(params![
+                w.word_id,
+                w.english,
+                w.xhosa,
+                w.part_of_speech,
+                w.xhosa_tone_markings,
+                w.infinitive,
+                w.is_plural,
+                w.noun_class.map(|x| x as u8),
+                w.note
+            ])
+            .unwrap();
     }
 }
 
@@ -391,9 +414,7 @@ fn write_examples(cfg: &Config, conn: &Connection) {
         ORDER BY example_id;
     ";
 
-    let path = cfg.plaintext_export_path.join("examples.csv");
-    let writer = BufWriter::new(File::create(path).unwrap());
-    let mut csv = csv::Writer::from_writer(writer);
+    let mut csv = csv_writer(cfg, "examples.csv");
 
     conn.prepare(SELECT)
         .unwrap()
@@ -411,14 +432,14 @@ fn restore_examples(cfg: &Config, conn: &Connection) {
         INSERT INTO examples (example_id, word_id, english, xhosa) VALUES (?1, ?2, ?3, ?4);
     ";
 
-    let path = cfg.plaintext_export_path.join("examples.csv");
-    let reader = BufReader::new(File::open(path).unwrap());
-    let mut csv = csv::Reader::from_reader(reader);
+    let mut csv = csv_reader(cfg, "examples.csv");
     let mut insert = conn.prepare(INSERT).unwrap();
 
     for res in csv.deserialize() {
         let e: ExistingExample = res.unwrap();
-        insert.execute(params![e.example_id, e.word_id, e.english, e.xhosa]).unwrap();
+        insert
+            .execute(params![e.example_id, e.word_id, e.english, e.xhosa])
+            .unwrap();
     }
 }
 
@@ -430,9 +451,7 @@ fn write_linked_words(cfg: &Config, conn: &Connection) {
         ORDER BY link_id;
     ";
 
-    let path = cfg.plaintext_export_path.join("linked_words.csv");
-    let writer = BufWriter::new(File::create(path).unwrap());
-    let mut csv = csv::Writer::from_writer(writer);
+    let mut csv = csv_writer(cfg, "linked_words.csv");
 
     conn.prepare(SELECT)
         .unwrap()
@@ -452,14 +471,14 @@ fn restore_linked_words(cfg: &Config, conn: &Connection) {
         VALUES (?1, ?2, ?3, ?4);
     ";
 
-    let path = cfg.plaintext_export_path.join("linked_words.csv");
-    let reader = BufReader::new(File::open(path).unwrap());
-    let mut csv = csv::Reader::from_reader(reader);
+    let mut csv = csv_reader(cfg, "linked_words.csv");
     let mut insert = conn.prepare(INSERT).unwrap();
 
     for res in csv.deserialize() {
         let l: LinkedWordRecord = res.unwrap();
-        insert.execute(params![l.link_id, l.link_type, l.first, l.second]).unwrap();
+        insert
+            .execute(params![l.link_id, l.link_type, l.first, l.second])
+            .unwrap();
     }
 }
 

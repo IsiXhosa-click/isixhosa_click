@@ -167,6 +167,7 @@ pub struct User {
     pub advanced_submit_form: bool,
     pub email: String,
     pub permissions: Permissions,
+    pub locked: bool,
 }
 
 #[derive(Template)]
@@ -593,6 +594,8 @@ pub enum UnauthorizedReason {
     NoPermissions,
     /// During sign in process if the sign in session cookie is not valid
     InvalidCookie,
+    /// User account locked
+    Locked,
 }
 
 impl reject::Reject for Unauthorized {}
@@ -605,7 +608,15 @@ async fn extract_user(
     tokio::task::spawn_blocking(move || {
         if let Some(stay_signed_in) = stay_signed_in {
             if let Some(user) = stay_signed_in.verify_token(&db) {
-                Ok(User::fetch_by_id(&db, user).unwrap())
+                let user = User::fetch_by_id(&db, user).unwrap();
+                if !user.locked {
+                    Ok(user)
+                } else {
+                    Err(warp::reject::custom(Unauthorized {
+                        reason: UnauthorizedReason::Locked,
+                        redirect,
+                    }))
+                }
             } else {
                 Err(warp::reject::custom(Unauthorized {
                     reason: UnauthorizedReason::NotLoggedIn,

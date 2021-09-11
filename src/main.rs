@@ -2,16 +2,14 @@
 
 // Before launch:
 // - TODO standalone example & linked word suggestion editing
+// - TODO suggest possible duplicates in submit form
+// - TODO better way to suggest plurals?
 // - TODO attributions - editing users & references & so on
-
-// TODO: Auth stuff:
-// - right-align login button
 
 // Soon after launch, perhaps before:
 // - principled HTTP response codes with previous_success in form submit and so on
 // - ability to search for and ban users
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
-// - weekly drive backups
 // - move PartOfSpeech to isixhosa crate
 // - better search engine optimisation
 // - cache control headers/etags
@@ -27,10 +25,7 @@
 // - semantic fields/categories linking related words to browse all at once
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
-
-// Stretch goals
 // - forum for xhosa questions (discourse?)
-// - donations for hosting costs (maybe even to pay native speakers to submit words?)
 
 use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized, UnauthorizedReason};
 use crate::database::existing::ExistingWord;
@@ -73,10 +68,10 @@ use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
 
 mod auth;
-mod export;
 mod database;
 mod details;
 mod edit;
+mod export;
 mod language;
 mod moderation;
 mod search;
@@ -214,7 +209,8 @@ async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
 
                 Ok(redirect_to(login))
             }
-            UnauthorizedReason::NoPermissions => {
+            UnauthorizedReason::NoPermissions | UnauthorizedReason::Locked => {
+                // TODO(ban)
                 Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response())
             }
             UnauthorizedReason::InvalidCookie => {
@@ -237,7 +233,10 @@ fn main() {
     } else if flag.map(|s| s == "--restore-from-backup").unwrap_or(false) {
         export::restore(cfg);
     } else if let Some(flag) = flag {
-        eprintln!("Unknown flag: {}. Accepted values are --run-backup and --restore-from-backup.", flag);
+        eprintln!(
+            "Unknown flag: {}. Accepted values are --run-backup and --restore-from-backup.",
+            flag
+        );
     } else {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -271,7 +270,7 @@ fn set_up_db(conn: &Connection) {
         PRAGMA wal_checkpoint(TRUNCATE);
     ",
     )
-        .unwrap();
+    .unwrap();
 
     for creation in &CREATIONS {
         conn.execute(creation, params![]).unwrap();
@@ -285,7 +284,9 @@ async fn server(cfg: Config) {
     let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();
     let pool_clone = pool.clone();
-    task::spawn_blocking(move || set_up_db(&pool_clone.get().unwrap())).await.unwrap();
+    task::spawn_blocking(move || set_up_db(&pool_clone.get().unwrap()))
+        .await
+        .unwrap();
 
     let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone())
         .await

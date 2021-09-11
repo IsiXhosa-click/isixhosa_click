@@ -23,6 +23,7 @@ impl TryFrom<&Row<'_>> for User {
             } else {
                 Permissions::User
             },
+            locked: row.get("locked")?,
         })
     }
 }
@@ -108,6 +109,7 @@ impl User {
             advanced_submit_form,
             email,
             permissions,
+            locked: false,
         }
     }
 }

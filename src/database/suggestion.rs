@@ -13,6 +13,7 @@ use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -676,6 +677,22 @@ impl MaybeEdited<String> {
             MaybeEdited::Old(v) => v.is_empty(),
             MaybeEdited::New(v) => v.is_empty(),
         }
+    }
+}
+
+impl<T> MaybeEdited<Option<T>> {
+    pub fn is_none(&self) -> bool {
+        use MaybeEdited::*;
+        matches!(self, Edited { old: None, new: None} | Old(None) | New(None))
+    }
+}
+
+impl<T: Debug> MaybeEdited<Option<T>> {
+    pub fn map_debug(&self) -> MaybeEdited<String> {
+        self.map(|opt| match opt {
+            Some(v) => format!("{:?}", v),
+            None => String::new(),
+        })
     }
 }
 
