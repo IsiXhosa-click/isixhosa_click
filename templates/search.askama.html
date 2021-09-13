@@ -27,7 +27,11 @@
             <div id="hits">
                 <ol class="hits">
                     {%- for hit in hits -%}
-                        <li class="hit">{%- call macros::format_result_html(hit) -%}</li>
+                        <li class="hit_container">
+                            <a class="hit" href="/word/{{ hit.id }}">
+                                {%- call macros::format_result_html(hit) -%}
+                            </a>
+                        </li>
                     {%- endfor -%}
                 </ol>
             </div>
