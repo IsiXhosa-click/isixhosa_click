@@ -3,6 +3,19 @@
     display: none !important;
 }
 
+/* Show on screenreader only */
+.search_submit_button {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap; /* added line */
+    border: 0;
+}
+
 body {
     background-color: white;
     color: #080808;
