@@ -236,7 +236,10 @@ impl WordRecord {
             xh_example,
         ];
 
-        Ok((Note::new(model, fields.iter().map(AsRef::as_ref).collect())?, fields))
+        Ok((
+            Note::new(model, fields.iter().map(AsRef::as_ref).collect())?,
+            fields,
+        ))
     }
 
     fn join_if_non_empty(arr: &[String]) -> String {

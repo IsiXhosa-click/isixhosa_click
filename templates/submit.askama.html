@@ -233,19 +233,27 @@
                         return doc.documentElement.textContent;
                     }
 
+                    {%- let (this_word_id, this_is_new_suggestion) = self.this_word_id_js() -%}
+
                     addExamples({{ word.examples|json }});
-                    addLinkedWords({{ word.linked_words|json }});
+                    addLinkedWords({{ word.linked_words|json }}, {{ this_word_id }}, {{ this_is_new_suggestion }});
                     partOfSpeechChange(); /* Refresh part of speech sections */
 
                     document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
                     document.getElementById("add_example").addEventListener("click", function() { addExample() });
-                    document.getElementById("add_linked_word").addEventListener("click", function() { addLinkedWord() });
+                    document.getElementById("add_linked_word").addEventListener("click", function() {
+                        addLinkedWord({{ this_word_id }}, {{ this_is_new_suggestion }});
+                    });
                     document.getElementById("submit_word").addEventListener("submit", function() {
                         let linked_words = document.getElementsByClassName("word_select_search");
 
                         for (let i = 0; i < linked_words.length; i++) {
                             let word = linked_words.item(i);
-                            word.value = word.getAttribute("data-selected_word_id");
+                            let value = {
+                                id: word.getAttribute("data-selected_word_id"),
+                                is_suggestion: word.getAttribute("data-selected_is_suggestion"),
+                            };
+                            word.value = JSON.stringify(value);
                         }
 
                         if (!document.getElementById("noun_selected").selected) {

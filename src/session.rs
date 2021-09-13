@@ -1,6 +1,8 @@
-use crate::search::TantivyClient;
+use crate::search::{TantivyClient, WordHit};
 use futures::stream::SplitSink;
 use futures::SinkExt;
+use serde::{Deserialize, Serialize};
+use std::num::NonZeroU64;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
@@ -9,14 +11,20 @@ use xtra::prelude::*;
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,
     pub tantivy: Arc<TantivyClient>,
+    include_suggestions_from_user: Option<NonZeroU64>,
     heartbeat: Instant,
 }
 
 impl LiveSearchSession {
-    pub fn new(sender: SplitSink<WebSocket, ws::Message>, tantivy: Arc<TantivyClient>) -> Self {
+    pub fn new(
+        sender: SplitSink<WebSocket, ws::Message>,
+        tantivy: Arc<TantivyClient>,
+        include_suggestions_from_user: Option<NonZeroU64>,
+    ) -> Self {
         LiveSearchSession {
             sender,
             tantivy,
+            include_suggestions_from_user,
             heartbeat: Instant::now(),
         }
     }
@@ -68,14 +76,38 @@ impl Handler<WsMessage> for LiveSearchSession {
         self.heartbeat = Instant::now();
 
         if msg.is_text() {
-            let query = msg.to_str().unwrap();
+            #[derive(Deserialize)]
+            struct Query {
+                search: String,
+                state: String,
+            }
 
-            if query.is_empty() {
+            if msg.to_str().unwrap().is_empty() {
                 return;
             }
 
-            let results = self.tantivy.search(query.to_owned()).await.unwrap();
-            let json = serde_json::to_string(&results).unwrap();
+            let query: Query = serde_json::from_str(msg.to_str().unwrap()).unwrap();
+
+            if query.search.is_empty() {
+                return;
+            }
+
+            #[derive(Serialize)]
+            struct Reply {
+                results: Vec<WordHit>,
+                state: String,
+            }
+
+            let reply = Reply {
+                results: self
+                    .tantivy
+                    .search(query.search, self.include_suggestions_from_user)
+                    .await
+                    .unwrap(),
+                state: query.state,
+            };
+
+            let json = serde_json::to_string(&reply).unwrap();
 
             if self.sender.send(ws::Message::text(json)).await.is_err() {
                 ctx.stop();

@@ -2,7 +2,7 @@
 // TODO HTML sanitisation - allow markdown in text only, no html
 
 use crate::language::{PartOfSpeech, WordLinkType};
-use crate::search::WordHit;
+use crate::search::{TantivyClient, WordDocument, WordHit};
 use askama::Template;
 use num_enum::TryFromPrimitive;
 
@@ -21,6 +21,7 @@ use crate::language::NounClassExt;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
+use std::sync::Arc;
 
 #[derive(Template, Debug)]
 #[template(path = "submit.askama.html")]
@@ -29,6 +30,16 @@ struct SubmitTemplate {
     previous_success: Option<bool>,
     action: SubmitFormAction,
     word: WordFormTemplate,
+}
+
+impl SubmitTemplate {
+    fn this_word_id_js(&self) -> (String, bool) {
+        match self.action {
+            SubmitFormAction::EditExisting(existing) => (existing.to_string(), false),
+            SubmitFormAction::EditSuggestion { suggestion_id, .. } => (suggestion_id.to_string(), true),
+            _ => ("null".to_owned(), false)
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Copy, Clone)]
@@ -72,6 +83,12 @@ impl<'de> Deserialize<'de> for LinkedWordList {
             other: String,
         }
 
+        #[derive(Deserialize, Debug)]
+        struct Other {
+            id: String,
+            is_suggestion: String,
+        }
+
         let raw = Vec::<Raw>::deserialize(deser)?;
 
         Ok(LinkedWordList(
@@ -83,16 +100,23 @@ impl<'de> Deserialize<'de> for LinkedWordList {
 
                     let type_int = raw.link_type.parse::<u8>().ok()?;
                     let link_type = WordLinkType::try_from_primitive(type_int).ok()?;
-                    let other = raw.other.parse::<u64>().ok().map(WordId)?;
                     let suggestion_id = raw.suggestion_id.and_then(|x| x.parse::<u64>().ok());
                     let existing_id = raw.existing_id.and_then(|x| x.parse::<u64>().ok());
 
-                    Some(LinkedWordSubmission {
+                    let other: Other = serde_json::from_str(&raw.other).ok()?;
+                    let other_id = other.id.parse::<u64>().ok()?;
+                    let other = if other.is_suggestion.parse::<bool>().ok()? {
+                        WordOrSuggestionId::suggested(other_id)
+                    } else {
+                        WordOrSuggestionId::existing(other_id)
+                    };
+
+                    dbg!(Some(LinkedWordSubmission {
                         suggestion_id,
                         existing_id,
                         link_type,
                         other,
-                    })
+                    }))
                 })
                 .collect(),
         ))
@@ -104,16 +128,16 @@ pub struct WordSubmission {
     suggestion_id: Option<u64>,
     existing_id: Option<u64>,
 
-    english: String,
-    xhosa: String,
-    part_of_speech: PartOfSpeech,
+    pub english: String,
+    pub xhosa: String,
+    pub part_of_speech: PartOfSpeech,
     note: String,
     xhosa_tone_markings: String,
     infinitive: String,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
-    is_plural: bool,
-    noun_class: Option<NounClass>,
+    pub is_plural: bool,
+    pub noun_class: Option<NounClass>,
 
     #[serde(default)]
     examples: Vec<ExampleSubmission>,
@@ -158,20 +182,25 @@ struct LinkedWordSubmission {
     suggestion_id: Option<u64>,
     existing_id: Option<u64>,
     link_type: WordLinkType,
-    other: WordId,
+    other: WordOrSuggestionId,
 }
 
 impl LinkedWordSubmission {
-    #[allow(clippy::suspicious_operation_groupings)] // false positive - self.other IS id
     fn has_any_changes(&self, o: &Option<ExistingLinkedWord>) -> bool {
         match o {
-            Some(o) => o.other.id != self.other.0 || o.link_type != self.link_type,
+            Some(o) => {
+                WordOrSuggestionId::existing(o.other.id) != self.other
+                    || o.link_type != self.link_type
+            }
             None => true,
         }
     }
 }
 
-pub fn submit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
+pub fn submit(
+    db: DbBase,
+    tantivy: Arc<TantivyClient>,
+) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
     // TODO handle unauthorized by redirect
     let submit_page = warp::get()
         .and(with_user_auth(db.clone()))
@@ -181,6 +210,7 @@ pub fn submit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Cl
 
     let submit_form = body::content_length_limit(4 * 1024)
         .and(with_user_auth(db.clone()))
+        .and(warp::any().map(move || tantivy.clone()))
         .and(qs_form())
         .and_then(submit_new_word_form);
 
@@ -417,9 +447,10 @@ async fn submit_word_page(
 async fn submit_new_word_form(
     user: User,
     db: impl UserAccessDb,
+    tantivy: Arc<TantivyClient>,
     word: WordSubmission,
 ) -> Result<impl warp::Reply, Rejection> {
-    submit_suggestion(word, &db).await;
+    submit_suggestion(word, tantivy, &user, &db).await;
     submit_word_page(user, db, Some(true), SubmitFormAction::SubmitNewWord).await
 }
 
@@ -461,7 +492,12 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
 }
 
 // TODO move to db module
-pub async fn submit_suggestion(word: WordSubmission, db: &impl UserAccessDb) {
+pub async fn submit_suggestion(
+    word: WordSubmission,
+    tantivy: Arc<TantivyClient>,
+    suggesting_user: &User,
+    db: &impl UserAccessDb,
+) {
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
             suggestion_id, existing_word_id, changes_summary, english, xhosa,
@@ -483,6 +519,7 @@ pub async fn submit_suggestion(word: WordSubmission, db: &impl UserAccessDb) {
 
     let db = db.clone();
     let mut w = word;
+    let suggesting_user = suggesting_user.id;
 
     tokio::task::spawn_blocking(move || {
         let conn = db.get().unwrap();
@@ -500,8 +537,6 @@ pub async fn submit_suggestion(word: WordSubmission, db: &impl UserAccessDb) {
             Some(_) => None::<u8>.to_sql().unwrap(),
             None => 255u8.to_sql().unwrap(),
         };
-
-        let existing_id = w.existing_id;
 
         let changes_summary = if w.existing_id.is_none() {
             "Word added"
@@ -529,24 +564,43 @@ pub async fn submit_suggestion(word: WordSubmission, db: &impl UserAccessDb) {
 
         let orig_suggestion = WordFormTemplate::fetch_from_db(&db, None, w.suggestion_id);
 
-        let any_changes = match orig_suggestion {
-            Some(orig_suggestion) => w.has_any_changes_in_word(&orig_suggestion),
+        let any_changes = match orig_suggestion.as_ref() {
+            Some(orig_suggestion) => w.has_any_changes_in_word(orig_suggestion),
             None => w.has_any_changes_in_word(&orig),
         };
 
-        let suggested_word_id = if any_changes {
+        let suggested_word_id_if_new = if any_changes {
             let suggested_word_id: i64 = conn
                 .prepare(INSERT_SUGGESTION)
                 .unwrap()
                 .query_row(params, |row| row.get("suggestion_id"))
                 .unwrap();
-            Some(suggested_word_id).filter(|_| existing_id.is_none())
+            Some(suggested_word_id).filter(|_| w.existing_id.is_none())
         } else {
-            w.suggestion_id.map(|id| id as i64)
+            w.suggestion_id.map(|id| id as i64).filter(|_| w.existing_id.is_none())
         };
 
-        process_linked_words(&mut w, &db, suggested_word_id);
-        process_examples(&mut w, &db, suggested_word_id);
+        // Don't need to index non-new word suggestions
+        if let Some(suggested_word_id) = suggested_word_id_if_new {
+            let doc = WordDocument {
+                id: WordOrSuggestionId::suggested(suggested_word_id as u64),
+                english: w.english.clone(),
+                xhosa: w.xhosa.clone(),
+                part_of_speech: w.part_of_speech,
+                is_plural: w.is_plural,
+                suggesting_user: Some(suggesting_user),
+                noun_class: w.noun_class,
+            };
+
+            if orig_suggestion.is_none() {
+                tokio::spawn(async move { tantivy.add_new_word(doc).await });
+            } else if matches!(orig_suggestion, Some(o) if w.has_any_changes_in_word(&o)) {
+                tokio::spawn(async move { tantivy.edit_word(doc).await });
+            }
+        }
+
+        process_linked_words(&mut w, &db, suggested_word_id_if_new);
+        process_examples(&mut w, &db, suggested_word_id_if_new);
     })
     .await
     .unwrap();
@@ -555,16 +609,17 @@ pub async fn submit_suggestion(word: WordSubmission, db: &impl UserAccessDb) {
 fn process_linked_words(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
-    suggested_word_id: Option<i64>,
+    suggested_word_id_if_new: Option<i64>,
 ) {
     const INSERT_LINKED_WORD_SUGGESTION: &str = "
         INSERT INTO linked_word_suggestions (
             suggestion_id, existing_linked_word_id, changes_summary, suggested_word_id,
-            link_type, first_existing_word_id, second_existing_word_id
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            second_suggested_word_id, link_type, first_existing_word_id, second_existing_word_id
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 changes_summary = excluded.changes_summary,
                 suggested_word_id = excluded.suggested_word_id,
+                second_suggested_word_id = excluded.second_suggested_word_id,
                 link_type = excluded.link_type,
                 first_existing_word_id = excluded.first_existing_word_id,
                 second_existing_word_id = excluded.second_existing_word_id;
@@ -585,27 +640,37 @@ fn process_linked_words(
 
     let existing_word_id = w.existing_id;
     let mut maybe_insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
-        if !new.has_any_changes(&old) {
+
+        dbg!(&new);
+
+        if dbg!(!new.has_any_changes(&old)) {
             return;
         }
+
+        let other = diff_opt(
+            new.other,
+            &old.as_ref()
+                .map(|o| WordOrSuggestionId::existing(o.other.id)),
+            use_submitted,
+        );
+
+        let other_existing = other.and_then(WordOrSuggestionId::into_existing);
+        let other_suggested = other.and_then(WordOrSuggestionId::into_suggested);
 
         upsert_suggested_link
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
                 "Linked word added",
-                suggested_word_id,
+                suggested_word_id_if_new,
+                other_suggested,
                 diff_opt(
                     new.link_type,
                     &old.as_ref().map(|o| o.link_type),
                     use_submitted
                 ),
-                diff_opt(
-                    new.other.0,
-                    &old.as_ref().map(|o| o.other.id),
-                    use_submitted
-                ),
                 existing_word_id,
+                other_existing,
             ])
             .unwrap();
     };
@@ -625,6 +690,7 @@ fn process_linked_words(
                         .and_then(|id| ExistingLinkedWord::get(db, id, existing_word_id.unwrap()));
                     maybe_insert_link(new, old);
                 } else {
+                    dbg!("Deleting suggested link");
                     delete_suggested_link
                         .execute(params![prev.suggestion_id])
                         .unwrap();
@@ -641,6 +707,7 @@ fn process_linked_words(
                     let new = linked_words.remove(i);
                     maybe_insert_link(new, Some(prev));
                 } else {
+                    dbg!("Deleting suggested link - 2");
                     suggest_link_deletion
                         .execute(params![prev.link_id, "No reason given"])
                         .unwrap();
@@ -653,15 +720,19 @@ fn process_linked_words(
 
     // Newly added linked words
     for new in &w.linked_words.0 {
+        let other_existing = new.other.into_existing();
+        let other_suggested = new.other.into_suggested();
+
         upsert_suggested_link
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
                 "Linked word added",
-                suggested_word_id,
+                suggested_word_id_if_new,
+                other_suggested,
                 new.link_type,
-                new.other.0.to_string(),
                 w.existing_id,
+                other_existing,
             ])
             .unwrap();
     }
@@ -670,7 +741,7 @@ fn process_linked_words(
 fn process_examples(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
-    suggested_word_id: Option<i64>,
+    suggested_word_id_if_new: Option<i64>,
 ) {
     const INSERT_EXAMPLE_SUGGESTION: &str = "
         INSERT INTO example_suggestions (
@@ -709,7 +780,7 @@ fn process_examples(
                 new.suggestion_id,
                 new.existing_id,
                 "Example edited",
-                suggested_word_id,
+                suggested_word_id_if_new,
                 existing_id,
                 diff_opt(
                     new.english,
@@ -773,7 +844,7 @@ fn process_examples(
                 new.suggestion_id,
                 new.existing_id,
                 "Example added",
-                suggested_word_id,
+                suggested_word_id_if_new,
                 w.existing_id,
                 new.english,
                 new.xhosa

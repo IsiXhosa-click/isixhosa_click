@@ -1,86 +1,115 @@
+let ws;
+let next_id = 1;
+let searchers = {};
+
 export class LiveSearch {
     constructor(
         input,
         results_container,
         create_container,
         create_item,
-        create_item_container
+        create_item_container,
+        skip_word_id,
+        skip_is_suggestion,
+        include_own_suggestions
     ) {
+        this.input = input;
         this.last_value = "";
         this.hits = results_container;
-        this.ws = new WebSocket("wss://" + location.host + "/search");
         this.create_container = create_container;
         this.create_item = create_item;
         this.create_item_container = create_item_container;
+        this.skip_word_id = skip_word_id;
+        this.skip_is_suggestion = skip_is_suggestion;
 
-        let search = this;
+        this.id = next_id;
+        next_id++;
 
-        this.ws.onopen = function() {
-            search.ws.send("");
-            search.ping_task = setInterval(function() { search.ws.send(""); }, 10000);
+        searchers[this.id] = this;
 
-            search.refresh_task = setInterval(function() {
-                if (input === document.activeElement && search.last_value !== input.value) {
-                    search.ws.send(input.value);
-                    search.last_value = input.value;
-                }
+        if (ws == null) {
+            ws = new WebSocket(
+                "wss://" + location.host + `/search?include_own_suggestions=${include_own_suggestions}`
+            );
 
-                if (input.value === "") {
-                    search.hits.innerHTML = "";
-                    input.classList.remove("has_results");
-                }
-            }, 250);
-        };
-
-        this.ws.onerror = console.error;
-
-        this.ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            search.hits.innerHTML = "";
-
-            if (data.length === 0) {
-                let p = document.createElement("p");
-                p.className = "no_results";
-                let node = document.createTextNode("No results.");
-                p.appendChild(node);
-                input.classList.remove("has_results");
-
-                search.hits.appendChild(p);
-            } else {
-                let container = search.create_container();
-
-                data.forEach(function (result) {
-                    let item = search.create_item(formatResult(result), result.id);
-                    formatResultRich(result, item);
-
-                    let item_container = search.create_item_container();
-                    let append = item;
-
-                    if (item_container != null) {
-                        item_container.appendChild(item);
-                        append = item_container;
+            ws.onopen = function() {
+                ws.send("");
+                setInterval(function() { ws.send(""); }, 10000);
+                setInterval(function() {
+                    for (let searcher of Object.values(searchers)) {
+                        searcher.refresh();
                     }
+                }, 250);
+            };
 
-                    if (container != null) {
-                        container.appendChild(append);
-                    } else {
-                        search.hits.appendChild(append);
-                    }
-                });
+            ws.onerror = console.error;
 
-                input.classList.add("has_results");
+            ws.onmessage = function(event) {
+                let reply = JSON.parse(event.data);
+                let searcher = searchers[reply.state];
 
-                if (container != null) {
-                    search.hits.appendChild(container);
+                if (searcher != null) {
+                    searcher.processResults(reply.results);
                 }
             }
-        };
+        }
     }
 
-    stop() {
-        clearInterval(this.refresh_task);
-        clearInterval(this.ping_task);
-        this.ws.close();
+    refresh() {
+        if (this.input === document.activeElement && this.last_value !== this.input.value) {
+            ws.send(JSON.stringify({ search: this.input.value, state: this.id.toString() }));
+            this.last_value = this.input.value;
+        }
+
+        if (this.input.value === "") {
+            this.hits.innerHTML = "";
+            this.input.classList.remove("has_results");
+        }
+    }
+
+    processResults(results) {
+        let searcher = this;
+        searcher.hits.innerHTML = "";
+
+        // noinspection EqualityComparisonWithCoercionJS -- this is done intentionally for string to number eq
+        results = results.filter(result => !(result.id == searcher.skip_word_id && result.is_suggestion == searcher.skip_is_suggestion));
+
+        if (results.length === 0) {
+            let p = document.createElement("p");
+            p.className = "no_results";
+            let node = document.createTextNode("No results.");
+            p.appendChild(node);
+            searcher.input.classList.remove("has_results");
+
+            searcher.hits.appendChild(p);
+        } else {
+            let container = searcher.create_container();
+
+            results.forEach(function (result) {
+                let item = searcher.create_item(formatResult(result), result.id, result.is_suggestion);
+                formatResultRich(result, item);
+
+                let item_container = searcher.create_item_container();
+                let append = item;
+
+                if (item_container != null) {
+                    item_container.appendChild(item);
+                    append = item_container;
+                }
+
+                if (container != null) {
+                    container.appendChild(append);
+                } else {
+                    searcher.hits.appendChild(append);
+                }
+            });
+
+            searcher.input.classList.add("has_results");
+
+            if (container != null) {
+                searcher.hits.appendChild(container);
+            }
+        }
     }
 }
 

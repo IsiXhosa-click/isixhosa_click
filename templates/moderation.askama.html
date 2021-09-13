@@ -145,11 +145,23 @@
             {%- macro result_edited(res) -%}
                 {%- match res -%}
                     {%- when MaybeEdited::New with (w) -%}
+                        {%- if !w.is_suggestion -%}<a href="/word/{{ w.id}}">{%- endif -%}
                         <ins>{%- call macros::format_result_html(w) -%}</ins>
+                        {%- if !w.is_suggestion -%}</a>{%- endif -%}
+
                     {%- when MaybeEdited::Old with (w) -%}
+                        {%- if !w.is_suggestion -%}<a href="/word/{{ w.id}}">{%- endif -%}
                         {%- call macros::format_result_html(w) -%}
+                        {%- if !w.is_suggestion -%}</a>{%- endif -%}
+
                     {%- when MaybeEdited::Edited with { old, new } -%}
-                        <ins>{%- call macros::format_result_html(new) -%}</ins> <del>{%- call macros::format_result_html(old) -%}</del>
+                        {%- if !new.is_suggestion -%}<a href="/word/{{ new.id}}">{%- endif -%}
+                        <ins>{%- call macros::format_result_html(new) -%}</ins>
+                        {%- if !new.is_suggestion -%}</a>{%- endif %}
+
+                        {% if !old.is_suggestion -%}<a href="/word/{{ old.id}}">{%- endif -%}
+                        <del>{%- call macros::format_result_html(old) -%}</del>
+                        {%- if !old.is_suggestion -%}</a>{%- endif -%}
                 {%- endmatch -%}
             {%- endmacro -%}
 
@@ -271,7 +283,7 @@
                                    <h3 class="suggested_word_text">
                                         {%- match s.word_id -%}
                                             {%- when Some with (id) -%}
-                                                <a href="https://isixhosa.click/word/{{ id }}">
+                                                <a href="/word/{{ id }}}">
                                             {%- when None -%}
                                         {%- endmatch -%}
 
@@ -399,7 +411,7 @@
                             <article class="column_list spaced_flex_list">
                                 <header>
                                     <h3 class="suggested_word_text">
-                                        <a href="https://isixhosa.click/word/{{ s.word.id }}">
+                                        <a href="/word/{{ s.word.id }}">
                                             {%- call macros::format_result_html(s.word) -%}
                                         </a>
                                     </h3>
@@ -438,7 +450,7 @@
                             <article class="column_list">
                                 <header>
                                     <h3 class="suggested_word_text">
-                                        <a href="https://isixhosa.click/word/{{ word.id }}">
+                                        <a href="/word/{{ word.id }}}">
                                             {%- call macros::format_result_html(word) -%}
                                         </a>
                                     </h3>

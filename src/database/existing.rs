@@ -226,13 +226,7 @@ impl ExistingLinkedWord {
             first_word_id,
             second_word_id,
             link_type: row.get("link_type")?,
-            other: WordHit::fetch_from_db(
-                db,
-                WordOrSuggestionId::ExistingWord {
-                    existing_id: populate,
-                },
-            )
-            .unwrap(),
+            other: WordHit::fetch_from_db(db, WordOrSuggestionId::existing(populate)).unwrap(),
         })
     }
 }

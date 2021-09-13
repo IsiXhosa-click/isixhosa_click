@@ -7,7 +7,7 @@ use crate::database::suggestion::{
     MaybeEdited, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
 };
 use crate::language::NounClassExt;
-use crate::search::{TantivyClient, WordDocument, WordHit};
+use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
 use crate::serialization::OptionMapNounClassExt;
 use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
@@ -19,6 +19,7 @@ use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{body, Filter, Rejection, Reply};
+use crate::database::WordOrSuggestionId;
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]
@@ -131,12 +132,11 @@ enum ActionTarget {
     LinkedWordDeletion(#[serde_as(as = "DisplayFromStr")] u64),
 }
 
-// TODO auth
 pub fn accept(
     db: DbBase,
     tantivy: Arc<TantivyClient>,
 ) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
-    let tantivy = warp::any().map(move || tantivy.clone());
+    let with_tantivy = warp::any().map(move || tantivy.clone());
 
     let show_all = warp::get()
         .and(with_moderator_auth(db.clone()))
@@ -145,13 +145,14 @@ pub fn accept(
 
     let process_one = warp::post()
         .and(with_moderator_auth(db.clone()))
-        .and(tantivy)
+        .and(with_tantivy.clone())
         .and(warp::body::form::<Action>())
         .and_then(process_one);
 
     let submit_edit = warp::post()
         .and(body::content_length_limit(4 * 1024))
         .and(with_moderator_auth(db.clone()))
+        .and(with_tantivy)
         .and(qs_form())
         .and_then(edit_suggestion_form);
 
@@ -204,9 +205,10 @@ async fn suggested_words(
 async fn edit_suggestion_form(
     user: User,
     db: impl ModeratorAccessDb,
+    tantivy: Arc<TantivyClient>,
     submission: WordSubmission,
 ) -> Result<impl Reply, Rejection> {
-    submit_suggestion(submission, &db).await;
+    submit_suggestion(submission, tantivy, &user, &db).await;
     suggested_words(
         user,
         db,
@@ -224,34 +226,18 @@ async fn accept_suggested_word(
     suggestion: u64,
 ) -> bool {
     let db = db.clone();
-    let (word, id) = tokio::task::spawn_blocking(move || {
-        let word = SuggestedWord::fetch_full(&db, suggestion).unwrap();
-        (word.clone(), word.accept_whole_word_suggestion(&db))
+    tokio::task::spawn_blocking(move || {
+        SuggestedWord::fetch_full(&db, suggestion).unwrap().accept_whole_word_suggestion(&db, tantivy);
     })
     .await
     .unwrap();
 
-    let document = WordDocument {
-        id: id as u64,
-        english: word.english.current().clone(),
-        xhosa: word.xhosa.current().clone(),
-        part_of_speech: *word.part_of_speech.current(),
-        is_plural: *word.is_plural.current(),
-        noun_class: *word.noun_class.current(),
-    };
-
-    if word.word_id.is_none() {
-        tantivy.add_new_word(document).await
-    } else {
-        tantivy.edit_word(document).await
-    }
-
     true
 }
 
-async fn reject_suggested_word(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+async fn reject_suggested_word(db: &impl ModeratorAccessDb, tantivy: Arc<TantivyClient>, suggestion_id: u64) -> bool {
     let db = db.clone();
-    tokio::task::spawn_blocking(move || SuggestedWord::delete(&db, suggestion))
+    tokio::task::spawn_blocking(move || SuggestedWord::delete(&db, tantivy, suggestion_id))
         .await
         .unwrap()
 }
@@ -266,7 +252,7 @@ async fn accept_deletion(
     tokio::task::spawn_blocking(move || ExistingWord::delete(&db, word_id))
         .await
         .unwrap();
-    tantivy.delete_word(word_id).await;
+    tantivy.delete_word(WordOrSuggestionId::existing(word_id)).await;
 
     true
 }
@@ -382,7 +368,7 @@ async fn process_one(
                     .map(Reply::into_response)
             }
             Method::Accept => accept_suggested_word(&db, tantivy, suggestion).await,
-            Method::Reject => reject_suggested_word(&db, suggestion).await,
+            Method::Reject => reject_suggested_word(&db, tantivy, suggestion).await,
         },
         ActionTarget::Example(suggestion) => match params.method {
             Method::Edit => todo!("Example standalone editing"),

@@ -3,7 +3,7 @@ use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
 use crate::database::WordOrSuggestionId;
 use crate::language::{PartOfSpeech, WordLinkType};
-use crate::search::WordHit;
+use crate::search::{WordHit, TantivyClient, WordDocument};
 use crate::serialization::NounClassOpt;
 use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
@@ -11,9 +11,11 @@ use isixhosa::noun::NounClass;
 
 use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
+use std::array;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::fmt::Debug;
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -39,13 +41,9 @@ pub struct SuggestedWord {
 impl SuggestedWord {
     pub fn this_id(&self) -> WordOrSuggestionId {
         if let Some(word_id) = self.word_id {
-            WordOrSuggestionId::ExistingWord {
-                existing_id: word_id,
-            }
+            WordOrSuggestionId::existing(word_id)
         } else {
-            WordOrSuggestionId::Suggested {
-                suggestion_id: self.suggestion_id,
-            }
+            WordOrSuggestionId::suggested(self.suggestion_id)
         }
     }
 
@@ -108,7 +106,8 @@ impl SuggestedWord {
         word
     }
 
-    pub fn accept_just_word_suggestion(&self, db: &impl ModeratorAccessDb, delete: bool) -> u64 {
+    /// Does not delete suggestion.
+    pub fn accept_just_word_suggestion(&self, db: &impl ModeratorAccessDb) -> u64 {
         const INSERT: &str = "
             INSERT INTO words (
                 word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -145,41 +144,59 @@ impl SuggestedWord {
             .query_row(params, |row| row.get("word_id"))
             .unwrap();
 
-        if delete {
-            SuggestedWord::delete(db, self.suggestion_id);
-        }
-
         id as u64
     }
 
-    pub fn accept_whole_word_suggestion(self, db: &impl ModeratorAccessDb) -> u64 {
+    pub fn accept_whole_word_suggestion(self, db: &impl ModeratorAccessDb, tantivy: Arc<TantivyClient>) {
         let word_suggestion_id = self.suggestion_id;
-        let word_id = self.accept_just_word_suggestion(db, false);
+        let new_word_id = self.accept_just_word_suggestion(db);
 
         for mut example in self.examples.into_iter() {
-            example.word_or_suggested_id = WordOrSuggestionId::ExistingWord {
-                existing_id: word_id,
-            };
+            example.word_or_suggested_id = WordOrSuggestionId::existing(new_word_id);
             example.accept(db);
         }
 
-        for mut linked_word in self.linked_words.into_iter() {
-            linked_word.second = MaybeEdited::New((
-                WordOrSuggestionId::ExistingWord {
-                    existing_id: word_id,
-                },
-                WordHit::empty(),
-            ));
-            linked_word.accept(db);
+        let old = WordOrSuggestionId::suggested(self.suggestion_id);
+        let new = WordOrSuggestionId::existing(new_word_id);
+
+        for mut l in self.linked_words.into_iter() {
+            if l.first.current().0 == old {
+                l.first = MaybeEdited::New((new, WordHit::empty()));
+            } else {
+                l.second = MaybeEdited::New((new, WordHit::empty()));
+            }
+
+            if l.first.current().0.is_existing() && l.second.current().0.is_existing() {
+                l.accept(db);
+            } else {
+                l.update_first_and_second(db);
+            }
         }
 
-        SuggestedWord::delete(db, word_suggestion_id);
+        let document = WordDocument {
+            id: WordOrSuggestionId::existing(new_word_id),
+            english: self.english.current().clone(),
+            xhosa: self.xhosa.current().clone(),
+            part_of_speech: *self.part_of_speech.current(),
+            is_plural: *self.is_plural.current(),
+            suggesting_user: None,
+            noun_class: *self.noun_class.current(),
+        };
 
-        word_id
+        let tantivy_clone = tantivy.clone();
+        SuggestedWord::delete(db, tantivy_clone, word_suggestion_id);
+
+        if self.word_id.is_none() {
+            tokio::spawn(async move { tantivy.add_new_word(document).await });
+        } else {
+            tokio::spawn(async move { tantivy.edit_word(document).await });
+        }
     }
 
-    pub fn delete(db: &impl ModeratorAccessDb, id: u64) -> bool {
+    pub fn delete(db: &impl ModeratorAccessDb, tantivy: Arc<TantivyClient>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1;";
+
+        tokio::spawn(async move { tantivy.delete_word(WordOrSuggestionId::suggested(id)).await });
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
@@ -395,7 +412,7 @@ pub struct SuggestedLinkedWord {
     pub suggestion_id: u64,
     pub existing_linked_word_id: Option<u64>,
 
-    pub first: MaybeEdited<(u64, WordHit)>,
+    pub first: MaybeEdited<(WordOrSuggestionId, WordHit)>,
     pub second: MaybeEdited<(WordOrSuggestionId, WordHit)>,
     pub link_type: MaybeEdited<WordLinkType>,
 }
@@ -403,9 +420,11 @@ pub struct SuggestedLinkedWord {
 impl SuggestedLinkedWord {
     pub fn fetch(db: &impl UserAccessDb, suggestion: u64) -> SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "
-        SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
-            first_existing_word_id, second_existing_word_id, suggested_word_id
-            FROM linked_word_suggestions WHERE suggestion_id = ?1;";
+            SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
+                first_existing_word_id, second_existing_word_id, suggested_word_id,
+                second_suggested_word_id
+            FROM linked_word_suggestions WHERE suggestion_id = ?1;
+        ";
 
         let conn = db.get().unwrap();
         let s = conn
@@ -418,14 +437,18 @@ impl SuggestedLinkedWord {
         s
     }
 
+    /// Each link will show up for either suggestion.
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
         suggested_word_id: u64,
     ) -> Vec<SuggestedLinkedWord> {
         const SELECT_SUGGESTION: &str = "
-        SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
-            first_existing_word_id, second_existing_word_id, suggested_word_id
-            FROM linked_word_suggestions WHERE suggested_word_id = ?1;";
+            SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
+                first_existing_word_id, second_existing_word_id, suggested_word_id,
+                second_suggested_word_id
+            FROM linked_word_suggestions
+            WHERE suggested_word_id = ?1 OR second_suggested_word_id = ?1;
+        ";
 
         let conn = db.get().unwrap();
         let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
@@ -441,6 +464,7 @@ impl SuggestedLinkedWord {
         vec
     }
 
+    /// Each link shows up once and only once.
     pub fn fetch_all_for_existing_words(
         db: &impl ModeratorAccessDb,
     ) -> impl Iterator<Item = (WordId, Vec<SuggestedLinkedWord>)> {
@@ -449,9 +473,10 @@ impl SuggestedLinkedWord {
                    linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
                    linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
                    linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
-                   linked_word_suggestions.suggested_word_id
+                   linked_word_suggestions.suggested_word_id,
+                   linked_word_suggestions.second_suggested_word_id
             FROM linked_word_suggestions
-            JOIN words ON linked_word_suggestions.first_existing_word_id = words.word_id
+            INNER JOIN words ON linked_word_suggestions.first_existing_word_id = words.word_id
             WHERE linked_word_suggestions.first_existing_word_id IS NOT NULL AND
                   linked_word_suggestions.second_existing_word_id IS NOT NULL;
         ";
@@ -498,16 +523,19 @@ impl SuggestedLinkedWord {
         ";
 
         let conn = db.get().unwrap();
-        let second_existing = match self.second.current().0 {
+
+        let get_existing = |a: &MaybeEdited<(_, _)>| match a.current().0 {
             WordOrSuggestionId::ExistingWord { existing_id } => existing_id,
             _ => panic!("No existing word for suggested linked word {:#?}", self),
         };
 
+        let (first, second) = (get_existing(&self.first), get_existing(&self.second));
+
         let params = params![
             self.existing_linked_word_id,
             self.link_type.current(),
-            self.first.current().0,
-            second_existing
+            first,
+            second,
         ];
 
         let id = conn
@@ -519,6 +547,27 @@ impl SuggestedLinkedWord {
         SuggestedLinkedWord::delete(db, self.suggestion_id);
 
         id
+    }
+
+    pub fn update_first_and_second(&self, db: &impl ModeratorAccessDb) {
+        const UPDATE: &str = "
+            UPDATE linked_word_suggestions
+            SET first_existing_word_id = ?1, second_existing_word_id = ?2,
+                suggested_word_id = ?3, second_suggested_word_id = ?4
+            WHERE suggestion_id = ?5;
+        ";
+
+        let (first, second) = (self.first.current().0, self.second.current().0);
+        let params = params![
+            first.into_existing(),
+            second.into_existing(),
+            first.into_suggested(),
+            second.into_suggested(),
+            self.suggestion_id,
+        ];
+
+        let conn = db.get().unwrap();
+        conn.prepare(UPDATE).unwrap().execute(params).unwrap();
     }
 
     pub fn delete(db: &impl ModeratorAccessDb, id: u64) -> bool {
@@ -554,65 +603,44 @@ impl SuggestedLinkedWord {
             (None, None, None)
         };
 
-        let (first, second) = (
-            row.get::<&str, Option<u64>>("first_existing_word_id")
-                .unwrap(),
-            row.get::<&str, Option<u64>>("second_existing_word_id")
-                .unwrap(),
-        );
-
-        let existing_id = first.or(second).unwrap();
-
-        let first_hit =
-            WordHit::fetch_from_db(db, WordOrSuggestionId::ExistingWord { existing_id }).unwrap();
-
-        // TODO linked word standalone editing check this first and second logic
-        // It sometimes causes maybeedited to be edited when it should be old
-        // also the assumption that first is always existing is maybe wrong
-
-        let first = match other_first {
-            Some(other_first) if Some(other_first) != first => {
-                let other_hit = WordHit::fetch_from_db(
-                    db,
-                    WordOrSuggestionId::ExistingWord {
-                        existing_id: other_first,
-                    },
-                )
-                .unwrap();
-                MaybeEdited::Edited {
-                    new: (existing_id, first_hit),
-                    old: (other_first, other_hit),
-                }
-            }
-            _ => MaybeEdited::New((existing_id, first_hit)),
+        let existing = |col| {
+            row.get::<&str, Option<u64>>(col)
+                .unwrap()
+                .map(WordOrSuggestionId::existing)
+        };
+        let suggested = |col| {
+            row.get::<&str, Option<u64>>(col)
+                .unwrap()
+                .map(WordOrSuggestionId::suggested)
         };
 
-        let second =
-            WordOrSuggestionId::try_from_row(row, "second_existing_word_id", "suggested_word_id")
-                .unwrap();
-        let second_hit = WordHit::fetch_from_db(db, second).unwrap();
+        let word_ids: [Option<WordOrSuggestionId>; 4] = [
+            existing("first_existing_word_id"),
+            existing("second_existing_word_id"),
+            suggested("suggested_word_id"),
+            suggested("second_suggested_word_id"),
+        ];
 
-        let second = match other_second {
-            Some(other_second) if (WordOrSuggestionId::from(WordId(other_second))) != second => {
-                let other_hit = WordHit::fetch_from_db(
-                    db,
-                    WordOrSuggestionId::ExistingWord {
-                        existing_id: other_second,
-                    },
-                )
-                .unwrap();
-                MaybeEdited::Edited {
-                    new: (second, second_hit),
-                    old: (
-                        WordOrSuggestionId::ExistingWord {
-                            existing_id: other_second,
-                        },
-                        other_hit,
-                    ),
+        let mut iter = array::IntoIter::new(word_ids).flatten().take(2);
+
+        let mut next = |other_id| {
+            let this_id = iter.next().unwrap();
+            let get_other =
+                |id| WordHit::fetch_from_db(db, WordOrSuggestionId::existing(id)).unwrap();
+
+            match other_id {
+                Some(other_id) if WordOrSuggestionId::existing(other_id) == this_id => {
+                    MaybeEdited::Old((WordOrSuggestionId::existing(other_id), get_other(other_id)))
                 }
+                Some(other_id) => MaybeEdited::Edited {
+                    old: (WordOrSuggestionId::existing(other_id), get_other(other_id)),
+                    new: (this_id, WordHit::fetch_from_db(db, this_id).unwrap()),
+                },
+                None => MaybeEdited::New((this_id, WordHit::fetch_from_db(db, this_id).unwrap())),
             }
-            _ => MaybeEdited::New((second, second_hit)),
         };
+
+        let (first, second) = (next(other_first), next(other_second));
 
         SuggestedLinkedWord {
             changes_summary: row.get("changes_summary").unwrap(),
@@ -683,7 +711,14 @@ impl MaybeEdited<String> {
 impl<T> MaybeEdited<Option<T>> {
     pub fn is_none(&self) -> bool {
         use MaybeEdited::*;
-        matches!(self, Edited { old: None, new: None} | Old(None) | New(None))
+        matches!(
+            self,
+            Edited {
+                old: None,
+                new: None
+            } | Old(None)
+                | New(None)
+        )
     }
 }
 

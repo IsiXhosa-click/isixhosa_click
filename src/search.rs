@@ -12,18 +12,21 @@ use serde::Serialize;
 use std::cmp::{max, Reverse};
 use std::convert::TryInto;
 use std::fmt::{Debug, Formatter};
+use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::doc;
-use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query};
-use tantivy::schema::{Field, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED};
+use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
+use tantivy::schema::{Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED, FieldValue};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
+use crate::database::WordOrSuggestionId;
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 
@@ -80,8 +83,12 @@ impl TantivyClient {
 
         if reindex {
             log::info!("Reindexing database");
+            let now = Instant::now();
             client.reindex_database(db).await;
-            log::info!("Database reindexed");
+            log::info!(
+                "Database reindexed in {:.2}ms",
+                now.elapsed().as_secs_f64() * 1_000.0
+            );
         }
 
         Ok(client)
@@ -99,8 +106,10 @@ impl TantivyClient {
         let xhosa_stemmed = builder.add_text_field("xhosa", text_options);
         let part_of_speech = builder.add_u64_field("part_of_speech", STORED);
         let is_plural = builder.add_u64_field("is_plural", STORED);
+        let suggesting_user = builder.add_u64_field("is_suggestion", STORED | INDEXED);
         let noun_class = builder.add_u64_field("noun_class", STORED);
-        let id = builder.add_u64_field("id", STORED | INDEXED);
+        let existing_id = builder.add_u64_field("existing_id", STORED | INDEXED);
+        let suggestion_id = builder.add_u64_field("suggestion_id", STORED | INDEXED);
 
         SchemaInfo {
             schema: builder.build(),
@@ -109,14 +118,23 @@ impl TantivyClient {
             xhosa_stemmed,
             part_of_speech,
             is_plural,
+            suggesting_user,
             noun_class,
-            id,
+            existing_id,
+            suggestion_id
         }
     }
 
-    pub async fn search(&self, query: String) -> Result<Vec<WordHit>> {
+    pub async fn search(
+        &self,
+        query: String,
+        include_suggestions_from_user: Option<NonZeroU64>,
+    ) -> Result<Vec<WordHit>> {
         self.searchers
-            .send(SearchRequest(query))
+            .send(SearchRequest {
+                query,
+                include_suggestions_from_user,
+            })
             .await
             .map_err(Into::into)
     }
@@ -130,11 +148,12 @@ impl TantivyClient {
 
             stmt.query_map(params![], |row| {
                 Ok(WordDocument {
-                    id: row.get::<&str, i64>("word_id")? as u64,
+                    id: WordOrSuggestionId::existing(row.get::<&str, i64>("word_id")? as u64),
                     english: row.get("english")?,
                     xhosa: row.get("xhosa")?,
                     part_of_speech: row.get("part_of_speech")?,
                     is_plural: row.get("is_plural")?,
+                    suggesting_user: None,
                     noun_class: row
                         .get::<&str, Option<NounClassOpt>>("noun_class")?
                         .flatten(),
@@ -158,8 +177,8 @@ impl TantivyClient {
         self.writer.send(EditWord(word)).await.unwrap()
     }
 
-    pub async fn delete_word(&self, word_id: u64) {
-        self.writer.send(DeleteWord(word_id)).await.unwrap()
+    pub async fn delete_word(&self, id: WordOrSuggestionId) {
+        self.writer.send(DeleteWord(id)).await.unwrap()
     }
 }
 
@@ -183,22 +202,30 @@ impl WriterActor {
             doc.xhosa.clone()
         };
 
-        writer.add_document(tantivy::doc!(
-            schema_info.id => doc.id,
+        let mut tantivy_doc = tantivy::doc!(
             schema_info.english => doc.english,
             schema_info.xhosa => doc.xhosa,
             schema_info.xhosa_stemmed => stemmed,
             schema_info.part_of_speech => doc.part_of_speech as u64,
+            schema_info.suggesting_user => doc.suggesting_user.map(NonZeroU64::get).unwrap_or(0),
             schema_info.is_plural => doc.is_plural as u64,
             schema_info.noun_class => doc.noun_class.map(|x| x as u64).unwrap_or(255),
-        ));
+        );
+
+        let id = match doc.id {
+            WordOrSuggestionId::Suggested { suggestion_id } => FieldValue::new(schema_info.suggestion_id, Value::U64(suggestion_id)),
+            WordOrSuggestionId::ExistingWord { existing_id } => FieldValue::new(schema_info.existing_id, Value::U64(existing_id)),
+        };
+
+        tantivy_doc.add(id);
+        writer.add_document(tantivy_doc);
     }
 }
 
 impl Actor for WriterActor {}
 
 #[derive(Debug)]
-pub struct DeleteWord(u64);
+pub struct DeleteWord(WordOrSuggestionId);
 
 impl Message for DeleteWord {
     type Result = ();
@@ -270,7 +297,10 @@ impl Handler<EditWord> for WriterActor {
 
         tokio::task::spawn_blocking(move || {
             let mut writer = writer.lock().unwrap();
-            let term = Term::from_field_u64(schema_info.id, edit.0.id);
+            let term = match edit.0.id {
+                WordOrSuggestionId::ExistingWord { existing_id} => Term::from_field_u64(schema_info.existing_id, existing_id),
+                WordOrSuggestionId::Suggested { suggestion_id } => Term::from_field_u64(schema_info.suggestion_id, suggestion_id),
+            };
             writer.delete_term(term);
             Self::add_word(&mut writer, &schema_info, edit.0);
             writer.commit().unwrap();
@@ -288,7 +318,10 @@ impl Handler<DeleteWord> for WriterActor {
 
         tokio::task::spawn_blocking(move || {
             let mut writer = writer.lock().unwrap();
-            let term = Term::from_field_u64(schema_info.id, delete.0);
+            let term = match delete.0 {
+                WordOrSuggestionId::ExistingWord { existing_id} => Term::from_field_u64(schema_info.existing_id, existing_id),
+                WordOrSuggestionId::Suggested { suggestion_id } => Term::from_field_u64(schema_info.suggestion_id, suggestion_id),
+            };
             writer.delete_term(term);
             writer.commit().unwrap();
         })
@@ -310,7 +343,10 @@ impl SearcherActor {
 
 impl Actor for SearcherActor {}
 
-pub struct SearchRequest(pub String);
+pub struct SearchRequest {
+    query: String,
+    include_suggestions_from_user: Option<NonZeroU64>,
+}
 
 impl Message for SearchRequest {
     type Result = Vec<WordHit>;
@@ -323,15 +359,15 @@ impl Handler<SearchRequest> for SearcherActor {
         mut req: SearchRequest,
         _ctx: &mut xtra::Context<Self>,
     ) -> Vec<WordHit> {
-        req.0 = req.0.to_lowercase().replace("(", "").replace(")", "");
-        req.0.truncate(32);
+        req.query = req.query.to_lowercase().replace("(", "").replace(")", "");
+        req.query.truncate(32);
 
         let searcher = self.reader.searcher();
         let client = self.client.clone();
 
         // Drop BoxTokenStream which is not Send
         let query = {
-            let mut tokenized = client.english_tokenizer.token_stream(&req.0);
+            let mut tokenized = client.english_tokenizer.token_stream(&req.query);
             let mut queries: Vec<Box<dyn Query + 'static>> = Vec::with_capacity(3);
             tokenized.process(&mut |token| {
                 let distance = match token.text.len() {
@@ -355,7 +391,25 @@ impl Handler<SearchRequest> for SearcherActor {
                 queries.push(Box::new(query_xhosa_stemmed));
             });
 
-            BooleanQuery::union(queries)
+            let terms = BooleanQuery::union(queries);
+            let not_suggestion = Term::from_field_u64(client.schema_info.suggesting_user, 0);
+            let not_suggestion = TermQuery::new(not_suggestion, IndexRecordOption::Basic);
+            let not_suggestion =
+                BooleanQuery::intersection(vec![Box::new(not_suggestion), Box::new(terms.clone())]);
+
+            match req.include_suggestions_from_user {
+                Some(user) => {
+                    let suggested_by =
+                        Term::from_field_u64(client.schema_info.suggesting_user, user.get());
+                    let suggested_by = TermQuery::new(suggested_by, IndexRecordOption::Basic);
+                    let suggested_by =
+                        BooleanQuery::intersection(vec![Box::new(suggested_by), Box::new(terms)]);
+                    BooleanQuery::union(vec![Box::new(not_suggestion), Box::new(suggested_by)])
+                }
+                None => {
+                    not_suggestion
+                },
+            }
         };
 
         let top_docs = TopDocs::with_limit(20);
@@ -365,7 +419,7 @@ impl Handler<SearchRequest> for SearcherActor {
                 .search(&query, &top_docs)?
                 .into_iter()
                 .map(|(_score, doc_address)| {
-                    searcher
+                     searcher
                         .doc(doc_address)
                         .map_err(anyhow::Error::from)
                         .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
@@ -374,8 +428,8 @@ impl Handler<SearchRequest> for SearcherActor {
 
             results.sort_by_cached_key(|hit| {
                 Reverse(max(
-                    OrderedFloat(strsim::jaro_winkler(&req.0, &hit.xhosa)),
-                    OrderedFloat(strsim::jaro_winkler(&req.0, &hit.english)),
+                    OrderedFloat(strsim::jaro_winkler(&req.query, &hit.xhosa)),
+                    OrderedFloat(strsim::jaro_winkler(&req.query, &hit.english)),
                 ))
             });
             results.truncate(5);
@@ -395,17 +449,21 @@ struct SchemaInfo {
     xhosa_stemmed: Field,
     part_of_speech: Field,
     is_plural: Field,
+    suggesting_user: Field,
     noun_class: Field,
-    id: Field,
+    existing_id: Field,
+    suggestion_id: Field,
 }
 
 #[derive(Clone, Debug)]
 pub struct WordDocument {
-    pub id: u64,
+    pub id: WordOrSuggestionId,
     pub english: String,
     pub xhosa: String,
     pub part_of_speech: PartOfSpeech,
     pub is_plural: bool,
+    /// This is only `Some` for indexed suggestions.
+    pub suggesting_user: Option<NonZeroU64>,
     pub noun_class: Option<NounClass>,
 }
 
@@ -416,6 +474,7 @@ pub struct WordHit {
     pub xhosa: String,
     pub part_of_speech: SerOnlyDisplay<PartOfSpeech>,
     pub is_plural: bool,
+    pub is_suggestion: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub noun_class: Option<SerializePrimitive<NounClass, u8>>,
 }
@@ -428,11 +487,11 @@ impl WordHit {
             xhosa: String::new(),
             part_of_speech: SerOnlyDisplay(PartOfSpeech::Other),
             is_plural: false,
+            is_suggestion: false,
             noun_class: None,
         }
     }
 
-    // TODO better way?
     fn try_deserialize(schema_info: &SchemaInfo, document: Document) -> Result<WordHit> {
         let pos_ord = document
             .get_first(schema_info.part_of_speech)
@@ -445,12 +504,29 @@ impl WordHit {
             })?;
         let part_of_speech = SerOnlyDisplay(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
 
+        let is_suggestion = document
+            .get_first(schema_info.suggesting_user)
+            .and_then(Value::u64_value)
+            .map(|v| v != 0)
+            .with_context(|| {
+                format!(
+                    "Invalid value for field `suggesting_user` in document {:#?}",
+                    document
+                )
+            })?;
+
+        let id_field = if is_suggestion {
+            schema_info.suggestion_id
+        } else {
+            schema_info.existing_id
+        };
+
         Ok(WordHit {
             id: document
-                .get_first(schema_info.id)
+                .get_first(id_field)
                 .and_then(Value::u64_value)
                 .with_context(|| {
-                    format!("Invalid value for field `id` in document {:#?}", document)
+                    format!("Invalid value for id field in document {:#?}", document)
                 })?,
             english: document
                 .get_first(schema_info.english)
@@ -483,6 +559,7 @@ impl WordHit {
                         document
                     )
                 })?,
+            is_suggestion,
             noun_class: document
                 .get_first(schema_info.noun_class)
                 .and_then(Value::u64_value)
@@ -495,11 +572,12 @@ impl WordHit {
 impl From<WordDocument> for WordHit {
     fn from(d: WordDocument) -> Self {
         WordHit {
-            id: d.id,
+            id: d.id.inner(),
             english: d.english,
             xhosa: d.xhosa,
             part_of_speech: SerOnlyDisplay(d.part_of_speech),
             is_plural: d.is_plural,
+            is_suggestion: d.suggesting_user.is_some(),
             noun_class: d.noun_class.map(SerializePrimitive::new),
         }
     }

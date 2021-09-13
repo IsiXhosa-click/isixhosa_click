@@ -5,10 +5,14 @@ use crate::submit::{
     edit_word_page, submit_suggestion, suggest_word_deletion, WordId, WordSubmission,
 };
 
+use crate::search::TantivyClient;
+use std::sync::Arc;
 use warp::{body, Filter, Rejection, Reply};
 
-// TODO auth
-pub fn edit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
+pub fn edit(
+    db: DbBase,
+    tantivy: Arc<TantivyClient>,
+) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
     let submit_page = warp::get()
         .and(with_user_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is none
@@ -20,6 +24,7 @@ pub fn edit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clon
         .and(warp::path![u64])
         .and(warp::path::end())
         .and(body::content_length_limit(4 * 1024))
+        .and(warp::any().map(move || tantivy.clone()))
         .and(with_user_auth(db.clone()))
         .and(qs_form())
         .and_then(submit_suggestion_reply);
@@ -49,11 +54,12 @@ pub fn edit(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clon
 
 async fn submit_suggestion_reply(
     id: u64,
+    tantivy: Arc<TantivyClient>,
     user: User,
     db: impl UserAccessDb,
     w: WordSubmission,
 ) -> Result<impl Reply, Rejection> {
-    submit_suggestion(w, &db).await;
+    submit_suggestion(w, tantivy, &user, &db).await;
     word(id, user.into(), db, Some(WordChangeMethod::Edit)).await
 }
 

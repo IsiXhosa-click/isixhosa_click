@@ -7,13 +7,15 @@ use openid::{Token, Userinfo};
 use r2d2_sqlite::rusqlite::Row;
 use rusqlite::{params, OptionalExtension};
 use std::convert::TryFrom;
+use std::num::NonZeroU64;
 
 impl TryFrom<&Row<'_>> for User {
     type Error = rusqlite::Error;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
         Ok(User {
-            id: row.get::<&str, i64>("user_id")? as u64,
+            // AUTOINCREMENT starts at 1
+            id: NonZeroU64::new(row.get::<&str, i64>("user_id")? as u64).unwrap(),
             username: row.get("username")?,
             display_name: row.get("display_name")?,
             advanced_submit_form: row.get("advanced_submit_form")?,
@@ -103,7 +105,7 @@ impl User {
         let id: i64 = stmt.query_row(params, |row| row.get("user_id")).unwrap();
 
         User {
-            id: id as u64,
+            id: NonZeroU64::new(id as u64).unwrap(), // AUTOINCREMENT starts at 1
             username,
             display_name,
             advanced_submit_form,

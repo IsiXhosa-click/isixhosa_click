@@ -4,6 +4,7 @@ use crate::search::WordHit;
 use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
 
+use crate::database::WordOrSuggestionId;
 use rusqlite::{params, Row};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -39,7 +40,9 @@ impl WordDeletionSuggestion {
                     suggestion_id: row.get::<&str, i64>("suggestion_id").unwrap() as u64,
                     word: WordHit::try_from_row_and_id(
                         row,
-                        row.get::<&str, i64>("word_id").unwrap() as u64,
+                        WordOrSuggestionId::existing(
+                            row.get::<&str, i64>("word_id").unwrap() as u64
+                        ),
                     )
                     .unwrap(),
                     reason: row.get("reason").unwrap(),

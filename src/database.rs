@@ -17,13 +17,17 @@ pub mod suggestion;
 pub mod user;
 
 impl WordHit {
-    fn try_from_row_and_id(row: &Row<'_>, id: u64) -> Result<WordHit, rusqlite::Error> {
+    fn try_from_row_and_id(
+        row: &Row<'_>,
+        id: WordOrSuggestionId,
+    ) -> Result<WordHit, rusqlite::Error> {
         Ok(WordHit {
-            id,
+            id: id.inner(),
             english: row.get("english")?,
             xhosa: row.get("xhosa")?,
             part_of_speech: SerOnlyDisplay(row.get("part_of_speech")?),
             is_plural: row.get("is_plural")?,
+            is_suggestion: id.is_suggested(),
             noun_class: row
                 .get::<&str, Option<NounClassOpt>>("noun_class")?
                 .flatten()
@@ -52,7 +56,7 @@ impl WordHit {
             .prepare(stmt)
             .unwrap()
             .query_row(params![id.inner()], |row| {
-                WordHit::try_from_row_and_id(row, id.inner())
+                WordHit::try_from_row_and_id(row, id)
             })
             .optional()
             .unwrap();
@@ -74,7 +78,37 @@ impl From<WordId> for WordOrSuggestionId {
 }
 
 impl WordOrSuggestionId {
-    fn inner(&self) -> u64 {
+    pub fn suggested(id: u64) -> WordOrSuggestionId {
+        WordOrSuggestionId::Suggested { suggestion_id: id }
+    }
+
+    pub fn existing(id: u64) -> WordOrSuggestionId {
+        WordOrSuggestionId::ExistingWord { existing_id: id }
+    }
+
+    pub fn into_existing(self) -> Option<u64> {
+        match self {
+            WordOrSuggestionId::ExistingWord { existing_id } => Some(existing_id),
+            _ => None,
+        }
+    }
+
+    pub fn into_suggested(self) -> Option<u64> {
+        match self {
+            WordOrSuggestionId::Suggested { suggestion_id } => Some(suggestion_id),
+            _ => None,
+        }
+    }
+
+    pub fn is_existing(&self) -> bool {
+        matches!(self, WordOrSuggestionId::ExistingWord { .. })
+    }
+
+    pub fn is_suggested(&self) -> bool {
+        !self.is_existing()
+    }
+
+    pub fn inner(&self) -> u64 {
         match self {
             WordOrSuggestionId::ExistingWord { existing_id } => *existing_id,
             WordOrSuggestionId::Suggested { suggestion_id } => *suggestion_id,
@@ -95,8 +129,8 @@ impl WordOrSuggestionId {
             .unwrap()
             .map(|x| x as u64);
         match (existing_word_id, suggested_word_id) {
-            (Some(existing_id), None) => Ok(WordOrSuggestionId::ExistingWord { existing_id }),
-            (None, Some(suggestion_id)) => Ok(WordOrSuggestionId::Suggested { suggestion_id }),
+            (Some(existing_id), None) => Ok(WordOrSuggestionId::existing(existing_id)),
+            (None, Some(suggestion_id)) => Ok(WordOrSuggestionId::suggested(suggestion_id)),
             (existing, _suggested) => {
                 panic!(
                     "Invalid pair of existing/suggested ids: existing - {:?} suggested - {:?}",

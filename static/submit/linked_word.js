@@ -3,22 +3,20 @@ import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;
 
-function removeLinkedWord(button_id, search) {
+function removeLinkedWord(button_id, this_id, this_is_new_suggestion) {
     let button = document.getElementById(button_id);
     let button_div = button.parentElement;
     let list_div = button_div.parentElement;
     let list_item = list_div.parentElement;
     list_item.remove();
-    search.stop();
 
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
     if (delete_buttons.length === 0) {
-        addLinkedWord()
+        addLinkedWord(this_id, this_is_new_suggestion)
     }
 }
 
-// TODO filter out own word if submitted already
-function createLinkedWordSearch(preset_word) {
+function createLinkedWordSearch(preset_word, this_id, this_is_new_suggestion) {
     let input = document.createElement("input");
 
     let popover_container = document.createElement("div");
@@ -56,9 +54,10 @@ function createLinkedWordSearch(preset_word) {
         input.setAttribute("data-last_search", preset_word.xhosa);
         input.setAttribute("data-last_choice", last_choice);
         input.setAttribute("data-selected_word_id", preset_word.id);
+        input.setAttribute("data-selected_is_suggestion", preset_word.is_suggestion);
     }
 
-    function createLinkedWordButton(word, word_id) {
+    function createLinkedWordButton(word, word_id, is_suggestion) {
         let button = document.createElement("button");
         button.type = "button";
         button.className = "select_list_option"
@@ -68,6 +67,7 @@ function createLinkedWordSearch(preset_word) {
             input.setAttribute("data-last_search", input.value);
             input.setAttribute("data-last_choice", word);
             input.setAttribute("data-selected_word_id", word_id);
+            input.setAttribute("data-selected_is_suggestion", is_suggestion);
             input.setAttribute("data-restore_choice", "false");
             input.value = word;
             button.blur();
@@ -103,10 +103,21 @@ function createLinkedWordSearch(preset_word) {
         input.value = input.getAttribute("data-last_search");
     });
 
-    return { input: input, popover: popover_container, search: new LiveSearch(input, popover, function() {}, createLinkedWordButton, createLinkedWordContainer) };
+    let search = new LiveSearch(
+        input,
+        popover,
+        function() {},
+        createLinkedWordButton,
+        createLinkedWordContainer,
+        this_id,
+        this_is_new_suggestion,
+        true // Include own suggestions
+    );
+
+    return { input: input, popover: popover_container, search: search };
 }
 
-export function addLinkedWord(link_type, other, suggestion_id, existing_id) {
+export function addLinkedWord(this_word_id, this_is_new_suggestion, link_type, other, suggestion_id, existing_id) {
     current_linked_word_id += 1;
     let list = document.getElementById("linked_words");
     let item = document.createElement("li");
@@ -173,8 +184,8 @@ export function addLinkedWord(link_type, other, suggestion_id, existing_id) {
 
     let linked_word = document.createElement("div");
     linked_word.className = "word_select_container";
-    let { input, popover, search } = createLinkedWordSearch(other);
-    delete_button.addEventListener("click", function() { removeLinkedWord(this.id, search) });
+    let { input, popover, search } = createLinkedWordSearch(other, this_word_id, this_is_new_suggestion);
+    delete_button.addEventListener("click", function() { removeLinkedWord(this.id, this_word_id, this_is_new_suggestion) });
     linked_word.appendChild(input);
     linked_word.appendChild(popover);
     select_input_container.appendChild(linked_word);
@@ -182,12 +193,12 @@ export function addLinkedWord(link_type, other, suggestion_id, existing_id) {
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
 }
 
-export function addLinkedWords(linked_words) {
+export function addLinkedWords(linked_words, this_id, this_is_new_suggestion) {
     for (let linked_word of linked_words) {
-        addLinkedWord(linked_word.link_type, linked_word.other, linked_word.suggestion_id, linked_word.existing_id)
+        addLinkedWord(this_id, this_is_new_suggestion, linked_word.link_type, linked_word.other, linked_word.suggestion_id, linked_word.existing_id)
     }
 
     if (linked_words.length === 0) {
-        addLinkedWord()
+        addLinkedWord(this_id, this_is_new_suggestion)
     }
 }

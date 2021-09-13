@@ -14,6 +14,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::fmt::{Debug, Display, Formatter};
+use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use warp::http::uri;
@@ -91,6 +92,10 @@ impl Auth {
     pub fn username(&self) -> Option<&str> {
         self.user.as_ref().map(|user| &user.username as &str)
     }
+
+    pub fn user_id(&self) -> Option<NonZeroU64> {
+        self.user.as_ref().map(|u| u.id)
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -161,7 +166,7 @@ pub struct SignupForm {
 
 #[derive(Debug, Clone)]
 pub struct User {
-    pub id: u64,
+    pub id: NonZeroU64,
     pub username: String,
     pub display_name: bool,
     pub advanced_submit_form: bool,
@@ -369,8 +374,6 @@ async fn request_token(
 
     let userinfo = oidc_client.request_userinfo(&token).await?;
 
-    log::info!("User info: {:#?}", userinfo);
-
     Ok(Some((token, userinfo)))
 }
 
@@ -461,7 +464,7 @@ async fn reply_insert_session(
             .to_string()
     });
 
-    let token = tokio::task::spawn_blocking(move || StaySignedInToken::new(&db, user.id))
+    let token = tokio::task::spawn_blocking(move || StaySignedInToken::new(&db, user.id.get()))
         .await
         .unwrap();
     let authorization_cookie = Cookie::build(

@@ -4,7 +4,6 @@
 // - TODO standalone example & linked word suggestion editing
 // - TODO suggest possible duplicates in submit form
 // - TODO better way to suggest plurals?
-// - TODO attributions - editing users & references & so on
 
 // Soon after launch, perhaps before:
 // - principled HTTP response codes with previous_success in form submit and so on
@@ -14,8 +13,10 @@
 // - better search engine optimisation
 // - cache control headers/etags
 // - integration testing
+// - attributions - editing users & references & so on
 
 // Well after launch:
+// - forum for xhosa questions (discourse?)
 // - rate limiting
 // - tracing for logging over log: open telemetry/ELK stack or similar?
 // - additional resources/links page
@@ -25,7 +26,6 @@
 // - semantic fields/categories linking related words to browse all at once
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
-// - forum for xhosa questions (discourse?)
 
 use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized, UnauthorizedReason};
 use crate::database::existing::ExistingWord;
@@ -293,7 +293,7 @@ async fn server(cfg: Config) {
         .unwrap();
 
     let tantivy_cloned = tantivy.clone();
-    let tantivy_filter = warp::any().map(move || tantivy_cloned.clone());
+    let with_tantivy = warp::any().map(move || tantivy_cloned.clone());
     let db = DbBase::new(pool);
 
     let search_page = with_any_auth(db.clone()).map(|auth, _db| Search {
@@ -303,9 +303,13 @@ async fn server(cfg: Config) {
     });
     let query_search = warp::query()
         .and(with_any_auth(db.clone()))
-        .and(tantivy_filter.clone())
+        .and(with_tantivy.clone())
         .and_then(query_search);
-    let live_search = warp::ws().and(tantivy_filter).map(live_search);
+    let live_search = with_any_auth(db.clone())
+        .and(warp::ws())
+        .and(with_tantivy)
+        .and(warp::query())
+        .map(live_search);
     let search = warp::path("search")
         .and(path::end())
         .and(live_search.or(query_search).or(search_page));
@@ -325,10 +329,10 @@ async fn server(cfg: Config) {
     let routes = warp::fs::dir(cfg.static_site_files.clone())
         .or(warp::fs::dir(cfg.other_static_files.clone()))
         .or(search)
-        .or(submit(db.clone()))
-        .or(accept(db.clone(), tantivy))
+        .or(submit(db.clone(), tantivy.clone()))
+        .or(accept(db.clone(), tantivy.clone()))
         .or(details(db.clone()))
-        .or(edit(db.clone()))
+        .or(edit(db.clone(), tantivy))
         .or(warp::get()
             .and(path::end())
             .map(|| warp::redirect(Uri::from_static("/search"))))
@@ -370,6 +374,11 @@ async fn server(cfg: Config) {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+struct LiveSearchParams {
+    include_own_suggestions: Option<bool>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
 struct SearchQuery {
     query: String,
 }
@@ -401,7 +410,7 @@ async fn query_search(
     _db: impl PublicAccessDb,
     tantivy: Arc<TantivyClient>,
 ) -> Result<impl warp::Reply, Rejection> {
-    let results = tantivy.search(query.query.clone()).await.unwrap();
+    let results = tantivy.search(query.query.clone(), None).await.unwrap();
 
     Ok(Search {
         auth,
@@ -410,10 +419,22 @@ async fn query_search(
     })
 }
 
-fn live_search(ws: warp::ws::Ws, tantivy: Arc<TantivyClient>) -> impl warp::Reply {
+fn live_search(
+    auth: Auth,
+    _db: impl PublicAccessDb,
+    ws: warp::ws::Ws,
+    tantivy: Arc<TantivyClient>,
+    params: LiveSearchParams,
+) -> impl warp::Reply {
     ws.on_upgrade(move |websocket| {
         let (sender, stream) = websocket.split();
-        let addr = LiveSearchSession::new(sender, tantivy)
+        let include_suggestions_from_user = if params.include_own_suggestions.unwrap_or(false) {
+            auth.user_id()
+        } else {
+            None
+        };
+
+        let addr = LiveSearchSession::new(sender, tantivy, include_suggestions_from_user)
             .create(Some(4))
             .spawn_global();
         tokio::spawn(addr.attach_stream(stream.map(WsMessage)));
