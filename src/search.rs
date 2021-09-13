@@ -372,7 +372,7 @@ impl Handler<SearchRequest> for SearcherActor {
             tokenized.process(&mut |token| {
                 let distance = match token.text.len() {
                     0..=2 => 0,
-                    3..=4 => 1,
+                    3..=5 => 1,
                     _ => 2,
                 };
 
