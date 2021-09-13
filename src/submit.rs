@@ -111,12 +111,12 @@ impl<'de> Deserialize<'de> for LinkedWordList {
                         WordOrSuggestionId::existing(other_id)
                     };
 
-                    dbg!(Some(LinkedWordSubmission {
+                    Some(LinkedWordSubmission {
                         suggestion_id,
                         existing_id,
                         link_type,
                         other,
-                    }))
+                    })
                 })
                 .collect(),
         ))
@@ -641,9 +641,7 @@ fn process_linked_words(
     let existing_word_id = w.existing_id;
     let mut maybe_insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
 
-        dbg!(&new);
-
-        if dbg!(!new.has_any_changes(&old)) {
+        if !new.has_any_changes(&old) {
             return;
         }
 
@@ -690,7 +688,6 @@ fn process_linked_words(
                         .and_then(|id| ExistingLinkedWord::get(db, id, existing_word_id.unwrap()));
                     maybe_insert_link(new, old);
                 } else {
-                    dbg!("Deleting suggested link");
                     delete_suggested_link
                         .execute(params![prev.suggestion_id])
                         .unwrap();
@@ -707,7 +704,6 @@ fn process_linked_words(
                     let new = linked_words.remove(i);
                     maybe_insert_link(new, Some(prev));
                 } else {
-                    dbg!("Deleting suggested link - 2");
                     suggest_link_deletion
                         .execute(params![prev.link_id, "No reason given"])
                         .unwrap();

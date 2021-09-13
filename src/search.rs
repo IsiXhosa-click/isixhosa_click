@@ -103,7 +103,7 @@ impl TantivyClient {
 
         let english = builder.add_text_field("english", text_options.clone());
         let xhosa = builder.add_text_field("xhosa", text_options.clone());
-        let xhosa_stemmed = builder.add_text_field("xhosa", text_options);
+        let xhosa_stemmed = builder.add_text_field("xhosa_stemmed", text_options);
         let part_of_speech = builder.add_u64_field("part_of_speech", STORED);
         let is_plural = builder.add_u64_field("is_plural", STORED);
         let suggesting_user = builder.add_u64_field("is_suggestion", STORED | INDEXED);
@@ -412,7 +412,9 @@ impl Handler<SearchRequest> for SearcherActor {
             }
         };
 
-        let top_docs = TopDocs::with_limit(20);
+        // TODO(logging): find out when there are more than 64 top docs for a long-ish query to see
+        // when it needs to be increased
+        let top_docs = TopDocs::with_limit(64);
 
         tokio::task::spawn_blocking(move || {
             let mut results: Vec<WordHit> = searcher
