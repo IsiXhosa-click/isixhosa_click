@@ -86,28 +86,40 @@ impl Handler<WsMessage> for LiveSearchSession {
                 return;
             }
 
-            let query: Query = serde_json::from_str(msg.to_str().unwrap()).unwrap();
+            let json = match serde_json::from_str::<Query>(msg.to_str().unwrap()) {
+                Ok(query) => {
+                    if query.search.is_empty() {
+                        return;
+                    }
 
-            if query.search.is_empty() {
-                return;
-            }
+                    #[derive(Serialize)]
+                    struct Reply {
+                        results: Vec<WordHit>,
+                        state: String,
+                    }
 
-            #[derive(Serialize)]
-            struct Reply {
-                results: Vec<WordHit>,
-                state: String,
-            }
+                    let reply = Reply {
+                        results: self
+                            .tantivy
+                            .search(query.search, self.include_suggestions_from_user)
+                            .await
+                            .unwrap(),
+                        state: query.state,
+                    };
 
-            let reply = Reply {
-                results: self
-                    .tantivy
-                    .search(query.search, self.include_suggestions_from_user)
-                    .await
-                    .unwrap(),
-                state: query.state,
+                    serde_json::to_string(&reply).unwrap()
+                },
+                _ => {
+                    let query = msg.to_str().unwrap();
+
+                    if query.is_empty() {
+                        return;
+                    }
+
+                    let results = self.tantivy.search(query.to_owned(), None).await.unwrap();
+                    serde_json::to_string(&results).unwrap()
+                }
             };
-
-            let json = serde_json::to_string(&reply).unwrap();
 
             if self.sender.send(ws::Message::text(json)).await.is_err() {
                 ctx.stop();
