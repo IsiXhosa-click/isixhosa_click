@@ -156,7 +156,7 @@ export function addLinkedWord(this_word_id, this_is_new_suggestion, link_type, o
         { value: "plural_or_singular", text: "Singular or plural form" },
         { value: "alternate_use", text: "Alternate use" },
         { value: "antonym", text: "Antonym" },
-        { value: "related_meaning", text: "Related meaning" },
+        { value: "related", text: "Related meaning" },
         { value: "confusable", text: "Confusable" },
     ];
 
