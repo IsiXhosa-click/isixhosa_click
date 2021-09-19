@@ -4,7 +4,6 @@ use crate::database::existing::{ExistingExample, ExistingWord};
 use crate::language::{
     ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType,
 };
-use crate::serialization::{deser_from_str, ser_to_debug};
 use crate::{set_up_db, Config};
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;
@@ -88,8 +87,6 @@ pub struct WordRecord {
 
     pub english: String,
     pub xhosa: String,
-    #[serde(serialize_with = "ser_to_debug")]
-    #[serde(deserialize_with = "deser_from_str")]
     pub part_of_speech: PartOfSpeech,
 
     pub xhosa_tone_markings: String,
@@ -292,8 +289,6 @@ impl From<ExistingWord> for WordRecord {
 #[derive(Serialize, Deserialize)]
 pub struct LinkedWordRecord {
     pub link_id: u64,
-    #[serde(serialize_with = "ser_to_debug")]
-    #[serde(deserialize_with = "deser_from_str")]
     pub link_type: WordLinkType,
     pub first: u64,
     pub second: u64,

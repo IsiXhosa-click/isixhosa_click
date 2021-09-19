@@ -8,14 +8,12 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::str::FromStr;
-use strum::EnumString;
 
 #[derive(
     IntoPrimitive,
     TryFromPrimitive,
     Serialize,
     Deserialize,
-    EnumString,
     Copy,
     Clone,
     Debug,
@@ -276,7 +274,6 @@ impl NounClassExt for NounClass {
     Ord,
     PartialEq,
     Eq,
-    EnumString,
 )]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
@@ -288,19 +285,20 @@ pub enum WordLinkType {
     Confusable = 5,
 }
 
-impl WordLinkType {
-    fn as_str(&self) -> &'static str {
-        match self {
-            WordLinkType::PluralOrSingular => "Plural or singular form",
-            WordLinkType::Antonym => "Antonym",
-            WordLinkType::Related => "Related meaning",
-            WordLinkType::Confusable => "Confusable",
-            WordLinkType::AlternateUse => "Alternate use",
-        }
-    }
+pub struct InvalidWordLinkType(String);
 
-    pub fn as_u8(&self) -> u8 {
-        *self as u8
+impl FromStr for WordLinkType {
+    type Err = InvalidWordLinkType;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "plural_or_singular" => WordLinkType::PluralOrSingular,
+            "alternate_use" => WordLinkType::AlternateUse,
+            "antonym" => WordLinkType::Antonym,
+            "related" => WordLinkType::Related,
+            "confusable" => WordLinkType::Confusable,
+            _ => return Err(InvalidWordLinkType(s.to_owned())),
+        })
     }
 }
 
@@ -320,6 +318,14 @@ impl ToSql for WordLinkType {
 
 impl Display for WordLinkType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        let s = match self {
+            WordLinkType::PluralOrSingular => "Plural or singular form",
+            WordLinkType::Antonym => "Antonym",
+            WordLinkType::Related => "Related meaning",
+            WordLinkType::Confusable => "Confusable",
+            WordLinkType::AlternateUse => "Alternate use",
+        };
+
+        f.write_str(s)
     }
 }

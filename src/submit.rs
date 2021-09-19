@@ -4,7 +4,6 @@
 use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::{TantivyClient, WordDocument, WordHit};
 use askama::Template;
-use num_enum::TryFromPrimitive;
 
 use rusqlite::{params, ToSql};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -92,7 +91,7 @@ impl<'de> Deserialize<'de> for LinkedWordList {
             is_suggestion: String,
         }
 
-        let raw = Vec::<Raw>::deserialize(deser)?;
+        let raw = dbg!(Vec::<Raw>::deserialize(deser)?);
 
         Ok(LinkedWordList(
             raw.into_iter()
@@ -101,8 +100,7 @@ impl<'de> Deserialize<'de> for LinkedWordList {
                         return None;
                     }
 
-                    let type_int = raw.link_type.parse::<u8>().ok()?;
-                    let link_type = WordLinkType::try_from_primitive(type_int).ok()?;
+                    let link_type = raw.link_type.parse().ok()?;
                     let suggestion_id = raw.suggestion_id.and_then(|x| x.parse::<u64>().ok());
                     let existing_id = raw.existing_id.and_then(|x| x.parse::<u64>().ok());
 
@@ -585,7 +583,7 @@ pub async fn submit_suggestion(
             diff(w.infinitive.clone(), &orig.infinitive, use_submitted),
             diff(w.is_plural, &orig.is_plural, use_submitted),
             diff(w.is_inchoative, &orig.is_inchoative, use_submitted),
-            dbg!(diff_with_sentinel(dbg!(w.transitivity), orig.transitivity)),
+            diff_with_sentinel(w.transitivity, orig.transitivity),
             diff(w.followed_by.clone(), &orig.followed_by, use_submitted),
             diff_with_sentinel(w.noun_class, orig.noun_class),
             diff(w.note.clone(), &orig.note, use_submitted)

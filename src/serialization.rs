@@ -9,7 +9,6 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error as StdError;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::marker::PhantomData;
-use std::str::FromStr;
 use warp::hyper::body::Bytes;
 use warp::{Buf, Filter, Rejection};
 
@@ -175,29 +174,6 @@ where
             other
         ))),
     }
-}
-
-pub fn ser_to_debug<T, S>(v: &T, ser: S) -> Result<S::Ok, S::Error>
-where
-    T: Debug,
-    S: Serializer,
-{
-    ser.serialize_str(&format!("{:?}", v))
-}
-
-pub fn deser_from_str<'de, T, D>(deser: D) -> Result<T, D::Error>
-where
-    T: FromStr,
-    D: Deserializer<'de>,
-{
-    let string = String::deserialize(deser)?;
-    T::from_str(&string).map_err(|_| {
-        serde::de::Error::custom(format!(
-            "Invalid {} determinant {}",
-            std::any::type_name::<T>(),
-            string
-        ))
-    })
 }
 
 fn to_bytes<B: Buf>(mut b: B) -> Bytes {
