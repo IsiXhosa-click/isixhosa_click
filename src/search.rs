@@ -1,5 +1,6 @@
-use crate::language::PartOfSpeech;
-use crate::serialization::{NounClassOpt, NounClassOptExt};
+use crate::database::WordOrSuggestionId;
+use crate::language::{PartOfSpeech, Transitivity};
+use crate::serialization::GetWithSentinelExt;
 use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
@@ -10,7 +11,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Serialize;
 use std::cmp::{max, Reverse};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::{Debug, Formatter};
 use std::num::NonZeroU64;
 use std::path::Path;
@@ -20,13 +21,15 @@ use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::doc;
 use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
-use tantivy::schema::{Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED, FieldValue};
+use tantivy::schema::{
+    Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
+    STORED,
+};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
-use crate::database::WordOrSuggestionId;
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 
@@ -106,8 +109,10 @@ impl TantivyClient {
         let xhosa_stemmed = builder.add_text_field("xhosa_stemmed", text_options);
         let part_of_speech = builder.add_u64_field("part_of_speech", STORED);
         let is_plural = builder.add_u64_field("is_plural", STORED);
-        let suggesting_user = builder.add_u64_field("is_suggestion", STORED | INDEXED);
+        let is_inchoative = builder.add_u64_field("is_inchoative", STORED);
+        let transitivity = builder.add_u64_field("is_transitive", STORED);
         let noun_class = builder.add_u64_field("noun_class", STORED);
+        let suggesting_user = builder.add_u64_field("is_suggestion", STORED | INDEXED);
         let existing_id = builder.add_u64_field("existing_id", STORED | INDEXED);
         let suggestion_id = builder.add_u64_field("suggestion_id", STORED | INDEXED);
 
@@ -118,10 +123,12 @@ impl TantivyClient {
             xhosa_stemmed,
             part_of_speech,
             is_plural,
-            suggesting_user,
+            is_inchoative,
+            transitivity,
             noun_class,
+            suggesting_user,
             existing_id,
-            suggestion_id
+            suggestion_id,
         }
     }
 
@@ -140,7 +147,13 @@ impl TantivyClient {
     }
 
     pub async fn reindex_database(&self, db: Pool<SqliteConnectionManager>) {
-        const SELECT: &str = "SELECT word_id, english, xhosa, part_of_speech, is_plural, noun_class FROM words ORDER BY word_id;";
+        const SELECT: &str = "
+            SELECT
+                word_id, english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity,
+                followed_by, noun_class
+            FROM words
+            ORDER BY word_id;
+        ";
 
         let docs = tokio::task::spawn_blocking(move || {
             let conn = db.get().unwrap();
@@ -153,10 +166,10 @@ impl TantivyClient {
                     xhosa: row.get("xhosa")?,
                     part_of_speech: row.get("part_of_speech")?,
                     is_plural: row.get("is_plural")?,
+                    is_inchoative: row.get("is_inchoative")?,
+                    transitivity: row.get_with_sentinel("transitivity")?,
                     suggesting_user: None,
-                    noun_class: row
-                        .get::<&str, Option<NounClassOpt>>("noun_class")?
-                        .flatten(),
+                    noun_class: row.get_with_sentinel("noun_class")?,
                 })
             })
             .unwrap()
@@ -209,12 +222,18 @@ impl WriterActor {
             schema_info.part_of_speech => doc.part_of_speech as u64,
             schema_info.suggesting_user => doc.suggesting_user.map(NonZeroU64::get).unwrap_or(0),
             schema_info.is_plural => doc.is_plural as u64,
+            schema_info.is_inchoative => doc.is_inchoative as u64,
+            schema_info.transitivity => doc.transitivity.map(|x| x as u64).unwrap_or(255),
             schema_info.noun_class => doc.noun_class.map(|x| x as u64).unwrap_or(255),
         );
 
         let id = match doc.id {
-            WordOrSuggestionId::Suggested { suggestion_id } => FieldValue::new(schema_info.suggestion_id, Value::U64(suggestion_id)),
-            WordOrSuggestionId::ExistingWord { existing_id } => FieldValue::new(schema_info.existing_id, Value::U64(existing_id)),
+            WordOrSuggestionId::Suggested { suggestion_id } => {
+                FieldValue::new(schema_info.suggestion_id, Value::U64(suggestion_id))
+            }
+            WordOrSuggestionId::ExistingWord { existing_id } => {
+                FieldValue::new(schema_info.existing_id, Value::U64(existing_id))
+            }
         };
 
         tantivy_doc.add(id);
@@ -298,8 +317,12 @@ impl Handler<EditWord> for WriterActor {
         tokio::task::spawn_blocking(move || {
             let mut writer = writer.lock().unwrap();
             let term = match edit.0.id {
-                WordOrSuggestionId::ExistingWord { existing_id} => Term::from_field_u64(schema_info.existing_id, existing_id),
-                WordOrSuggestionId::Suggested { suggestion_id } => Term::from_field_u64(schema_info.suggestion_id, suggestion_id),
+                WordOrSuggestionId::ExistingWord { existing_id } => {
+                    Term::from_field_u64(schema_info.existing_id, existing_id)
+                }
+                WordOrSuggestionId::Suggested { suggestion_id } => {
+                    Term::from_field_u64(schema_info.suggestion_id, suggestion_id)
+                }
             };
             writer.delete_term(term);
             Self::add_word(&mut writer, &schema_info, edit.0);
@@ -319,8 +342,12 @@ impl Handler<DeleteWord> for WriterActor {
         tokio::task::spawn_blocking(move || {
             let mut writer = writer.lock().unwrap();
             let term = match delete.0 {
-                WordOrSuggestionId::ExistingWord { existing_id} => Term::from_field_u64(schema_info.existing_id, existing_id),
-                WordOrSuggestionId::Suggested { suggestion_id } => Term::from_field_u64(schema_info.suggestion_id, suggestion_id),
+                WordOrSuggestionId::ExistingWord { existing_id } => {
+                    Term::from_field_u64(schema_info.existing_id, existing_id)
+                }
+                WordOrSuggestionId::Suggested { suggestion_id } => {
+                    Term::from_field_u64(schema_info.suggestion_id, suggestion_id)
+                }
             };
             writer.delete_term(term);
             writer.commit().unwrap();
@@ -406,9 +433,7 @@ impl Handler<SearchRequest> for SearcherActor {
                         BooleanQuery::intersection(vec![Box::new(suggested_by), Box::new(terms)]);
                     BooleanQuery::union(vec![Box::new(not_suggestion), Box::new(suggested_by)])
                 }
-                None => {
-                    not_suggestion
-                },
+                None => not_suggestion,
             }
         };
 
@@ -421,7 +446,7 @@ impl Handler<SearchRequest> for SearcherActor {
                 .search(&query, &top_docs)?
                 .into_iter()
                 .map(|(_score, doc_address)| {
-                     searcher
+                    searcher
                         .doc(doc_address)
                         .map_err(anyhow::Error::from)
                         .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
@@ -451,8 +476,10 @@ struct SchemaInfo {
     xhosa_stemmed: Field,
     part_of_speech: Field,
     is_plural: Field,
-    suggesting_user: Field,
+    is_inchoative: Field,
+    transitivity: Field,
     noun_class: Field,
+    suggesting_user: Field,
     existing_id: Field,
     suggestion_id: Field,
 }
@@ -464,6 +491,8 @@ pub struct WordDocument {
     pub xhosa: String,
     pub part_of_speech: PartOfSpeech,
     pub is_plural: bool,
+    pub is_inchoative: bool,
+    pub transitivity: Option<Transitivity>,
     /// This is only `Some` for indexed suggestions.
     pub suggesting_user: Option<NonZeroU64>,
     pub noun_class: Option<NounClass>,
@@ -476,9 +505,12 @@ pub struct WordHit {
     pub xhosa: String,
     pub part_of_speech: SerOnlyDisplay<PartOfSpeech>,
     pub is_plural: bool,
-    pub is_suggestion: bool,
+    pub is_inchoative: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transitivity: Option<SerOnlyDisplay<Transitivity>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub noun_class: Option<SerializePrimitive<NounClass, u8>>,
+    pub is_suggestion: bool,
 }
 
 impl WordHit {
@@ -489,31 +521,33 @@ impl WordHit {
             xhosa: String::new(),
             part_of_speech: SerOnlyDisplay(PartOfSpeech::Other),
             is_plural: false,
-            is_suggestion: false,
+            is_inchoative: false,
+            transitivity: None,
             noun_class: None,
+            is_suggestion: false,
         }
     }
 
-    fn try_deserialize(schema_info: &SchemaInfo, document: Document) -> Result<WordHit> {
-        let pos_ord = document
+    fn try_deserialize(schema_info: &SchemaInfo, doc: Document) -> Result<WordHit> {
+        let pos_ord = doc
             .get_first(schema_info.part_of_speech)
             .and_then(Value::u64_value)
             .with_context(|| {
                 format!(
                     "Invalid value for field `part_of_speech` in document {:#?}",
-                    document
+                    doc
                 )
             })?;
         let part_of_speech = SerOnlyDisplay(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
 
-        let is_suggestion = document
+        let is_suggestion = doc
             .get_first(schema_info.suggesting_user)
             .and_then(Value::u64_value)
             .map(|v| v != 0)
             .with_context(|| {
                 format!(
                     "Invalid value for field `suggesting_user` in document {:#?}",
-                    document
+                    doc
                 )
             })?;
 
@@ -523,49 +557,56 @@ impl WordHit {
             schema_info.existing_id
         };
 
-        Ok(WordHit {
-            id: document
-                .get_first(id_field)
-                .and_then(Value::u64_value)
-                .with_context(|| {
-                    format!("Invalid value for id field in document {:#?}", document)
-                })?,
-            english: document
-                .get_first(schema_info.english)
+        fn get_str(document: &Document, field: Field, name: &str) -> anyhow::Result<String> {
+            document
+                .get_first(field)
                 .and_then(Value::text)
+                .map(ToOwned::to_owned)
                 .with_context(|| {
                     format!(
-                        "Invalid value for field `english` in document {:#?}",
-                        document
+                        "Invalid value for `{}` field in document {:#?}",
+                        name, document
                     )
-                })?
-                .to_owned(),
-            xhosa: document
-                .get_first(schema_info.xhosa)
-                .and_then(Value::text)
-                .with_context(|| {
-                    format!(
-                        "Invalid value for field `xhosa` in document {:#?}",
-                        document
-                    )
-                })?
-                .to_owned(),
-            part_of_speech,
-            is_plural: document
-                .get_first(schema_info.is_plural)
+                })
+        }
+
+        fn get_bool(document: &Document, field: Field, name: &str) -> anyhow::Result<bool> {
+            document
+                .get_first(field)
                 .and_then(Value::u64_value)
                 .map(|v| v == 1)
                 .with_context(|| {
                     format!(
-                        "Invalid value for field `is_plural` in document {:#?}",
-                        document
+                        "Invalid value for `{}` field in document {:#?}",
+                        name, document
                     )
-                })?,
-            is_suggestion,
-            noun_class: document
-                .get_first(schema_info.noun_class)
+                })
+        }
+
+        fn get_with_sentinel<T>(document: &Document, field: Field) -> Option<T>
+        where
+            T: TryFromPrimitive,
+            T::Primitive: TryFrom<u64>,
+        {
+            document
+                .get_first(field)
                 .and_then(Value::u64_value)
-                .and_then(|ord| NounClass::try_from_primitive(ord.try_into().unwrap_or(255)).ok())
+                .and_then(|ord| T::try_from_primitive(ord.try_into().ok()?).ok())
+        }
+
+        Ok(WordHit {
+            id: doc
+                .get_first(id_field)
+                .and_then(Value::u64_value)
+                .with_context(|| format!("Invalid value for id field in document {:#?}", doc))?,
+            english: get_str(&doc, schema_info.english, "english")?,
+            xhosa: get_str(&doc, schema_info.xhosa, "xhosa")?,
+            part_of_speech,
+            is_plural: get_bool(&doc, schema_info.is_plural, "is_plural")?,
+            is_inchoative: get_bool(&doc, schema_info.is_inchoative, "is_inchoative")?,
+            transitivity: get_with_sentinel(&doc, schema_info.transitivity).map(SerOnlyDisplay),
+            is_suggestion,
+            noun_class: get_with_sentinel(&doc, schema_info.noun_class)
                 .map(SerializePrimitive::new),
         })
     }
@@ -579,6 +620,8 @@ impl From<WordDocument> for WordHit {
             xhosa: d.xhosa,
             part_of_speech: SerOnlyDisplay(d.part_of_speech),
             is_plural: d.is_plural,
+            is_inchoative: d.is_inchoative,
+            transitivity: d.transitivity.map(SerOnlyDisplay),
             is_suggestion: d.suggesting_user.is_some(),
             noun_class: d.noun_class.map(SerializePrimitive::new),
         }

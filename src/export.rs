@@ -1,7 +1,9 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
 use crate::database::existing::{ExistingExample, ExistingWord};
-use crate::language::{NounClassExt, PartOfSpeech, WordLinkType};
+use crate::language::{
+    ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType,
+};
 use crate::serialization::{deser_from_str, ser_to_debug};
 use crate::{set_up_db, Config};
 use chrono::Utc;
@@ -12,6 +14,7 @@ use rusqlite::backup::Backup;
 use rusqlite::{params, OptionalExtension};
 use rusqlite::{Connection, Row};
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, NoneAsEmptyString};
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io;
@@ -78,7 +81,7 @@ fn export(cfg: &Config, src: &Connection) {
     io::stdout().write_all(&output.stdout).unwrap();
     io::stderr().write_all(&output.stderr).unwrap();
 }
-
+#[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct WordRecord {
     pub word_id: u64,
@@ -92,6 +95,11 @@ pub struct WordRecord {
     pub xhosa_tone_markings: String,
     pub infinitive: String,
     pub is_plural: bool,
+    pub is_inchoative: bool,
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub transitivity: Option<Transitivity>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub followed_by: Option<ConjunctionFollowedBy>,
     pub noun_class: Option<NounClass>,
     pub note: String,
 }
@@ -272,6 +280,9 @@ impl From<ExistingWord> for WordRecord {
             xhosa_tone_markings: w.xhosa_tone_markings,
             infinitive: w.infinitive,
             is_plural: w.is_plural,
+            is_inchoative: w.is_inchoative,
+            transitivity: w.transitivity,
+            followed_by: w.followed_by,
             noun_class: w.noun_class,
             note: w.note,
         }
@@ -320,7 +331,7 @@ fn write_words(cfg: &Config, conn: &Connection) {
     const SELECT_WORDS: &str = "
         SELECT
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
+            is_inchoative, transitivity, followed_by, noun_class, note
         FROM words
         ORDER BY word_id;
     ";
@@ -383,8 +394,8 @@ fn restore_words(cfg: &Config, conn: &Connection) {
     const INSERT: &str = "
         INSERT INTO words (
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);
+            is_inchoative, transitivity, followed_by, noun_class, note
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);
     ";
 
     let mut csv = csv_reader(cfg, "words.csv");
@@ -402,6 +413,9 @@ fn restore_words(cfg: &Config, conn: &Connection) {
                 w.xhosa_tone_markings,
                 w.infinitive,
                 w.is_plural,
+                w.is_inchoative,
+                w.transitivity,
+                w.followed_by.unwrap_or_default(),
                 w.noun_class.map(|x| x as u8),
                 w.note
             ])

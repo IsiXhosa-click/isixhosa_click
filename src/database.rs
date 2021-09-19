@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::auth::PublicAccessDb;
 use crate::search::WordHit;
-use crate::serialization::{NounClassOpt, NounClassOptExt};
+use crate::serialization::GetWithSentinelExt;
 use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
 use crate::submit::WordId;
 
@@ -27,21 +27,28 @@ impl WordHit {
             xhosa: row.get("xhosa")?,
             part_of_speech: SerOnlyDisplay(row.get("part_of_speech")?),
             is_plural: row.get("is_plural")?,
+            is_inchoative: row.get("is_inchoative")?,
+            transitivity: row.get_with_sentinel("transitivity")?.map(SerOnlyDisplay),
             is_suggestion: id.is_suggested(),
             noun_class: row
-                .get::<&str, Option<NounClassOpt>>("noun_class")?
-                .flatten()
+                .get_with_sentinel("noun_class")?
                 .map(SerializePrimitive::new),
         })
     }
 
     pub fn fetch_from_db(db: &impl PublicAccessDb, id: WordOrSuggestionId) -> Option<WordHit> {
-        const SELECT_EXISTING: &str =
-            "SELECT word_id, english, xhosa, part_of_speech, is_plural, noun_class FROM words
-            WHERE word_id = ?1;";
-        const SELECT_SUGGESTED: &str =
-            "SELECT english, xhosa, part_of_speech, is_plural, noun_class FROM word_suggestions
-            WHERE suggestion_id = ?1;";
+        const SELECT_EXISTING: &str = "
+            SELECT
+                english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity, noun_class
+            FROM words
+            WHERE word_id = ?1;
+        ";
+        const SELECT_SUGGESTED: &str = "
+            SELECT
+                english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity, noun_class
+            FROM word_suggestions
+            WHERE suggestion_id = ?1;
+        ";
 
         let conn = db.get().unwrap();
 

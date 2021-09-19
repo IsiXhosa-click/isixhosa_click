@@ -135,14 +135,22 @@
 
 {# HACK(restioson): Can't get it working without manual whitespace here :/ #}
 {% macro plural(plural) %}{% if plural %}{{ "plural " }}{% endif %}{% endmacro %}
-
-{%- macro format_result_html(word) -%}
-    {{- word.english }} - {{ word.xhosa }}
-    ({% call plural(word.is_plural) %}{{ word.part_of_speech }}{% call noun_class(word.is_plural, word.noun_class.map_noun_class(), false) -%})
+{% macro inchoative(inchoative) %}{% if inchoative%}{{ "inchoative "}}{% endif %}{% endmacro %}
+{%- macro transitive(t) -%}
+    {%- match t -%}
+        {%- when Some with (t) -%}{%- if t.to_string().len() > 0 -%}{{ t }} {% else -%}{%- endif -%}
+        {%- when None -%}
+    {%- endmatch -%}
 {%- endmacro -%}
 
-{%- macro format_result_meta(word) -%}
-    {{- word.english }} - {{ word.xhosa -}}
-    {{ " " }}({% call plural(word.is_plural) %}{{ word.part_of_speech }}
-    {%- call noun_class(word.is_plural, word.noun_class.map_noun_class(), true) %})
+{%- macro format_result_html(w) -%}
+    {{- w.english }} - {{ w.xhosa }}
+    ({% call plural(w.is_plural) %}{% call inchoative(w.is_inchoative) %}{% call transitive(w.transitivity) %}{{ w.part_of_speech }}
+    {%- call noun_class(w.is_plural, w.noun_class.map_noun_class(), false) -%})
+{%- endmacro -%}
+
+{%- macro format_result_meta(w) -%}
+    {{- w.english }} - {{ w.xhosa -}}
+    {{ " " }}({% call plural(w.is_plural) %}{% call inchoative(w.is_inchoative) %}{% call transitive(w.transitivity) %}{{ w.part_of_speech }}
+    {%- call noun_class(w.is_plural, w.noun_class.map_noun_class(), true) %})
 {%- endmacro -%}

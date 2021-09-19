@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS words (
     xhosa_tone_markings  TEXT NOT NULL,
     infinitive           TEXT NOT NULL,
     is_plural            BOOLEAN NOT NULL,
+    is_inchoative        BOOLEAN NOT NULL,
+    transitivity         INTEGER,
+    followed_by          TEXT NOT NULL,
     noun_class           INTEGER,
     note                 TEXT NOT NULL
 );

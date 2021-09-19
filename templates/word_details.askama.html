@@ -103,6 +103,31 @@
                                         </tr>
                                     {%- endif -%}
 
+                                    {%- if word.part_of_speech == PartOfSpeech::Verb  -%}
+                                        <tr>
+                                            <th scope="row">Inchoative</th>
+                                            <td>{%- if word.is_inchoative -%} yes {%- else -%} no {%- endif -%}</td>
+                                        </tr>
+                                    {%- endif -%}
+
+                                    {%- match word.transitivity -%}
+                                        {%- when Some with (transitivity) -%}
+                                            <tr>
+                                                <th scope="row">Transitivity</th>
+                                                <td>{{ transitivity.explicit_word_details_page() }}</td>
+                                            </tr>
+                                        {%- when None -%}
+                                    {%- endmatch -%}
+
+                                    {%- match word.followed_by -%}
+                                        {%- when Some with (followed_by) -%}
+                                            <tr>
+                                                <th scope="row">Followed by</th>
+                                                <td>{{ followed_by }}</td>
+                                            </tr>
+                                        {%- when None -%}
+                                    {%- endmatch -%}
+
                                     {%- if !word.xhosa_tone_markings.is_empty() -%}
                                         <tr>
                                             <th scope="row">Xhosa with tone markings</th>

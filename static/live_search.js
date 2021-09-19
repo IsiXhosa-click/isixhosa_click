@@ -87,7 +87,7 @@ export class LiveSearch {
 
             results.forEach(function (result) {
                 let item = searcher.create_item(formatResult(result), result.id, result.is_suggestion);
-                formatResultRich(result, item);
+                formatResult(result, item);
 
                 let item_container = searcher.create_item_container();
                 let append = item;
@@ -137,53 +137,67 @@ const NOUN_CLASS_PAIRS = {
     15: ["uku"]
 };
 
-function formatResultRich(result, elt) {
+export function formatResult(result, elt) {
     let plural = "";
     if (result.is_plural) {
         plural = "plural ";
     }
 
-    elt.innerText = `${result.english} - ${result.xhosa} (${plural}${result.part_of_speech}`;
+    let inchoative = "";
+    if (result.is_inchoative) {
+        inchoative = "inchoative ";
+    }
 
-    if (result.noun_class != null) {
-        let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
-        let strong = document.createElement("strong");
-        strong.className = "noun_class_prefix";
+    let transitive = "";
+    if (result.transitivity != null && result.transitivity !== "") {
+        transitive = result.transitivity + " ";
+    }
 
-        if (result.is_plural) {
-            strong.innerText = class_pair[1]
-            elt.innerText += ` - class ${class_pair[0]}/`
-            elt.appendChild(strong);
-        } else {
-            strong.innerText = class_pair[0]
-            elt.innerText += ` - class `
-            elt.appendChild(strong);
+    let part_of_speech = result.part_of_speech;
+    if (part_of_speech === "adjective") {
+        part_of_speech = "adjective - isiphawuli";
+    } else if (part_of_speech === "relative") {
+        part_of_speech = "relative";
+    }
 
-            if (class_pair[1] != null) {
-                elt.innerHTML += `/${class_pair[1]}`;
+    let text = `${result.english} - ${result.xhosa} (${inchoative}${transitive}${part_of_speech}`;
+
+    if (elt != null) {
+        elt.innerText = text;
+
+        if (result.noun_class != null) {
+            let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
+            let strong = document.createElement("strong");
+            strong.className = "noun_class_prefix";
+
+            if (result.is_plural) {
+                strong.innerText = class_pair[1]
+                elt.innerText += ` - class ${class_pair[0]}/`
+                elt.appendChild(strong);
+            } else {
+                strong.innerText = class_pair[0]
+                elt.innerText += ` - class `
+                elt.appendChild(strong);
+
+                if (class_pair[1] != null) {
+                    elt.innerHTML += `/${class_pair[1]}`;
+                }
             }
         }
-    }
 
-    elt.innerHTML += ")";
-}
+        elt.innerHTML += ")";
+    } else {
+        let noun_class = "";
+        if (result.noun_class != null) {
+            let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
 
-export function formatResult(result) {
-    let noun_class = "";
-    if (result.noun_class != null) {
-        let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
-
-        if (class_pair[1] != null) {
-            noun_class = ` - class ${class_pair[0]}/${class_pair[1]}`;
-        } else {
-            noun_class = ` - class ${class_pair[0]}`;
+            if (class_pair[1] != null) {
+                noun_class = ` - class ${class_pair[0]}/${class_pair[1]}`;
+            } else {
+                noun_class = ` - class ${class_pair[0]}`;
+            }
         }
-    }
 
-    let plural = "";
-    if (result.is_plural) {
-        plural = "plural ";
+        return text + `${noun_class})`;
     }
-
-    return `${result.english} - ${result.xhosa} (${plural}${result.part_of_speech}${noun_class})`;
 }

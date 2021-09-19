@@ -1,4 +1,4 @@
-import { LiveSearch, formatResult } from "/live_search.js?v=1";
+import { LiveSearch, formatResult } from "/live_search.js?v=2";
 import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;
@@ -153,19 +153,19 @@ export function addLinkedWord(this_word_id, this_is_new_suggestion, link_type, o
 
     const types_list = [
         { value: "", text: "Choose how the words are related" },
-        { value: "1", text: "Singular or plural form" },
-        { value: "2", text: "Alternate use" },
-        { value: "3", text: "Antonym" },
-        { value: "4", text: "Related meaning" },
-        { value: "5", text: "Confusable" },
+        { value: "plural_or_singular", text: "Singular or plural form" },
+        { value: "alternate_use", text: "Alternate use" },
+        { value: "antonym", text: "Antonym" },
+        { value: "related_meaning", text: "Related meaning" },
+        { value: "confusable", text: "Confusable" },
     ];
 
-    for (let i = 0; i < types_list.length; i++) {
+    for (let type of types_list) {
         let option = document.createElement("option");
-        option.innerText = types_list[i].text;
-        option.value = types_list[i].value;
+        option.innerText = type.text;
+        option.value = type.value;
 
-        if (i === link_type) {
+        if (type.value === link_type) {
             option.selected = true;
         }
 

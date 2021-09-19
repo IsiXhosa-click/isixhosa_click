@@ -4,12 +4,13 @@ use rusqlite::{params, OptionalExtension, Row};
 
 use crate::auth::{ModeratorAccessDb, PublicAccessDb};
 use crate::database::WordOrSuggestionId;
-use crate::language::{PartOfSpeech, WordLinkType};
+use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::WordHit;
-use crate::serialization::{NounClassOpt, NounClassOptExt};
+use crate::serialization::GetWithSentinelExt;
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct ExistingWord {
@@ -22,6 +23,9 @@ pub struct ExistingWord {
     pub xhosa_tone_markings: String,
     pub infinitive: String,
     pub is_plural: bool,
+    pub is_inchoative: bool,
+    pub transitivity: Option<Transitivity>,
+    pub followed_by: Option<ConjunctionFollowedBy>,
     pub noun_class: Option<NounClass>,
     pub note: String,
 
@@ -44,8 +48,9 @@ impl ExistingWord {
         const SELECT_ORIGINAL: &str = "
             SELECT
                 word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-                noun_class, note
-            from words WHERE word_id = ?1;
+                is_inchoative, transitivity, followed_by, noun_class, note
+            FROM words
+            WHERE word_id = ?1;
         ";
 
         let conn = db.get().unwrap();
@@ -93,9 +98,11 @@ impl TryFrom<&Row<'_>> for ExistingWord {
             xhosa_tone_markings: row.get("xhosa_tone_markings")?,
             infinitive: row.get("infinitive")?,
             is_plural: row.get("is_plural")?,
-            noun_class: row
-                .get::<&str, Option<NounClassOpt>>("noun_class")?
-                .flatten(),
+            is_inchoative: row.get("is_inchoative")?,
+            transitivity: row.get_with_sentinel("transitivity")?,
+            followed_by: ConjunctionFollowedBy::from_str(&row.get::<&str, String>("followed_by")?)
+                .ok(),
+            noun_class: row.get_with_sentinel("noun_class")?,
             note: row.get("note")?,
             examples: vec![],
             linked_words: vec![],

@@ -7,17 +7,20 @@ function setAllVisible(class_name, visible) {
     }
 }
 
-export function partOfSpeechChange() {
-    let part_of_speech = document.getElementById("part_of_speech").value;
+function setAllInvisible() {
+    setAllVisible("noun_option", false);
+    setAllVisible("verb_option", false);
+    setAllVisible("conjunction_option", false);
+}
 
-    if (part_of_speech === "1") { // Verb
+export function partOfSpeechChange() {
+    setAllInvisible();
+
+    if (document.getElementById("verb_selected").selected) {
         setAllVisible("verb_option", true);
-        setAllVisible("noun_option", false);
-    } else if (part_of_speech === "2") { // Noun
+    } else if (document.getElementById("noun_selected").selected) {
         setAllVisible("noun_option", true);
-        setAllVisible("verb_option", false);
-    } else {
-        setAllVisible("noun_option", false);
-        setAllVisible("verb_option", false);
+    } else if (document.getElementById("conjunction_selected").selected) {
+        setAllVisible("conjunction_option", true);
     }
 }

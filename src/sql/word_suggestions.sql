@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS word_suggestions (
     xhosa_tone_markings  TEXT,
     infinitive           TEXT,
     is_plural            BOOLEAN,
+    is_inchoative        BOOLEAN,
+    transitivity         INTEGER,
+    followed_by          TEXT,
     -- 255 is sentinel for "no noun class" as opposed to null which is noun class not changed
     noun_class           INTEGER,
     note                 TEXT

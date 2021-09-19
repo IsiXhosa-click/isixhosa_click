@@ -126,19 +126,72 @@
                         {%- call macros::plural(p) -%}
                     {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
                         <ins>
-                            {%- if old_is_plural -%}
+                            {%- if new_is_plural -%}
                                 plural
                             {%- else -%}
                                 [singular]
                             {%- endif -%}
                         </ins>
                         <del>
-                            {%- if new_is_plural %}
+                            {%- if old_is_plural %}
                                 plural
                             {%- else %}
                                 [singular]
                             {%- endif -%}
                         </del>
+                {%- endmatch -%}
+            {%- endmacro -%}
+
+            {%- macro inchoative_edited(inchoative) -%}
+                {%- match inchoative -%}
+                    {%- when MaybeEdited::New with (i) -%}
+                        <ins>{%- call macros::inchoative(i) -%}</ins>
+                    {%- when MaybeEdited::Old with (i) -%}
+                        {%- call macros::inchoative(i) -%}
+                    {%- when MaybeEdited::Edited with { old: old_is_inchoative, new: new_is_inchoative } -%}
+                        <ins>
+                            {%- if new_is_inchoative -%}
+                                inchoative
+                            {%- else -%}
+                                [non-inchoative]
+                            {%- endif -%}
+                        </ins>
+                        <del>
+                            {%- if old_is_inchoative %}
+                                inchoative
+                            {%- else %}
+                                [non-inchoative]
+                            {%- endif -%}
+                        </del>
+                {%- endmatch -%}
+            {%- endmacro -%}
+
+            {%- macro transitivity_edited(transitivity) -%}
+                {%- match transitivity -%}
+                    {%- when MaybeEdited::New with (t) -%}
+                        {%- match t -%}
+                            {%- when Some with (transitivity) -%}
+                                <ins>{{ transitivity.explicit_moderation_page() }} </ins>
+                            {%- when None -%}
+                        {%- endmatch -%}
+                    {%- when MaybeEdited::Old with (t) -%}
+                        {%- match t -%}
+                            {%- when Some with (transitivity) -%}
+                                {{- transitivity.explicit_moderation_page() }}
+                            {% when None -%}
+                        {%- endmatch -%}
+                    {%- when MaybeEdited::Edited with { old, new } -%}
+                        {%- match old -%}
+                            {%- when Some with (transitivity) -%}
+                                <del>{{ transitivity.explicit_moderation_page() }} </del>
+                            {%- when None -%}
+                        {%- endmatch -%}
+
+                        {%- match new -%}
+                            {%- when Some with (transitivity) -%}
+                                <ins>{{ transitivity.explicit_moderation_page() }} </ins>
+                            {%- when None -%}
+                        {%- endmatch -%}
                 {%- endmatch -%}
             {%- endmacro -%}
 
@@ -283,13 +336,15 @@
                                    <h3 class="suggested_word_text">
                                         {%- match s.word_id -%}
                                             {%- when Some with (id) -%}
-                                                <a href="/word/{{ id }}}">
+                                                <a href="/word/{{ id }}">
                                             {%- when None -%}
                                         {%- endmatch -%}
 
                                         {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
                                         - (
                                             {%- call plural_edited(s.is_plural) -%}
+                                            {%- call inchoative_edited(s.is_inchoative) -%}
+                                            {%- call transitivity_edited(s.transitivity) -%}
                                             {%- call maybe_edited(s.part_of_speech) -%}
                                             {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
                                         )
@@ -339,6 +394,13 @@
                                             <tr>
                                                 <th scope="row">Infinitive form</th>
                                                 <td>{%- call maybe_edited(s.infinitive) -%}</td>
+                                            </tr>
+                                        {%- endif -%}
+
+                                        {%- if !s.followed_by.is_none() -%}
+                                            <tr>
+                                                <th scope="row">Followed by</th>
+                                                <td>{%- call maybe_edited(s.followed_by.map_or_default()) -%}</td>
                                             </tr>
                                         {%- endif -%}
 
@@ -450,7 +512,7 @@
                             <article class="column_list">
                                 <header>
                                     <h3 class="suggested_word_text">
-                                        <a href="/word/{{ word.id }}}">
+                                        <a href="/word/{{ word.id }}">
                                             {%- call macros::format_result_html(word) -%}
                                         </a>
                                     </h3>
@@ -471,7 +533,6 @@
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_suggestion_action("accept", "Accept") -%}
                                                         {%- call example_suggestion_action("reject", "Reject") -%}
-                                                        <!-- TODO example suggestion edit form -->
                                                     </div>
                                                 </li>
                                             {%- endfor -%}
@@ -506,7 +567,6 @@
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call linked_word_suggestion_action("accept", "Accept") -%}
                                                         {%- call linked_word_suggestion_action("reject", "Reject") -%}
-                                                        <!-- TODO linked word suggestion edit form -->
                                                     </div>
                                                 </li>
                                             {%- endfor -%}

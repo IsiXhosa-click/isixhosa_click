@@ -1,3 +1,4 @@
+use crate::auth::ModeratorAccessDb;
 use crate::auth::{with_moderator_auth, Auth, DbBase, User};
 use crate::database::deletion::{
     ExampleDeletionSuggestion, LinkedWordDeletionSuggestion, WordDeletionSuggestion,
@@ -6,20 +7,18 @@ use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{
     MaybeEdited, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
 };
+use crate::database::WordOrSuggestionId;
 use crate::language::NounClassExt;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
 use crate::serialization::OptionMapNounClassExt;
 use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
 use askama::Template;
-
-use crate::auth::ModeratorAccessDb;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{body, Filter, Rejection, Reply};
-use crate::database::WordOrSuggestionId;
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]
@@ -227,7 +226,9 @@ async fn accept_suggested_word(
 ) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || {
-        SuggestedWord::fetch_full(&db, suggestion).unwrap().accept_whole_word_suggestion(&db, tantivy);
+        SuggestedWord::fetch_full(&db, suggestion)
+            .unwrap()
+            .accept_whole_word_suggestion(&db, tantivy);
     })
     .await
     .unwrap();
@@ -235,7 +236,11 @@ async fn accept_suggested_word(
     true
 }
 
-async fn reject_suggested_word(db: &impl ModeratorAccessDb, tantivy: Arc<TantivyClient>, suggestion_id: u64) -> bool {
+async fn reject_suggested_word(
+    db: &impl ModeratorAccessDb,
+    tantivy: Arc<TantivyClient>,
+    suggestion_id: u64,
+) -> bool {
     let db = db.clone();
     tokio::task::spawn_blocking(move || SuggestedWord::delete(&db, tantivy, suggestion_id))
         .await
@@ -252,7 +257,9 @@ async fn accept_deletion(
     tokio::task::spawn_blocking(move || ExistingWord::delete(&db, word_id))
         .await
         .unwrap();
-    tantivy.delete_word(WordOrSuggestionId::existing(word_id)).await;
+    tantivy
+        .delete_word(WordOrSuggestionId::existing(word_id))
+        .await;
 
     true
 }

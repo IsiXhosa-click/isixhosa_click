@@ -7,16 +7,13 @@
     <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
     {%- call macros::description("Submit a word to the free, open IsiXhosa.click live dictionary for Xhosa and English.") -%}
     <meta name="og:url" content="https://isixhosa.click/submit"/>
-    <link rel="stylesheet" href="/submit.css">
+    <link rel="stylesheet" href="/submit.css?v=1">
     {%- call macros::meta() -%}
 </head>
 
 <body>
     {%- call macros::navbar() -%}
 
-    <!-- TODO add required fields -->
-    <!-- TODO explain fields and give examples -->
-    <!-- TODO "calcpad" for the tone markers -->
     <div id="main_wrap">
         <header>
             <h1>Submit a word</h1>
@@ -80,22 +77,22 @@
                     <div class="table">
                         <div>
                             <label for="english">English:</label>
-                            <input type="text" id="english" name="english" autocomplete="off" value="{{ word.english }}">
+                            <input type="text" id="english" name="english" autocomplete="off" spellcheck="true" value="{{ word.english }}">
                         </div>
 
                         <div>
                             <label for="xhosa">Xhosa:</label>
-                            <input type="text" id="xhosa" name="xhosa" autocomplete="off" value="{{ word.xhosa }}">
+                            <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false" value="{{ word.xhosa }}">
                         </div>
 
                         <div>
                             <label for="xhosa_tone_markings">Xhosa with tone markings:</label>
-                            <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off" value="{{ word.xhosa_tone_markings }}">
+                            <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off" spellcheck="false" value="{{ word.xhosa_tone_markings }}">
                         </div>
 
                         <div>
                             <label for="note">Note:</label>
-                            <textarea id="note" name="note" autocomplete="off">
+                            <textarea id="note" name="note" autocomplete="off" spellcheck="true">
                                 {{- word.note -}}
                             </textarea>
                         </div>
@@ -110,13 +107,14 @@
                             <label for="part_of_speech">Part of speech:</label>
                             <select id="part_of_speech" name="part_of_speech">
                                 <option value="">Choose a part of speech</option>
-                                <option value=1 id="verb_selected">Verb</option>
-                                <option value=2 id="noun_selected">Noun</option>
-                                <option value=4>Adverb</option>
-                                <option value=5>Relative (adjective)</option>
-                                <option value=6>Interjection</option>
-                                <option value=7>Conjunction</option>
-                                <option value=8>Preposition</option>
+                                <option value="verb" id="verb_selected">Verb</option>
+                                <option value="noun" id="noun_selected">Noun</option>
+                                <option value="adverb">Adverb</option>
+                                <option value="relative">Relative (adjective)</option>
+                                <option value="adjective" disabled hidden>Adjective (isiphawuli)</option>
+                                <option value="interjection">Interjection</option>
+                                <option value="conjunction" id="conjunction_selected">Conjunction</option>
+                                <option value="preposition">Preposition</option>
                             </select>
                         </div>
 
@@ -125,13 +123,22 @@
                                 <script type="module">
                                     window.addEventListener("DOMContentLoaded", function () {
                                         let select = document.getElementById("part_of_speech");
-                                        select.options[{{ part.as_u8() }}].selected = true;
+                                        for (let option of select.options) {
+                                            if (option.value === {{ part|json }}) {
+                                                if (option.value === "adjective") {
+                                                    option.hidden = false;
+                                                    option.disabled = false;
+                                                }
+
+                                                option.selected = true;
+                                            }
+                                        }
                                     });
                                 </script>
                             {% when None %}
                         {%- endmatch -%}
 
-                        <!-- Noun options -->
+                        {#-  Noun options -#}
 
                         <div class="noun_option" hidden>
                             <label for="is_plural">Plural?</label>
@@ -171,11 +178,62 @@
                             </select>
                         </div>
 
-                        <!-- Verb options -->
+                        {#-  Verb options -#}
 
                         <div class="verb_option" hidden>
                             <label for="infinitive">Infinitive form:</label>
-                            <input type="text" id="infinitive" name="infinitive" autocomplete="off" value="{{ word.infinitive }}">
+                            <input type="text" id="infinitive" name="infinitive" autocomplete="off" spellcheck="false" value="{{ word.infinitive }}">
+                        </div>
+
+                        <div class="verb_option" hidden>
+                            <label for="is_inchoative">Inchoative?</label>
+                            <input type="checkbox" id="is_inchoative" name="is_inchoative" {%- if word.is_inchoative %} checked {%- endif -%}>
+                        </div>
+
+
+                        <div class="verb_option row_list" id="transitivity" hidden>
+                            <span>Transitivity:</span>
+
+                            {#- ambitransitive is default -#}
+                            {%- let ambitransitive = word.transitivity == Some(Transitivity::Ambitransitive) ||
+                                word.transitivity.is_none()
+                            -%}
+
+                            <label for="either">Either
+                                <input type="radio" id="either" name="transitivity" value="either"
+                                    {%- if ambitransitive  %} checked {%- endif -%}
+                                >
+                            </label>
+
+                            <label for="transitive">Transitive only
+                                <input type="radio" id="transitive" name="transitivity" value="transitive"
+                                    {%- if word.transitivity == Some(Transitivity::Transitive) %} checked {%- endif -%}
+                                >
+                            </label>
+
+                            <label for="intransitive">Intransitive only
+                                <input type="radio" id="intransitive" name="transitivity" value="intransitive"
+                                    {%- if word.transitivity == Some(Transitivity::Intransitive) %} checked {%- endif -%}
+                                >
+                            </label>
+
+                            <input type="radio" id="transitivity_unselected" name="transitivity" value="" hidden>
+                        </div>
+
+                        {#- Conjunction options -#}
+
+                        <div class="conjunction_option" hidden>
+                            <label for="followed_by">Followed by:</label>
+                            <input type="text" autocomplete="off" spellcheck="false" list="followed_by_list"
+                                value="{{ word.followed_by.clone().unwrap_or_default() }}" name="followed_by" id="followed_by"
+                            >
+
+                            {#- Hidden is due to dumb table stuff -#}
+                            <datalist id="followed_by_list" hidden>
+                              <option value="Indicative mood">
+                              <option value="Subjunctive mood">
+                              <option value="Participial mood">
+                            </datalist>
                         </div>
                     </div>
                 </fieldset>
@@ -263,6 +321,12 @@
 
                         if (!document.getElementById("verb_selected").selected) {
                             document.getElementById("infinitive").value = "";
+                            document.getElementById("is_inchoative").checked = false;
+                            document.getElementById("transitivity_unselected").checked = true;
+                        }
+
+                        if (!document.getElementById("conjunction_selected").selected) {
+                            document.getElementById("followed_by").value = "";
                         }
                     });
                 })

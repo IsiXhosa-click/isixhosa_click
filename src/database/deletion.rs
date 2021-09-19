@@ -20,8 +20,8 @@ impl WordDeletionSuggestion {
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<Self> {
         const SELECT: &str =
             "SELECT words.word_id, words.english, words.xhosa, words.part_of_speech, words.is_plural,
-                    words.noun_class, word_deletion_suggestions.reason,
-                    word_deletion_suggestions.suggestion_id
+                    words.is_inchoative, words.transitivity, words.followed_by, words.noun_class,
+                    word_deletion_suggestions.reason, word_deletion_suggestions.suggestion_id
             FROM words
             INNER JOIN word_deletion_suggestions
             ON words.word_id = word_deletion_suggestions.word_id

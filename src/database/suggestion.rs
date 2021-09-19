@@ -2,18 +2,19 @@ use crate::auth::{ModeratorAccessDb, UserAccessDb};
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
 use crate::database::WordOrSuggestionId;
-use crate::language::{PartOfSpeech, WordLinkType};
-use crate::search::{WordHit, TantivyClient, WordDocument};
-use crate::serialization::NounClassOpt;
+use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
+use crate::search::{TantivyClient, WordDocument, WordHit};
+use crate::serialization::WithDeleteSentinel;
 use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
 
+use num_enum::TryFromPrimitive;
 use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
 use std::array;
 use std::collections::HashMap;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -31,6 +32,9 @@ pub struct SuggestedWord {
     pub xhosa_tone_markings: MaybeEdited<String>,
     pub infinitive: MaybeEdited<String>,
     pub is_plural: MaybeEdited<bool>,
+    pub is_inchoative: MaybeEdited<bool>,
+    pub transitivity: MaybeEdited<Option<Transitivity>>,
+    pub followed_by: MaybeEdited<Option<ConjunctionFollowedBy>>,
     pub noun_class: MaybeEdited<Option<NounClass>>,
     pub note: MaybeEdited<String>,
 
@@ -52,7 +56,7 @@ impl SuggestedWord {
             SELECT
                 suggestion_id, existing_word_id, changes_summary,
                 english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-                noun_class, note
+                is_inchoative, transitivity, followed_by, noun_class, note
             FROM word_suggestions
             ORDER BY suggestion_id;";
 
@@ -75,11 +79,14 @@ impl SuggestedWord {
 
     /// Returns the suggested word without examples and linked words populated.
     pub fn fetch_alone(db: &impl UserAccessDb, id: u64) -> Option<SuggestedWord> {
-        const SELECT_SUGGESTION: &str = "SELECT
-            suggestion_id, existing_word_id, changes_summary,
-            english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            noun_class, note
-        from word_suggestions WHERE suggestion_id=?1;";
+        const SELECT_SUGGESTION: &str = "
+            SELECT
+                suggestion_id, existing_word_id, changes_summary, english, xhosa, part_of_speech,
+                xhosa_tone_markings, infinitive, is_plural, is_inchoative, transitivity,
+                followed_by, noun_class, note
+            FROM word_suggestions
+            WHERE suggestion_id = ?1;
+        ";
 
         let conn = db.get().unwrap();
 
@@ -111,8 +118,8 @@ impl SuggestedWord {
         const INSERT: &str = "
             INSERT INTO words (
                 word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-                noun_class, note
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                is_inchoative, transitivity, followed_by, noun_class, note
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
                 ON CONFLICT(word_id) DO UPDATE SET
                     english = excluded.english,
                     xhosa = excluded.xhosa,
@@ -121,6 +128,9 @@ impl SuggestedWord {
                     infinitive = excluded.infinitive,
                     is_plural = excluded.is_plural,
                     noun_class = excluded.noun_class,
+                    is_inchoative = excluded.is_inchoative,
+                    transitivity = excluded.transitivity,
+                    followed_by = excluded.followed_by,
                     note = excluded.note
                 RETURNING word_id;
         ";
@@ -134,6 +144,9 @@ impl SuggestedWord {
             self.xhosa_tone_markings.current(),
             self.infinitive.current(),
             self.is_plural.current(),
+            self.is_inchoative.current(),
+            self.transitivity.current(),
+            self.followed_by.current().clone().unwrap_or_default(),
             self.noun_class.current().map(|x| x as u8),
             self.note.current(),
         ];
@@ -147,7 +160,11 @@ impl SuggestedWord {
         id as u64
     }
 
-    pub fn accept_whole_word_suggestion(self, db: &impl ModeratorAccessDb, tantivy: Arc<TantivyClient>) {
+    pub fn accept_whole_word_suggestion(
+        self,
+        db: &impl ModeratorAccessDb,
+        tantivy: Arc<TantivyClient>,
+    ) {
         let word_suggestion_id = self.suggestion_id;
         let new_word_id = self.accept_just_word_suggestion(db);
 
@@ -179,6 +196,8 @@ impl SuggestedWord {
             xhosa: self.xhosa.current().clone(),
             part_of_speech: *self.part_of_speech.current(),
             is_plural: *self.is_plural.current(),
+            is_inchoative: *self.is_inchoative.current(),
+            transitivity: *self.transitivity.current(),
             suggesting_user: None,
             noun_class: *self.noun_class.current(),
         };
@@ -208,17 +227,12 @@ impl SuggestedWord {
         let e = existing_id.and_then(|id| ExistingWord::fetch_alone(db, id as u64));
         let e = e.as_ref();
 
-        let noun_class = row.get::<&str, Option<NounClassOpt>>("noun_class");
-        let old = e.and_then(|e| e.noun_class);
-        let noun_class = match noun_class {
-            Ok(Some(NounClassOpt::Remove)) if old != None => MaybeEdited::Edited { old, new: None },
-            Ok(Some(NounClassOpt::Remove)) => MaybeEdited::Old(None),
-            Ok(Some(NounClassOpt::Some(new))) => MaybeEdited::Edited {
-                old,
-                new: Some(new),
-            },
-            Ok(None) => MaybeEdited::Old(old),
-            Err(e) => panic!("Invalid noun class discriminator in database: {:?}", e),
+        let val = row.get::<&str, Option<String>>("followed_by").unwrap();
+        let old = e.and_then(|e| e.followed_by.clone());
+        let followed_by = val.map(|x| x.parse().ok());
+        let followed_by = match followed_by {
+            Some(new) if old != new => MaybeEdited::Edited { old, new },
+            _ => MaybeEdited::Old(old),
         };
 
         SuggestedWord {
@@ -239,7 +253,18 @@ impl SuggestedWord {
             ),
             infinitive: MaybeEdited::from_row("infinitive", row, e.map(|e| e.infinitive.clone())),
             is_plural: MaybeEdited::from_row("is_plural", row, e.map(|e| e.is_plural)),
-            noun_class,
+            is_inchoative: MaybeEdited::from_row("is_inchoative", row, e.map(|e| e.is_inchoative)),
+            transitivity: MaybeEdited::from_row_with_sentinel(
+                "transitivity",
+                row,
+                e.and_then(|e| e.transitivity),
+            ),
+            followed_by,
+            noun_class: MaybeEdited::from_row_with_sentinel(
+                "noun_class",
+                row,
+                e.and_then(|e| e.noun_class),
+            ),
             note: MaybeEdited::from_row("note", row, e.map(|e| e.note.clone())),
             examples: vec![],
             linked_words: vec![],
@@ -722,6 +747,12 @@ impl<T> MaybeEdited<Option<T>> {
     }
 }
 
+impl<T: Default + Clone> MaybeEdited<Option<T>> {
+    pub fn map_or_default(&self) -> MaybeEdited<T> {
+        self.map(|opt| opt.clone().unwrap_or_default())
+    }
+}
+
 impl<T: Debug> MaybeEdited<Option<T>> {
     pub fn map_debug(&self) -> MaybeEdited<String> {
         self.map(|opt| match opt {
@@ -731,16 +762,42 @@ impl<T: Debug> MaybeEdited<Option<T>> {
     }
 }
 
-impl<T: FromSql> MaybeEdited<T> {
+impl<T: FromSql + PartialEq + Eq> MaybeEdited<T> {
     fn from_row(idx: &str, row: &Row<'_>, existing: Option<T>) -> MaybeEdited<T> {
         match (row.get::<&str, Option<T>>(idx).unwrap(), existing) {
-            (Some(new), Some(old)) => MaybeEdited::Edited { old, new },
+            (Some(new), Some(old)) if new != old => MaybeEdited::Edited { old, new },
+            (None | Some(_), Some(old)) => MaybeEdited::Old(old),
             (Some(new), None) => MaybeEdited::New(new),
-            (None, Some(old)) => MaybeEdited::Old(old),
             (None, None) => panic!(
                 "Field in suggestion unfilled; this is an error! Suggestion id: {:?}. Index: {}",
                 row.get::<&str, i64>("suggestion_id"),
                 idx,
+            ),
+        }
+    }
+}
+
+impl<T> MaybeEdited<T>
+where
+    T: TryFromPrimitive,
+    T::Primitive: TryFrom<i64>,
+{
+    fn from_row_with_sentinel(idx: &str, row: &Row<'_>, old: Option<T>) -> MaybeEdited<Option<T>> {
+        let res = row.get::<&str, Option<WithDeleteSentinel<T>>>(idx);
+        match res {
+            Ok(Some(WithDeleteSentinel::Remove)) if matches!(old, Some(_)) => {
+                MaybeEdited::Edited { old, new: None }
+            }
+            Ok(Some(WithDeleteSentinel::Remove)) => MaybeEdited::Old(None),
+            Ok(Some(WithDeleteSentinel::Some(new))) => MaybeEdited::Edited {
+                old,
+                new: Some(new),
+            },
+            Ok(None) => MaybeEdited::Old(old),
+            Err(e) => panic!(
+                "Invalid {} discriminator in database: {:?}",
+                std::any::type_name::<T>(),
+                e
             ),
         }
     }

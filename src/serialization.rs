@@ -2,9 +2,10 @@ use askama_warp::warp::http::header::CONTENT_TYPE;
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
+use rusqlite::Row;
 use serde::de::{DeserializeOwned, Error};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::error::Error as StdError;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::marker::PhantomData;
@@ -115,35 +116,45 @@ where
     }
 }
 
-pub enum NounClassOpt {
-    Some(NounClass),
+pub enum WithDeleteSentinel<T> {
+    Some(T),
     Remove,
 }
 
-pub trait NounClassOptExt {
-    fn flatten(self) -> Option<NounClass>;
+pub trait GetWithSentinelExt<T> {
+    fn get_with_sentinel(&self, idx: &str) -> rusqlite::Result<Option<T>>;
 }
 
-impl NounClassOptExt for Option<NounClassOpt> {
-    fn flatten(self) -> Option<NounClass> {
-        self.and_then(|x| match x {
-            NounClassOpt::Some(v) => Some(v),
-            NounClassOpt::Remove => None,
-        })
+impl<'a, T> GetWithSentinelExt<T> for Row<'a>
+where
+    T: TryFromPrimitive,
+    T::Primitive: TryFrom<i64>,
+{
+    fn get_with_sentinel(&self, idx: &str) -> rusqlite::Result<Option<T>> {
+        let opt = self.get::<&str, Option<WithDeleteSentinel<T>>>(idx)?;
+        Ok(opt.and_then(|x| match x {
+            WithDeleteSentinel::Some(v) => Some(v),
+            WithDeleteSentinel::Remove => None,
+        }))
     }
 }
 
-impl FromSql for NounClassOpt {
+impl<T> FromSql for WithDeleteSentinel<T>
+where
+    T: TryFromPrimitive,
+    T::Primitive: TryFrom<i64>,
+{
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         let v = value.as_i64()?;
 
         if v == 255 {
-            Ok(NounClassOpt::Remove)
+            Ok(WithDeleteSentinel::Remove)
         } else {
-            let err = || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, "NounClass")));
-            NounClass::try_from_primitive(v.try_into().map_err(|_| err())?)
+            let err =
+                || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, std::any::type_name::<T>())));
+            T::try_from_primitive(v.try_into().map_err(|_| err())?)
                 .map_err(|_| err())
-                .map(NounClassOpt::Some)
+                .map(WithDeleteSentinel::Some)
         }
     }
 }

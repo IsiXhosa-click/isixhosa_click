@@ -15,7 +15,7 @@ function removeExample(button_id) {
     }
 }
 
-function textField(name, label_txt, val) {
+function textField(name, label_txt, val, spellcheck) {
     let div = document.createElement("div");
     div.className = "table_row_if_space";
     let label = document.createElement("label");
@@ -25,6 +25,7 @@ function textField(name, label_txt, val) {
     input.type = "text";
     input.name = name;
     input.autocomplete = "off";
+    input.spellcheck = spellcheck;
 
     if (val != null) {
         input.value = val;
@@ -77,8 +78,8 @@ export function addExample(english, xhosa, suggestion_id, existing_id) {
     div.appendChild(sentence);
     sentence.classList.add("table_if_space");
 
-    sentence.appendChild(textField(`examples[${current_example_id}][english]`, "English example:", english));
-    sentence.appendChild(textField(`examples[${current_example_id}][xhosa]`, "Xhosa example:", xhosa));
+    sentence.appendChild(textField(`examples[${current_example_id}][english]`, "English example:", english, true));
+    sentence.appendChild(textField(`examples[${current_example_id}][xhosa]`, "Xhosa example:", xhosa, false));
 
     let delete_buttons = document.getElementsByClassName("delete_example");
 }

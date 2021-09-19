@@ -108,7 +108,7 @@ impl Handler<WsMessage> for LiveSearchSession {
                     };
 
                     serde_json::to_string(&reply).unwrap()
-                },
+                }
                 _ => {
                     let query = msg.to_str().unwrap();
 

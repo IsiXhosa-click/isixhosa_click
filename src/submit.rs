@@ -1,7 +1,7 @@
 // TODO form validation for extra fields & make sure not empty str (or is empty str)
 // TODO HTML sanitisation - allow markdown in text only, no html
 
-use crate::language::{PartOfSpeech, WordLinkType};
+use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::{TantivyClient, WordDocument, WordHit};
 use askama::Template;
 use num_enum::TryFromPrimitive;
@@ -21,6 +21,7 @@ use crate::language::NounClassExt;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
+use serde_with::{serde_as, NoneAsEmptyString};
 use std::sync::Arc;
 
 #[derive(Template, Debug)]
@@ -36,8 +37,10 @@ impl SubmitTemplate {
     fn this_word_id_js(&self) -> (String, bool) {
         match self.action {
             SubmitFormAction::EditExisting(existing) => (existing.to_string(), false),
-            SubmitFormAction::EditSuggestion { suggestion_id, .. } => (suggestion_id.to_string(), true),
-            _ => ("null".to_owned(), false)
+            SubmitFormAction::EditSuggestion { suggestion_id, .. } => {
+                (suggestion_id.to_string(), true)
+            }
+            _ => ("null".to_owned(), false),
         }
     }
 }
@@ -123,6 +126,7 @@ impl<'de> Deserialize<'de> for LinkedWordList {
     }
 }
 
+#[serde_as]
 #[derive(Deserialize, Clone, Debug)]
 pub struct WordSubmission {
     suggestion_id: Option<u64>,
@@ -137,6 +141,13 @@ pub struct WordSubmission {
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
     pub is_plural: bool,
+    #[serde(default = "false_fn")]
+    #[serde(deserialize_with = "deserialize_checkbox")]
+    pub is_inchoative: bool,
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub transitivity: Option<Transitivity>,
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub followed_by: Option<ConjunctionFollowedBy>,
     pub noun_class: Option<NounClass>,
 
     #[serde(default)]
@@ -153,6 +164,8 @@ impl WordSubmission {
             || self.note != o.note
             || self.infinitive != o.infinitive
             || self.is_plural != o.is_plural
+            || self.is_inchoative != o.is_inchoative
+            || self.transitivity != o.transitivity
             || self.noun_class != o.noun_class
             || o.part_of_speech
                 .map(|p| p != self.part_of_speech)
@@ -275,6 +288,9 @@ struct WordFormTemplate {
     xhosa_tone_markings: String,
     infinitive: String,
     is_plural: bool,
+    is_inchoative: bool,
+    transitivity: Option<Transitivity>,
+    followed_by: Option<ConjunctionFollowedBy>,
     noun_class: Option<NounClass>,
     note: String,
     examples: Vec<ExampleTemplate>,
@@ -326,6 +342,9 @@ impl From<SuggestedWord> for WordFormTemplate {
             xhosa_tone_markings: w.xhosa_tone_markings.current().clone(),
             infinitive: w.infinitive.current().clone(),
             is_plural: *w.is_plural.current(),
+            is_inchoative: *w.is_inchoative.current(),
+            transitivity: *w.transitivity.current(),
+            followed_by: w.followed_by.current().clone(),
             noun_class: *w.noun_class.current(),
             note: w.note.current().clone(),
             examples: w.examples.into_iter().map(Into::into).collect(),
@@ -347,6 +366,9 @@ impl From<ExistingWord> for WordFormTemplate {
             xhosa_tone_markings: w.xhosa_tone_markings,
             infinitive: w.infinitive,
             is_plural: w.is_plural,
+            is_inchoative: w.is_inchoative,
+            transitivity: w.transitivity,
+            followed_by: w.followed_by,
             noun_class: w.noun_class,
             note: w.note,
             examples: w.examples.into_iter().map(Into::into).collect(),
@@ -474,6 +496,17 @@ fn diff_opt<T: PartialEq + Eq>(
     }
 }
 
+fn diff_with_sentinel<T>(value: Option<T>, template: Option<T>) -> ToSqlOutput<'static>
+where
+    T: PartialEq + Eq + Copy + Into<u8>,
+{
+    match value {
+        Some(v) if value != template => ToSqlOutput::Owned(Value::Integer(v.into() as i64)),
+        None if template != None => 255u8.to_sql().unwrap(),
+        _ => None::<u8>.to_sql().unwrap(),
+    }
+}
+
 pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
     const STATEMENT: &str =
         "INSERT INTO word_deletion_suggestions (word_id, reason) VALUES (?1, ?2);";
@@ -500,9 +533,10 @@ pub async fn submit_suggestion(
 ) {
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
-            suggestion_id, existing_word_id, changes_summary, english, xhosa,
-            part_of_speech, xhosa_tone_markings, infinitive, is_plural, noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+            suggestion_id, existing_word_id, changes_summary, english, xhosa, part_of_speech,
+            xhosa_tone_markings, infinitive, is_plural, is_inchoative, transitivity, followed_by,
+            noun_class, note
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 existing_word_id = excluded.existing_word_id,
                 changes_summary = excluded.changes_summary,
@@ -512,6 +546,9 @@ pub async fn submit_suggestion(
                 xhosa_tone_markings = excluded.xhosa_tone_markings,
                 infinitive = excluded.infinitive,
                 is_plural = excluded.is_plural,
+                is_inchoative = excluded.is_inchoative,
+                transitivity = excluded.transitivity,
+                followed_by = excluded.followed_by,
                 noun_class = excluded.noun_class,
                 note = excluded.note
             RETURNING suggestion_id;
@@ -526,17 +563,6 @@ pub async fn submit_suggestion(
 
         let orig = WordFormTemplate::fetch_from_db(&db, w.existing_id, None).unwrap_or_default();
         let use_submitted = w.existing_id.is_none();
-
-        // HACK(restioson): 255 is sentinel for "no noun class" as opposed to null which is noun class
-        // not changed. It's bad I know but I don't have the energy for anything else, feel free to
-        // submit a PR which implements a more principled solution and I will gladly merge it.
-        let noun_class: ToSqlOutput<'static> = match w.noun_class {
-            Some(class) if w.noun_class != orig.noun_class => {
-                ToSqlOutput::Owned(Value::Integer(class as u8 as i64))
-            }
-            Some(_) => None::<u8>.to_sql().unwrap(),
-            None => 255u8.to_sql().unwrap(),
-        };
 
         let changes_summary = if w.existing_id.is_none() {
             "Word added"
@@ -558,7 +584,10 @@ pub async fn submit_suggestion(
             ),
             diff(w.infinitive.clone(), &orig.infinitive, use_submitted),
             diff(w.is_plural, &orig.is_plural, use_submitted),
-            noun_class,
+            diff(w.is_inchoative, &orig.is_inchoative, use_submitted),
+            dbg!(diff_with_sentinel(dbg!(w.transitivity), orig.transitivity)),
+            diff(w.followed_by.clone(), &orig.followed_by, use_submitted),
+            diff_with_sentinel(w.noun_class, orig.noun_class),
             diff(w.note.clone(), &orig.note, use_submitted)
         ];
 
@@ -577,7 +606,9 @@ pub async fn submit_suggestion(
                 .unwrap();
             Some(suggested_word_id).filter(|_| w.existing_id.is_none())
         } else {
-            w.suggestion_id.map(|id| id as i64).filter(|_| w.existing_id.is_none())
+            w.suggestion_id
+                .map(|id| id as i64)
+                .filter(|_| w.existing_id.is_none())
         };
 
         // Don't need to index non-new word suggestions
@@ -588,6 +619,8 @@ pub async fn submit_suggestion(
                 xhosa: w.xhosa.clone(),
                 part_of_speech: w.part_of_speech,
                 is_plural: w.is_plural,
+                is_inchoative: w.is_inchoative,
+                transitivity: w.transitivity,
                 suggesting_user: Some(suggesting_user),
                 noun_class: w.noun_class,
             };
@@ -640,7 +673,6 @@ fn process_linked_words(
 
     let existing_word_id = w.existing_id;
     let mut maybe_insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
-
         if !new.has_any_changes(&old) {
             return;
         }
