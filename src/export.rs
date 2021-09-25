@@ -193,9 +193,19 @@ impl WordRecord {
 
         let id = self.word_id.to_string();
 
-        let plural = if self.is_plural { "plural " } else { "" };
+        let plural = if self.is_plural { "plural" } else { "" };
+        let transitivity = self
+            .transitivity
+            .map(|t| format!("{}", t))
+            .unwrap_or_default();
 
-        let en_extra = format!("{}{}", plural, self.part_of_speech);
+        let en_extra = [
+            plural.to_owned(),
+            transitivity.clone(),
+            self.part_of_speech.to_string(),
+        ];
+
+        let en_extra = Self::join_if_non_empty(&en_extra, " ");
 
         let class = match self.noun_class {
             Some(class) => {
@@ -222,14 +232,25 @@ impl WordRecord {
             None => String::new(),
         };
 
+        let pos_info = [
+            plural.to_owned(),
+            if self.is_inchoative {
+                "inchoative".to_owned()
+            } else {
+                String::new()
+            },
+            transitivity,
+            self.part_of_speech.to_string(),
+        ];
+
         let xh_extra = [
             self.xhosa_tone_markings,
-            format!("{}{}", plural, self.part_of_speech),
+            Self::join_if_non_empty(&pos_info, " "),
             self.infinitive,
             class,
         ];
 
-        let xh_extra = Self::join_if_non_empty(&xh_extra);
+        let xh_extra = Self::join_if_non_empty(&xh_extra, " - ");
 
         let fields: Vec<String> = vec![
             id,
@@ -247,7 +268,7 @@ impl WordRecord {
         ))
     }
 
-    fn join_if_non_empty(arr: &[String]) -> String {
+    fn join_if_non_empty(arr: &[String], join: &str) -> String {
         let mut joined = String::new();
         let mut first = true;
 
@@ -256,7 +277,7 @@ impl WordRecord {
                 if first {
                     first = false;
                 } else {
-                    joined.push_str(" - ");
+                    joined.push_str(join);
                 }
 
                 joined.push_str(string);

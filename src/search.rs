@@ -1,4 +1,5 @@
 use crate::database::WordOrSuggestionId;
+
 use crate::language::{PartOfSpeech, Transitivity};
 use crate::serialization::GetWithSentinelExt;
 use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
@@ -12,6 +13,7 @@ use rusqlite::params;
 use serde::Serialize;
 use std::cmp::{max, Reverse};
 use std::convert::{TryFrom, TryInto};
+
 use std::fmt::{Debug, Formatter};
 use std::num::NonZeroU64;
 use std::path::Path;
@@ -519,7 +521,7 @@ impl WordHit {
             id: 0,
             english: String::new(),
             xhosa: String::new(),
-            part_of_speech: SerOnlyDisplay(PartOfSpeech::Other),
+            part_of_speech: SerOnlyDisplay(PartOfSpeech::Interjection),
             is_plural: false,
             is_inchoative: false,
             transitivity: None,

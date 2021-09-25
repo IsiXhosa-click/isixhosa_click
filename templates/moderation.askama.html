@@ -75,149 +75,6 @@
                 {% when other -%}
             {%- endmatch -%}
 
-            {%- macro maybe_edited(maybe_edited) -%}
-                {%- match maybe_edited -%}
-                    {%- when MaybeEdited::New with (val) -%}
-                        <ins>{{ val }}</ins>
-
-                    {%- when MaybeEdited::Old with (val) -%}
-                        {{ val }}
-
-                    {%- when MaybeEdited::Edited with { old, new } -%}
-                        {%- if !format!("{}", new).is_empty() -%}
-                            <ins>{{ new }}</ins> <del>{{ old }}</del>
-                        {%- else -%}
-                            <ins><strong>[Removed]</strong></ins> <del>{{ old }}</del>
-                        {%- endif -%}
-                {%- endmatch -%}
-            {%- endmacro -%}
-
-            {%- macro noun_class_edited(is_plural, noun_class) -%}
-                {%- match noun_class -%}
-                    {%- when MaybeEdited::New with (class) -%}
-                        <ins>{%- call macros::noun_class(is_plural.current(), class, false) -%}</ins>
-                    {%- when MaybeEdited::Old with (class) -%}
-                        {%- match is_plural -%}
-                            {%- when MaybeEdited::New with (is_plural) -%}
-                                {%- call macros::noun_class(is_plural, class, false) -%}
-                            {%- when MaybeEdited::Old with (is_plural) -%}
-                                {%- call macros::noun_class(is_plural, class, false) -%}
-                            {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
-                                <ins>{%- call macros::noun_class(new_is_plural, class, false) -%}</ins>
-                                {#- remove linebreak -#}<del>{%- call macros::noun_class(old_is_plural, class, false) -%}</del>
-                        {%- endmatch -%}
-                    {%- when MaybeEdited::Edited with { old, new } -%}
-                        <ins>
-                            {%- if new.is_none() -%}
-                                <strong>[Removed]</strong>
-                            {%- else -%}
-                                {%- call macros::noun_class(is_plural.current(), new, false) -%}
-                            {%- endif -%}
-                        </ins>
-                        <del>{%- call macros::noun_class(is_plural.old(), old, false) -%}</del>
-                {%- endmatch -%}
-            {%- endmacro -%}
-
-            {%- macro plural_edited(plural) -%}
-                {%- match plural -%}
-                    {%- when MaybeEdited::New with (p) -%}
-                        <ins>{%- call macros::plural(p) -%}</ins>
-                    {%- when MaybeEdited::Old with (p) -%}
-                        {%- call macros::plural(p) -%}
-                    {%- when MaybeEdited::Edited with { old: old_is_plural, new: new_is_plural } -%}
-                        <ins>
-                            {%- if new_is_plural -%}
-                                plural
-                            {%- else -%}
-                                [singular]
-                            {%- endif -%}
-                        </ins>
-                        <del>
-                            {%- if old_is_plural %}
-                                plural
-                            {%- else %}
-                                [singular]
-                            {%- endif -%}
-                        </del>
-                {%- endmatch -%}
-            {%- endmacro -%}
-
-            {%- macro inchoative_edited(inchoative) -%}
-                {%- match inchoative -%}
-                    {%- when MaybeEdited::New with (i) -%}
-                        <ins>{%- call macros::inchoative(i) -%}</ins>
-                    {%- when MaybeEdited::Old with (i) -%}
-                        {%- call macros::inchoative(i) -%}
-                    {%- when MaybeEdited::Edited with { old: old_is_inchoative, new: new_is_inchoative } -%}
-                        <ins>
-                            {%- if new_is_inchoative -%}
-                                inchoative
-                            {%- else -%}
-                                [non-inchoative]
-                            {%- endif -%}
-                        </ins>
-                        <del>
-                            {%- if old_is_inchoative %}
-                                inchoative
-                            {%- else %}
-                                [non-inchoative]
-                            {%- endif -%}
-                        </del>
-                {%- endmatch -%}
-            {%- endmacro -%}
-
-            {%- macro transitivity_edited(transitivity) -%}
-                {%- match transitivity -%}
-                    {%- when MaybeEdited::New with (t) -%}
-                        {%- match t -%}
-                            {%- when Some with (transitivity) -%}
-                                <ins>{{ transitivity.explicit_moderation_page() }} </ins>
-                            {%- when None -%}
-                        {%- endmatch -%}
-                    {%- when MaybeEdited::Old with (t) -%}
-                        {%- match t -%}
-                            {%- when Some with (transitivity) -%}
-                                {{- transitivity.explicit_moderation_page() }}
-                            {% when None -%}
-                        {%- endmatch -%}
-                    {%- when MaybeEdited::Edited with { old, new } -%}
-                        {%- match old -%}
-                            {%- when Some with (transitivity) -%}
-                                <del>{{ transitivity.explicit_moderation_page() }} </del>
-                            {%- when None -%}
-                        {%- endmatch -%}
-
-                        {%- match new -%}
-                            {%- when Some with (transitivity) -%}
-                                <ins>{{ transitivity.explicit_moderation_page() }} </ins>
-                            {%- when None -%}
-                        {%- endmatch -%}
-                {%- endmatch -%}
-            {%- endmacro -%}
-
-            {%- macro result_edited(res) -%}
-                {%- match res -%}
-                    {%- when MaybeEdited::New with (w) -%}
-                        {%- if !w.is_suggestion -%}<a href="/word/{{ w.id}}">{%- endif -%}
-                        <ins>{%- call macros::format_result_html(w) -%}</ins>
-                        {%- if !w.is_suggestion -%}</a>{%- endif -%}
-
-                    {%- when MaybeEdited::Old with (w) -%}
-                        {%- if !w.is_suggestion -%}<a href="/word/{{ w.id}}">{%- endif -%}
-                        {%- call macros::format_result_html(w) -%}
-                        {%- if !w.is_suggestion -%}</a>{%- endif -%}
-
-                    {%- when MaybeEdited::Edited with { old, new } -%}
-                        {%- if !new.is_suggestion -%}<a href="/word/{{ new.id}}">{%- endif -%}
-                        <ins>{%- call macros::format_result_html(new) -%}</ins>
-                        {%- if !new.is_suggestion -%}</a>{%- endif %}
-
-                        {% if !old.is_suggestion -%}<a href="/word/{{ old.id}}">{%- endif -%}
-                        <del>{%- call macros::format_result_html(old) -%}</del>
-                        {%- if !old.is_suggestion -%}</a>{%- endif -%}
-                {%- endmatch -%}
-            {%- endmacro -%}
-
             {%- macro action(method, label, suggestion_type, suggestion_id, prompt) -%}
                 <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded"
                       {%- if (method != "edit") -%}
@@ -340,14 +197,7 @@
                                             {%- when None -%}
                                         {%- endmatch -%}
 
-                                        {%- call maybe_edited(s.english) %} - {% call maybe_edited(s.xhosa) %}
-                                        - (
-                                            {%- call plural_edited(s.is_plural) -%}
-                                            {%- call inchoative_edited(s.is_inchoative) -%}
-                                            {%- call transitivity_edited(s.transitivity) -%}
-                                            {%- call maybe_edited(s.part_of_speech) -%}
-                                            {%- call noun_class_edited(s.is_plural, s.noun_class) -%}
-                                        )
+                                        {{- s.to_html()|safe -}}
 
                                         {%- if s.word_id.is_some() -%}
                                             </a>
@@ -376,38 +226,38 @@
                                             <td>{{ s.changes_summary }}</td>
                                         </tr>
 
-                                        {%- if !s.xhosa_tone_markings.is_empty() -%}
+                                        {%- if !s.xhosa_tone_markings.is_empty_str() -%}
                                             <tr>
                                                 <th scope="row">Xhosa with tone markings</th>
-                                                <td>{%- call maybe_edited(s.xhosa_tone_markings) -%}</td>
+                                                <td>{{ s.xhosa_tone_markings.to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.noun_class.is_none() -%}
                                             <tr>
                                                 <th scope="row">Selected noun class</th>
-                                                <td>{%- call maybe_edited(s.noun_class.map_debug()) -%}</td>
+                                                <td>{{ s.noun_class.map_debug().to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
-                                        {%- if !s.infinitive.is_empty() -%}
+                                        {%- if !s.infinitive.is_empty_str() -%}
                                             <tr>
                                                 <th scope="row">Infinitive form</th>
-                                                <td>{%- call maybe_edited(s.infinitive) -%}</td>
+                                                <td>{{ s.infinitive.to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.followed_by.is_none() -%}
                                             <tr>
                                                 <th scope="row">Followed by</th>
-                                                <td>{%- call maybe_edited(s.followed_by.map_or_default()) -%}</td>
+                                                <td>{{ s.followed_by.map_or_default().to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
-                                        {%- if !s.note.is_empty() -%}
+                                        {%- if !s.note.is_empty_str() -%}
                                             <tr>
                                                 <th scope="row">Note</th>
-                                                <td>{%- call maybe_edited(s.note) -%}</td>
+                                                <td>{{ s.note.to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
                                     </table>
@@ -421,9 +271,9 @@
                                             {%- for ex in s.examples -%}
                                                 <li>
                                                     <h3>English</h3>
-                                                    <p>{%- call maybe_edited(ex.english) -%}</p>
+                                                    <p>{{ ex.english.to_html()|safe }}</p>
                                                     <h3>Xhosa</h3>
-                                                     <p>{%- call maybe_edited(ex.xhosa) -%}</p>
+                                                     <p>{{ ex.xhosa.to_html()|safe }}</p>
                                                 </li>
                                             {%- endfor -%}
                                         </ul>
@@ -445,8 +295,8 @@
                                             <tbody>
                                                 {%- for l in s.linked_words -%}
                                                     <tr>
-                                                        <td>{%- call maybe_edited(l.link_type) -%}</td>
-                                                        <td>{%- call result_edited(l.other(s.this_id())) -%}</td>
+                                                        <td>{{ l.link_type.to_html()|safe }}</td>
+                                                        <td>{{ l.other(s.this_id()).to_html()|safe }}</td>
                                                     </tr>
                                                 {%- endfor -%}
                                             </tbody>
@@ -472,11 +322,13 @@
                         <li>
                             <article class="column_list spaced_flex_list">
                                 <header>
-                                    <h3 class="suggested_word_text">
-                                        <a href="/word/{{ s.word.id }}">
-                                            {%- call macros::format_result_html(s.word) -%}
-                                        </a>
-                                    </h3>
+                                    <del>
+                                        <h3 class="suggested_word_text">
+                                            <a href="/word/{{ s.word.id }}">
+                                                {{ s.word.to_html()|safe }}
+                                            </a>
+                                        </h3>
+                                    </del>
                                 </header>
 
                                 <div>
@@ -513,7 +365,7 @@
                                 <header>
                                     <h3 class="suggested_word_text">
                                         <a href="/word/{{ word.id }}">
-                                            {%- call macros::format_result_html(word) -%}
+                                            {{ word.to_html()|safe }}
                                         </a>
                                     </h3>
                                 </header>
@@ -526,9 +378,9 @@
                                             {%- for ex in assoc.example_suggestions -%}
                                                 <li>
                                                     <h3>English</h3>
-                                                    <p>{%- call maybe_edited(ex.english) -%}</p>
+                                                    <p>{{ ex.english.to_html()|safe }}</p>
                                                     <h3>Xhosa</h3>
-                                                     <p>{%- call maybe_edited(ex.xhosa) -%}</p>
+                                                     <p>{{ ex.xhosa.to_html()|safe }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_suggestion_action("accept", "Accept") -%}
@@ -561,8 +413,8 @@
                                         <ul>
                                             {%- for l in assoc.linked_word_suggestions -%}
                                                 <li>
-                                                    {%- call result_edited(l.other(WordId(word.id.clone()).into())) %} -
-                                                    {% call maybe_edited(l.link_type) -%}
+                                                    {{- l.other(WordId(word.id.clone()).into()).to_html()|safe }}
+                                                    - {{ l.link_type.to_html()|safe -}}
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call linked_word_suggestion_action("accept", "Accept") -%}
@@ -574,8 +426,8 @@
                                             {%- for del in assoc.linked_word_deletion_suggestions -%}
                                                 <li>
                                                     <del>
-                                                        {%- call macros::format_result_html(del.link.other) %} -
-                                                        {{ del.link.link_type -}}
+                                                        {{ del.link.other.to_html()|safe }} -
+                                                        {{ del.link.link_type.to_html()|safe -}}
                                                     </del>
 
                                                     <div class="row_list spaced_flex_list">

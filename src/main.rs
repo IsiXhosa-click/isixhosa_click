@@ -29,9 +29,8 @@
 
 use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized, UnauthorizedReason};
 use crate::database::existing::ExistingWord;
-use crate::language::NounClassExt;
+use crate::format::DisplayHtml;
 use crate::search::{TantivyClient, WordHit};
-use crate::serialization::OptionMapNounClassExt;
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
 use auth::auth;
@@ -45,6 +44,7 @@ use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config as LogConfig, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use moderation::accept;
+use percent_encoding::NON_ALPHANUMERIC;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, Connection};
@@ -72,6 +72,7 @@ mod database;
 mod details;
 mod edit;
 mod export;
+mod format;
 mod language;
 mod moderation;
 mod search;
@@ -204,7 +205,10 @@ async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
             UnauthorizedReason::NotLoggedIn => {
                 let login = format!(
                     "/login/oauth2/authorization/oidc?redirect={}",
-                    urlencoding::encode(unauthorized.redirect.as_str())
+                    percent_encoding::utf8_percent_encode(
+                        unauthorized.redirect.as_str(),
+                        NON_ALPHANUMERIC
+                    ),
                 );
 
                 Ok(redirect_to(login))

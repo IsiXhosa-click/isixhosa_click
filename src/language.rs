@@ -1,3 +1,4 @@
+use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::serialization::DiscrimOutOfRange;
 use isixhosa::noun::NounClass;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -10,16 +11,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::str::FromStr;
 
 #[derive(
-    IntoPrimitive,
-    TryFromPrimitive,
-    Serialize,
-    Deserialize,
-    Copy,
-    Clone,
-    Debug,
-    Hash,
-    PartialEq,
-    Eq,
+    IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, Copy, Clone, Debug, Hash, PartialEq, Eq,
 )]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]
@@ -32,7 +24,7 @@ pub enum PartOfSpeech {
     Interjection = 6,
     Conjunction = 7,
     Preposition = 8,
-    Other = 9,
+    Ideophone = 9,
 }
 
 impl FromSql for PartOfSpeech {
@@ -60,11 +52,21 @@ impl Display for PartOfSpeech {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let s = match self {
             PartOfSpeech::Relative => "relative (adjective)".to_owned(),
-            PartOfSpeech::Adjective => "adjective - isiphawuli".to_owned(),
+            PartOfSpeech::Adjective => "adjective (isiphawuli)".to_owned(),
             _ => format!("{:?}", self).to_lowercase(),
         };
 
         f.write_str(&s)
+    }
+}
+
+impl DisplayHtml for PartOfSpeech {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        f.write_text(&format!("{}", self))
+    }
+
+    fn is_empty_str(&self) -> bool {
+        false
     }
 }
 
@@ -93,9 +95,13 @@ impl AsRef<str> for ConjunctionFollowedBy {
     }
 }
 
-impl Display for ConjunctionFollowedBy {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_ref())
+impl DisplayHtml for ConjunctionFollowedBy {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        f.write_text(self.as_ref())
+    }
+
+    fn is_empty_str(&self) -> bool {
+        self.as_ref().is_empty()
     }
 }
 
@@ -174,6 +180,16 @@ impl Display for Transitivity {
     }
 }
 
+impl DisplayHtml for Transitivity {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        f.write_text(&format!("{}", self))
+    }
+
+    fn is_empty_str(&self) -> bool {
+        *self == Transitivity::Ambitransitive
+    }
+}
+
 pub struct InvalidTransitivity(String);
 
 impl Display for InvalidTransitivity {
@@ -211,13 +227,19 @@ impl FromSql for Transitivity {
 
 /// Noun class prefixes with singular and plural
 pub struct NounClassPrefixes {
+    pub selected_singular: bool,
     pub singular: &'static str,
     pub plural: Option<&'static str>,
 }
 
 impl NounClassPrefixes {
-    fn from_singular_plural(singular: &'static str, plural: &'static str) -> Self {
+    fn from_singular_plural(
+        selected_singular: bool,
+        singular: &'static str,
+        plural: &'static str,
+    ) -> Self {
         NounClassPrefixes {
+            selected_singular,
             singular,
             plural: Some(plural),
         }
@@ -225,6 +247,7 @@ impl NounClassPrefixes {
 
     fn singular_class(singular: &'static str) -> Self {
         NounClassPrefixes {
+            selected_singular: true,
             singular,
             plural: None,
         }
@@ -244,12 +267,12 @@ impl NounClassExt for NounClass {
         let singular = NounClassPrefixes::singular_class;
 
         match self {
-            Class1Um | Aba => both("um", "aba"),
-            U | Oo => both("u", "oo"),
-            Class3Um | Imi => both("um", "imi"),
-            Ili | Ama => both("i(li)", "ama"),
-            Isi | Izi => both("isi", "izi"),
-            In | Izin => both("i(n)", "i(z)in"),
+            Class1Um | Aba => both(*self == Class1Um, "um", "aba"),
+            U | Oo => both(*self == U, "u", "oo"),
+            Class3Um | Imi => both(*self == Class3Um, "um", "imi"),
+            Ili | Ama => both(*self == Ili, "i(li)", "ama"),
+            Isi | Izi => both(*self == Isi, "isi", "izi"),
+            In | Izin => both(*self == In, "i(n)", "i(z)in"),
             Ulu => singular("ulu"),
             Ubu => singular("ubu"),
             Uku => singular("uku"),
@@ -316,8 +339,8 @@ impl ToSql for WordLinkType {
     }
 }
 
-impl Display for WordLinkType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl DisplayHtml for WordLinkType {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         let s = match self {
             WordLinkType::PluralOrSingular => "Plural or singular form",
             WordLinkType::Antonym => "Antonym",
@@ -326,6 +349,10 @@ impl Display for WordLinkType {
             WordLinkType::AlternateUse => "Alternate use",
         };
 
-        f.write_str(s)
+        f.write_text(s)
+    }
+
+    fn is_empty_str(&self) -> bool {
+        false
     }
 }

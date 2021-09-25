@@ -155,7 +155,7 @@ export function formatResult(result, elt) {
 
     let part_of_speech = result.part_of_speech;
     if (part_of_speech === "adjective") {
-        part_of_speech = "adjective - isiphawuli";
+        part_of_speech = "adjective (isiphawuli)";
     } else if (part_of_speech === "relative") {
         part_of_speech = "relative";
     }

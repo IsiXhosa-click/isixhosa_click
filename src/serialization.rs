@@ -115,6 +115,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub enum WithDeleteSentinel<T> {
     Some(T),
     Remove,

@@ -1330,6 +1330,7 @@ dependencies = [
  "num_enum",
  "openid",
  "ordered-float",
+ "percent-encoding",
  "r2d2",
  "r2d2_sqlite",
  "rand 0.8.3",
@@ -1346,7 +1347,6 @@ dependencies = [
  "tempdir",
  "tokio",
  "unicode-normalization",
- "urlencoding",
  "warp",
  "xtra",
 ]
@@ -3119,12 +3119,6 @@ dependencies = [
  "percent-encoding",
  "serde",
 ]
-
-[[package]]
-name = "urlencoding"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b90931029ab9b034b300b797048cf23723400aa757e8a2bfb9d748102f9821"
 
 [[package]]
 name = "utf-8"

@@ -115,6 +115,7 @@
                                 <option value="interjection">Interjection</option>
                                 <option value="conjunction" id="conjunction_selected">Conjunction</option>
                                 <option value="preposition">Preposition</option>
+                                <option value="ideophone">Ideophone</option>
                             </select>
                         </div>
 
@@ -186,7 +187,7 @@
                         </div>
 
                         <div class="verb_option" hidden>
-                            <label for="is_inchoative">Inchoative?</label>
+                            <label for="is_inchoative">Inchoative/stative?</label>
                             <input type="checkbox" id="is_inchoative" name="is_inchoative" {%- if word.is_inchoative %} checked {%- endif -%}>
                         </div>
 
@@ -225,7 +226,7 @@
                         <div class="conjunction_option" hidden>
                             <label for="followed_by">Followed by:</label>
                             <input type="text" autocomplete="off" spellcheck="false" list="followed_by_list"
-                                value="{{ word.followed_by.clone().unwrap_or_default() }}" name="followed_by" id="followed_by"
+                                value="{{ word.followed_by.to_plaintext()|safe }}" name="followed_by" id="followed_by"
                             >
 
                             {#- Hidden is due to dumb table stuff -#}

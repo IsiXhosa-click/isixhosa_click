@@ -6,8 +6,8 @@
     <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click</title>
     <meta name="og:title" content="{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/word/{{- word.word_id -}}"/>
-    <meta name="og:description" content="{%- call macros::format_result_meta(word) -%}"/>
-    <meta name="description" content="{%- call macros::format_result_meta(word) -%}"/>
+    <meta name="og:description" content="{{ word.to_plaintext() }}"/>
+    <meta name="description" content="{{ word.to_plaintext() }}"/>
     <link rel="stylesheet" href="/details.css">
     {%- call macros::meta() -%}
 </head>
@@ -91,7 +91,7 @@
                                         {%- when Some with (class) -%}
                                             <tr>
                                                 <th scope="row">Noun class</th>
-                                                <td>{%- call macros::noun_class_prefix(word.is_plural, class, false) -%}</td>
+                                                <td>{{ class.to_html()|safe }}</td>
                                             </tr>
                                         {%- when None -%}
                                     {%- endmatch -%}
@@ -123,7 +123,7 @@
                                         {%- when Some with (followed_by) -%}
                                             <tr>
                                                 <th scope="row">Followed by</th>
-                                                <td>{{ followed_by }}</td>
+                                                <td>{{ followed_by.to_html()|safe }}</td>
                                             </tr>
                                         {%- when None -%}
                                     {%- endmatch -%}
@@ -177,8 +177,8 @@
                                     <tbody>
                                         {%- for link in word.linked_words -%}
                                             <tr>
-                                                <td>{{ link.link_type }}</td>
-                                                <td><a href="/word/{{ link.other.id }}">{%- call macros::format_result_html(link.other) -%}</a></td>
+                                                <td>{{ link.link_type.to_html()|safe }}</td>
+                                                <td><a href="/word/{{ link.other.id }}">{{ link.other.to_html()|safe }}</a></td>
                                             </tr>
                                         {%- endfor -%}
                                     </tbody>

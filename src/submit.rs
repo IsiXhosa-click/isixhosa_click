@@ -16,6 +16,7 @@ use crate::auth::{with_user_auth, Auth, DbBase, User};
 use crate::database::existing::{ExistingExample, ExistingLinkedWord, ExistingWord};
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::database::WordOrSuggestionId;
+use crate::format::DisplayHtml;
 use crate::language::NounClassExt;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use isixhosa::noun::NounClass;

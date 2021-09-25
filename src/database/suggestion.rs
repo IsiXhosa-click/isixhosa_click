@@ -687,7 +687,7 @@ impl SuggestedLinkedWord {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum MaybeEdited<T> {
     Edited { old: T, new: T },
     Old(T),
@@ -711,24 +711,6 @@ impl<T> MaybeEdited<T> {
             MaybeEdited::Edited { new, .. } => new,
             MaybeEdited::Old(old) => old,
             MaybeEdited::New(new) => new,
-        }
-    }
-
-    pub fn old(&self) -> &T {
-        match self {
-            MaybeEdited::Edited { old, .. } => old,
-            MaybeEdited::Old(old) => old,
-            MaybeEdited::New(new) => new,
-        }
-    }
-}
-
-impl MaybeEdited<String> {
-    pub fn is_empty(&self) -> bool {
-        match self {
-            MaybeEdited::Edited { new, old } => new.is_empty() && old.is_empty(),
-            MaybeEdited::Old(v) => v.is_empty(),
-            MaybeEdited::New(v) => v.is_empty(),
         }
     }
 }
@@ -785,10 +767,11 @@ where
     fn from_row_with_sentinel(idx: &str, row: &Row<'_>, old: Option<T>) -> MaybeEdited<Option<T>> {
         let res = row.get::<&str, Option<WithDeleteSentinel<T>>>(idx);
         match res {
-            Ok(Some(WithDeleteSentinel::Remove)) if matches!(old, Some(_)) => {
+            Ok(Some(WithDeleteSentinel::Remove)) if old.is_some() => {
                 MaybeEdited::Edited { old, new: None }
             }
             Ok(Some(WithDeleteSentinel::Remove)) => MaybeEdited::Old(None),
+            Ok(Some(WithDeleteSentinel::Some(new))) if old.is_none() => MaybeEdited::New(Some(new)),
             Ok(Some(WithDeleteSentinel::Some(new))) => MaybeEdited::Edited {
                 old,
                 new: Some(new),

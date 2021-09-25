@@ -1,12 +1,10 @@
+use crate::auth::PublicAccessDb;
 use crate::auth::{with_any_auth, Auth, DbBase};
 use crate::database::existing::ExistingWord;
-use crate::language::NounClassExt;
+use crate::format::DisplayHtml;
 use crate::language::PartOfSpeech;
-use crate::serialization::OptionMapNounClassExt;
 use crate::NotFound;
 use askama::Template;
-
-use crate::auth::PublicAccessDb;
 use warp::{Filter, Rejection, Reply};
 
 pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {

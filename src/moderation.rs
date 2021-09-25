@@ -4,14 +4,13 @@ use crate::database::deletion::{
     ExampleDeletionSuggestion, LinkedWordDeletionSuggestion, WordDeletionSuggestion,
 };
 use crate::database::existing::ExistingWord;
-use crate::database::suggestion::{
-    MaybeEdited, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
-};
+use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::database::WordOrSuggestionId;
-use crate::language::NounClassExt;
+use crate::format::DisplayHtml;
+
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
-use crate::serialization::OptionMapNounClassExt;
+
 use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
 use askama::Template;
 use serde::Deserialize;

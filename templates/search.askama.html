@@ -29,7 +29,7 @@
                     {%- for hit in hits -%}
                         <li class="hit_container">
                             <a class="hit" href="/word/{{ hit.id }}">
-                                {%- call macros::format_result_html(hit) -%}
+                                {{ hit.to_html()|safe }}
                             </a>
                         </li>
                     {%- endfor -%}
