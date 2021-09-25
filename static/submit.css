@@ -70,7 +70,7 @@ label > * {
     gap: 1em;
 }
 
-textarea#note {
+textarea {
     width: 88%; /* Idk */
 }
 
@@ -83,7 +83,7 @@ textarea#note {
         flex-direction: column;
     }
 
-    textarea#note {
+    textarea {
         width: 94%; /* Idk */
     }
 }

@@ -137,13 +137,10 @@ impl TantivyClient {
     pub async fn search(
         &self,
         query: String,
-        include_suggestions_from_user: Option<NonZeroU64>,
+        include: IncludeResults,
     ) -> Result<Vec<WordHit>> {
         self.searchers
-            .send(SearchRequest {
-                query,
-                include_suggestions_from_user,
-            })
+            .send(SearchRequest { query, include, })
             .await
             .map_err(Into::into)
     }
@@ -374,7 +371,14 @@ impl Actor for SearcherActor {}
 
 pub struct SearchRequest {
     query: String,
-    include_suggestions_from_user: Option<NonZeroU64>,
+    include: IncludeResults,
+}
+
+#[derive(Copy, Clone)]
+pub enum IncludeResults {
+    AcceptedOnly,
+    AcceptedAndSuggestionsFrom(NonZeroU64),
+    AcceptedAndAllSuggestions,
 }
 
 impl Message for SearchRequest {
@@ -421,21 +425,24 @@ impl Handler<SearchRequest> for SearcherActor {
             });
 
             let terms = BooleanQuery::union(queries);
-            let not_suggestion = Term::from_field_u64(client.schema_info.suggesting_user, 0);
-            let not_suggestion = TermQuery::new(not_suggestion, IndexRecordOption::Basic);
-            let not_suggestion =
-                BooleanQuery::intersection(vec![Box::new(not_suggestion), Box::new(terms.clone())]);
 
-            match req.include_suggestions_from_user {
-                Some(user) => {
+            let not_suggestion = || {
+                let not_suggestion = Term::from_field_u64(client.schema_info.suggesting_user, 0);
+                let not_suggestion = TermQuery::new(not_suggestion, IndexRecordOption::Basic);
+                BooleanQuery::intersection(vec![Box::new(not_suggestion), Box::new(terms.clone())])
+            };
+
+            match req.include {
+                IncludeResults::AcceptedAndAllSuggestions => terms,
+                IncludeResults::AcceptedAndSuggestionsFrom(user) => {
                     let suggested_by =
                         Term::from_field_u64(client.schema_info.suggesting_user, user.get());
                     let suggested_by = TermQuery::new(suggested_by, IndexRecordOption::Basic);
                     let suggested_by =
-                        BooleanQuery::intersection(vec![Box::new(suggested_by), Box::new(terms)]);
-                    BooleanQuery::union(vec![Box::new(not_suggestion), Box::new(suggested_by)])
+                        BooleanQuery::intersection(vec![Box::new(suggested_by), Box::new(terms.clone())]);
+                    BooleanQuery::union(vec![Box::new(not_suggestion()), Box::new(suggested_by)])
                 }
-                None => not_suggestion,
+                IncludeResults::AcceptedOnly => not_suggestion(),
             }
         };
 

@@ -861,9 +861,19 @@ fn process_examples(
         (None, None) => {}
     }
 
-    for new in &w.examples {
+    for new in &mut w.examples {
         if new.english.is_empty() && new.xhosa.is_empty() {
             continue;
+        }
+
+        const PUNCTUATION: [char; 4] = ['.', '?', '!', '"'];
+
+        if !new.english.ends_with(&PUNCTUATION[..]) {
+            new.english.push('.');
+        }
+
+        if !new.xhosa.ends_with(&PUNCTUATION[..]) {
+            new.xhosa.push('.');
         }
 
         upsert_example

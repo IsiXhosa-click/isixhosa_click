@@ -1,4 +1,4 @@
-use crate::search::{TantivyClient, WordHit};
+use crate::search::{TantivyClient, WordHit, IncludeResults};
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use xtra::prelude::*;
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,
     pub tantivy: Arc<TantivyClient>,
-    include_suggestions_from_user: Option<NonZeroU64>,
+    include: IncludeResults,
     heartbeat: Instant,
 }
 
@@ -20,11 +20,18 @@ impl LiveSearchSession {
         sender: SplitSink<WebSocket, ws::Message>,
         tantivy: Arc<TantivyClient>,
         include_suggestions_from_user: Option<NonZeroU64>,
+        is_moderator: bool,
     ) -> Self {
+        let include = match (include_suggestions_from_user, is_moderator) {
+            (Some(_), true) => IncludeResults::AcceptedAndAllSuggestions,
+            (Some(user), false) => IncludeResults::AcceptedAndSuggestionsFrom(user),
+            (None, _) => IncludeResults::AcceptedOnly,
+        };
+
         LiveSearchSession {
             sender,
             tantivy,
-            include_suggestions_from_user,
+            include,
             heartbeat: Instant::now(),
         }
     }
@@ -101,7 +108,7 @@ impl Handler<WsMessage> for LiveSearchSession {
                     let reply = Reply {
                         results: self
                             .tantivy
-                            .search(query.search, self.include_suggestions_from_user)
+                            .search(query.search, self.include)
                             .await
                             .unwrap(),
                         state: query.state,
@@ -116,7 +123,7 @@ impl Handler<WsMessage> for LiveSearchSession {
                         return;
                     }
 
-                    let results = self.tantivy.search(query.to_owned(), None).await.unwrap();
+                    let results = self.tantivy.search(query.to_owned(), IncludeResults::AcceptedOnly).await.unwrap();
                     serde_json::to_string(&results).unwrap()
                 }
             };

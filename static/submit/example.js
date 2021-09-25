@@ -19,22 +19,21 @@ function textField(name, label_txt, val, spellcheck) {
     let div = document.createElement("div");
     div.className = "table_row_if_space";
     let label = document.createElement("label");
-    let input = document.createElement("input");
+    let textarea = document.createElement("textarea");
 
     label.innerText = label_txt;
-    input.type = "text";
-    input.name = name;
-    input.autocomplete = "off";
-    input.spellcheck = spellcheck;
+    textarea.name = name;
+    textarea.autocomplete = "off";
+    textarea.spellcheck = spellcheck;
 
     if (val != null) {
-        input.value = val;
+        textarea.value = val;
     }
 
-    input.setAttribute("data-lpignore", "true");
+    textarea.setAttribute("data-lpignore", "true");
 
     div.appendChild(label);
-    div.appendChild(input);
+    div.appendChild(textarea);
     return div;
 }
 

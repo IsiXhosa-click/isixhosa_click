@@ -8,6 +8,7 @@ export class LiveSearch {
         results_container,
         create_container,
         create_item,
+        post_create_item,
         create_item_container,
         skip_word_id,
         skip_is_suggestion,
@@ -18,6 +19,7 @@ export class LiveSearch {
         this.hits = results_container;
         this.create_container = create_container;
         this.create_item = create_item;
+        this.post_create_item = post_create_item;
         this.create_item_container = create_item_container;
         this.skip_word_id = skip_word_id;
         this.skip_is_suggestion = skip_is_suggestion;
@@ -88,6 +90,7 @@ export class LiveSearch {
             results.forEach(function (result) {
                 let item = searcher.create_item(formatResult(result), result.id, result.is_suggestion);
                 formatResult(result, item);
+                searcher.post_create_item(item);
 
                 let item_container = searcher.create_item_container();
                 let append = item;

@@ -1,6 +1,6 @@
 {%- macro searchbox(start_query) -%}
     <script type="module">
-        import { LiveSearch } from "/live_search.js?v=2";
+        import { LiveSearch } from "/live_search.js?v=3";
 
         window.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
@@ -26,6 +26,13 @@
                 return link;
             }
 
+            function postCreateItem(link) {
+                let goArrow = document.createElement("span");
+                goArrow.classList.add("material-icons", "go_arrow");
+                goArrow.innerText = "arrow_forward";
+                link.appendChild(goArrow);
+            }
+
             function createItemContainer() {
                 let container = document.createElement("li");
                 container.className = "hit_container";
@@ -37,6 +44,7 @@
                 document.getElementById("hits"),
                 createContainer,
                 createItem,
+                postCreateItem,
                 createItemContainer,
                 null, /* skip word id */
                 false, /* skip is suggestion */
@@ -49,7 +57,7 @@
         <form id="search" action="/search" method="GET" role="search">
             <label for="query">Search for a word</label>
 
-            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus class="searchbox_input" aria-labelledby="main_header">
+            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus class="searchbox_input" aria-labelledby="main_header" spellcheck="false">
             <button type="submit" class="search_submit_button">Search</button>
         </form>
     </noscript>

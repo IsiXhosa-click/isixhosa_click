@@ -1,4 +1,4 @@
-import { LiveSearch, formatResult } from "/live_search.js?v=2";
+import { LiveSearch, formatResult } from "/live_search.js?v=3";
 import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;
@@ -108,6 +108,7 @@ function createLinkedWordSearch(preset_word, this_id, this_is_new_suggestion) {
         popover,
         function() {},
         createLinkedWordButton,
+        function() {},
         createLinkedWordContainer,
         this_id,
         this_is_new_suggestion,
