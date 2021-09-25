@@ -105,7 +105,14 @@
 
                                     {%- if word.part_of_speech == PartOfSpeech::Verb  -%}
                                         <tr>
-                                            <th scope="row">Inchoative</th>
+                                            <th scope="row" tabindex="0"
+                                                 {#-#} data-descr="An inchoative (stative) verb takes the perfect tense
+                                                 {#-#} for present tense meaning. For example, &quot;ndilambile&quot;
+                                                 {#-#} means &quot;I am hungry&quot; whereas &quot;ndiyalamba&quot; means
+                                                 {#-#} &quot;I am getting hungry&quot;."
+                                            >
+                                                Inchoative
+                                            </th>
                                             <td>{%- if word.is_inchoative -%} yes {%- else -%} no {%- endif -%}</td>
                                         </tr>
                                     {%- endif -%}
@@ -113,7 +120,11 @@
                                     {%- match word.transitivity -%}
                                         {%- when Some with (transitivity) -%}
                                             <tr>
-                                                <th scope="row">Transitivity</th>
+                                                <th scope="row" tabindex="0"
+                                                    {#-#} data-descr="Whether the verb can take a direct object or not."
+                                                >
+                                                    Transitivity
+                                                </th>
                                                 <td>{{ transitivity.explicit_word_details_page() }}</td>
                                             </tr>
                                         {%- when None -%}
@@ -122,7 +133,12 @@
                                     {%- match word.followed_by -%}
                                         {%- when Some with (followed_by) -%}
                                             <tr>
-                                                <th scope="row">Followed by</th>
+                                                <th scope="row" tabindex="0"
+                                                    {#-#} data-descr="The verbial mood or construction the conjunction
+                                                    {#-#} is followed by."
+                                                >
+                                                    Followed by
+                                                </th>
                                                 <td>{{ followed_by.to_html()|safe }}</td>
                                             </tr>
                                         {%- when None -%}
@@ -130,7 +146,11 @@
 
                                     {%- if !word.xhosa_tone_markings.is_empty() -%}
                                         <tr>
-                                            <th scope="row">Xhosa with tone markings</th>
+                                            <th scope="row" tabindex="0"
+                                                {#-#} data-descr="Xhosa with tone markings written out as diacritics."
+                                            >
+                                                Xhosa with tone markings
+                                            </th>
                                             <td>{{ word.xhosa_tone_markings }}</td>
                                         </tr>
                                     {%- endif -%}

@@ -126,6 +126,7 @@ caption, .caption {
 
 .menu {
     position: fixed;
+    z-index: 1;
     top: 0;
     left: 0;
     margin: 0;
@@ -248,11 +249,11 @@ caption, .caption {
 }
 
 .required {
-    color: red;
+    color: #b50000; /* 7:1 contrast ratio */
 }
 
 button.disabled {
-    color: rgb(109, 109, 109);
+    color: #6d6d6d
 }
 
 [data-descr] {
@@ -274,6 +275,7 @@ button.disabled {
     padding: 12px;
     color: #000000;
     font-size: 1em;
+    font-weight: normal;
     z-index: 1;
 }
 

@@ -1,11 +1,11 @@
 #![feature(associated_type_bounds)]
 
 // Before launch:
-// - TODO standalone example & linked word suggestion editing
 // - TODO suggest possible duplicates in submit form
 // - TODO better way to suggest plurals?
 
 // Soon after launch, perhaps before:
+// - standalone example & linked word suggestion editing
 // - principled HTTP response codes with previous_success in form submit and so on
 // - ability to search for and ban users
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
