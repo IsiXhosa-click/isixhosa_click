@@ -60,10 +60,6 @@ table {
     width: 100%;
 }
 
-label > * {
-    margin-left: 1em;
-}
-
 .row_or_column {
     display: flex;
     flex-direction: row;
@@ -195,6 +191,17 @@ fieldset.contains_table > legend {
     margin: 0 !important;
 }
 
+.delete_button {
+    border: 1px solid lightgray;
+    border-radius: 25%;
+
+    min-width: 0;
+}
+
+#submit_button {
+    width: max-content;
+}
+
 @media screen and (min-width: 800px) {
     .table_if_space {
         display: table;
@@ -210,11 +217,4 @@ fieldset.contains_table > legend {
         display: table-cell;
         vertical-align: middle;
     }
-}
-
-.delete_button {
-    border: 1px solid lightgray;
-    border-radius: 25%;
-
-    min-width: 0;
 }

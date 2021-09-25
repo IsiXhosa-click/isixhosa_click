@@ -7,7 +7,7 @@
     <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
     {%- call macros::description("Submit a word to the free, open IsiXhosa.click live dictionary for Xhosa and English.") -%}
     <meta name="og:url" content="https://isixhosa.click/submit"/>
-    <link rel="stylesheet" href="/submit.css?v=2">
+    <link rel="stylesheet" href="/submit.css?v=3">
     {%- call macros::meta() -%}
 </head>
 
@@ -56,7 +56,9 @@
                     {%- let route = format!("/word/{}", id) -%}
             {%- endmatch -%}
 
-            <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded" class="column_list">
+            <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded"
+                {#-#} class="column_list"
+            >
                 {%- match action -%}
                     {%- when SubmitFormAction::EditSuggestion with { suggestion_id, existing_id } -%}
                         <select name="suggestion_id" hidden><option value="{{ suggestion_id }}"></select>
@@ -76,18 +78,26 @@
 
                     <div class="table">
                         <div>
-                            <label for="english">English:</label>
-                            <input type="text" id="english" name="english" autocomplete="off" spellcheck="true" value="{{ word.english }}">
+                            <label for="english">English<span class="required">*</span>:</label>
+                            <input type="text" id="english" name="english" autocomplete="off" spellcheck="true"
+                             {#-#} value="{{ word.english }}" required>
                         </div>
 
                         <div>
-                            <label for="xhosa">Xhosa:</label>
-                            <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false" value="{{ word.xhosa }}">
+                            <label for="xhosa">Xhosa<span class="required">*</span>:</label>
+                            <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false"
+                             {#-#} value="{{ word.xhosa }}" required>
                         </div>
 
                         <div>
-                            <label for="xhosa_tone_markings">Xhosa with tone markings:</label>
-                            <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off" spellcheck="false" value="{{ word.xhosa_tone_markings }}">
+                            <label for="xhosa_tone_markings" tabindex="0"
+                                {#-#} data-descr="Xhosa with tone markings written out as diacritics. For instance:
+                                {#-#} &quot;bónákala&quot;."
+                            >
+                                Xhosa with tone markings:
+                            </label>
+                            <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off"
+                             {#-#} spellcheck="false" value="{{ word.xhosa_tone_markings }}">
                         </div>
 
                         <div>
@@ -104,8 +114,8 @@
 
                     <div class="table">
                         <div>
-                            <label for="part_of_speech">Part of speech:</label>
-                            <select id="part_of_speech" name="part_of_speech">
+                            <label for="part_of_speech">Part of speech<span class="required">*</span>:</label>
+                            <select id="part_of_speech" name="part_of_speech" required>
                                 <option value="">Choose a part of speech</option>
                                 <option value="verb" id="verb_selected">Verb</option>
                                 <option value="noun" id="noun_selected">Noun</option>
@@ -143,7 +153,8 @@
 
                         <div class="noun_option" hidden>
                             <label for="is_plural">Plural?</label>
-                            <input type="checkbox" id="is_plural" name="is_plural" {%- if word.is_plural %} checked {%- endif -%}>
+                            <input type="checkbox" id="is_plural" name="is_plural"
+                                {%- if word.is_plural %} checked {%- endif -%}>
                         </div>
 
                         {%- match word.noun_class -%}
@@ -158,8 +169,8 @@
                         {%- endmatch -%}
 
                         <div class="noun_option" hidden>
-                            <label for="noun_class">Noun class:</label>
-                            <select id="noun_class" name="noun_class">
+                            <label for="noun_class">Noun class<span class="required">*</span>:</label>
+                            <select id="noun_class" name="noun_class" class="required_if_enabled">
                                 <option value="">Choose a noun class</option>
                                 <option value="Class1Um">um (aba)</option>
                                 <option value="Aba">aba</option>
@@ -182,18 +193,27 @@
                         {#-  Verb options -#}
 
                         <div class="verb_option" hidden>
-                            <label for="infinitive">Infinitive form:</label>
-                            <input type="text" id="infinitive" name="infinitive" autocomplete="off" spellcheck="false" value="{{ word.infinitive }}">
+                            <label for="infinitive">Infinitive form<span class="required">*</span>:</label>
+                            <input type="text" id="infinitive" name="infinitive" autocomplete="off" spellcheck="false"
+                                {#-#} value="{{ word.infinitive }}" class="required_if_enabled">
                         </div>
 
                         <div class="verb_option" hidden>
-                            <label for="is_inchoative">Inchoative/stative?</label>
-                            <input type="checkbox" id="is_inchoative" name="is_inchoative" {%- if word.is_inchoative %} checked {%- endif -%}>
+                            <label for="is_inchoative" tabindex="0"
+                                {#-#} data-descr="An inchoative (stative) verb takes the perfect tense for a present
+                                {#-#} tense meaning. For example, &quot;ndilambile&quot; means &quot;I am hungry&quot;
+                                {#-#} whereas &quot;ndiyalamba&quot; means &quot;I am getting hungry&quot;."
+                            >
+                                Inchoative?
+                            </label>
+                            <input type="checkbox" id="is_inchoative" name="is_inchoative"
+                                {%- if word.is_inchoative %} checked {%- endif -%}>
                         </div>
 
-
                         <div class="verb_option row_list" id="transitivity" hidden>
-                            <span>Transitivity:</span>
+                            <span tabindex="0" data-descr="Whether the verb can take a direct object or not.">
+                                Transitivity:
+                            </span>
 
                             {#- ambitransitive is default -#}
                             {%- let ambitransitive = word.transitivity == Some(Transitivity::Ambitransitive) ||
@@ -208,14 +228,12 @@
 
                             <label for="transitive">Transitive only
                                 <input type="radio" id="transitive" name="transitivity" value="transitive"
-                                    {%- if word.transitivity == Some(Transitivity::Transitive) %} checked {%- endif -%}
-                                >
+                                    {%- if word.transitivity == Some(Transitivity::Transitive) %} checked {%- endif -%}>
                             </label>
 
                             <label for="intransitive" id="intransitive_label">Intransitive only
                                 <input type="radio" id="intransitive" name="transitivity" value="intransitive"
-                                    {%- if word.transitivity == Some(Transitivity::Intransitive) %} checked {%- endif -%}
-                                >
+                                    {%- if word.transitivity == Some(Transitivity::Intransitive) %} checked {%- endif -%}>
                             </label>
 
                             <input type="radio" id="transitivity_unselected" name="transitivity" value="" hidden>
@@ -224,10 +242,14 @@
                         {#- Conjunction options -#}
 
                         <div class="conjunction_option" hidden>
-                            <label for="followed_by">Followed by:</label>
-                            <input type="text" autocomplete="off" spellcheck="false" list="followed_by_list"
-                                value="{{ word.followed_by.to_plaintext()|safe }}" name="followed_by" id="followed_by"
+                            <label for="followed_by" tabindex="0"
+                                {#-#} data-descr="The verbial mood or construction the conjunction is followed by."
                             >
+                                Followed by:
+                            </label>
+                            <input type="text" autocomplete="off" spellcheck="false" list="followed_by_list"
+                                {#-#} value="{{ word.followed_by.to_plaintext()|safe }}" name="followed_by"
+                                {#-#} id="followed_by">
 
                             {#- Hidden is due to dumb table stuff -#}
                             <datalist id="followed_by_list" hidden>
@@ -255,8 +277,17 @@
                     </ul>
                 </fieldset>
 
-                <div>
-                    <button type="submit">
+                <div class="column_list spaced_flex_list">
+                    <div>
+                        <input type="checkbox" id="tos_agree" name="tos_agree" required>
+                        <label for="tos_agree">
+                            I agree to submit this entry under the <a href="https://creativecommons.org/licenses/by-sa/4.0/">
+                            Creative Commons 4.0 (or later) Attribution ShareAlike License</a>, subject to the Terms of
+                            Service.<span class="required">*</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="submit_button">
                         {%- match action -%}
                             {%- when SubmitFormAction::SubmitNewWord -%}
                                 Suggest word
@@ -271,18 +302,29 @@
 
             <script type="module">
                 import { addExample, addExamples } from "/submit/example.js?v=1";
-                import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
+                import { partOfSpeechChange } from "/submit/part_of_speech_specific.js?v=1";
                 import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js?v=3";
 
                 window.addEventListener("DOMContentLoaded", function() {
-                    let input_list = document.getElementsByTagName("input");
-
-                    for (let i = 0; i < input_list.length; i++) {
-                        let input = input_list.item(i);
-
+                    for (let input of document.getElementsByTagName("input")) {
                         if (input.type === "text") {
                             input.setAttribute("data-lpignore", "true");
                         }
+                    }
+
+                    let button = document.getElementById("submit_button");
+                    button.classList.add("disabled");
+
+                    for (let elt of document.querySelectorAll(".required_if_enabled, :required")) {
+                        let event = "change";
+                        if (elt instanceof HTMLInputElement || elt instanceof HTMLTextAreaElement) {
+                            event = "input";
+                        }
+
+                        elt.addEventListener(event, function() {
+                            let all = Array.from(document.querySelectorAll(":required"));
+                            button.classList.toggle("disabled", !all.every(elt => elt.checkValidity()));
+                        });
                     }
                 });
 

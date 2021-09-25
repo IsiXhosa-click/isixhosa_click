@@ -700,7 +700,6 @@ impl SuggestedLinkedWord {
         SuggestedLinkedWord {
             changes_summary: row.get("changes_summary").unwrap(),
             suggestion_id: row.get("suggestion_id").unwrap(),
-
             existing_linked_word_id: row.get("existing_linked_word_id").unwrap(),
             first,
             second,

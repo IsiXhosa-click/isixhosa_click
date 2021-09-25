@@ -1,26 +1,27 @@
-function setAllVisible(class_name, visible) {
-    let optional_list = document.getElementsByClassName(class_name);
+function setAllEnabled(class_name, enabled) {
+    for (let elt of document.getElementsByClassName(class_name)) {
+        elt.hidden = !enabled;
+    }
 
-    for (let i = 0; i < optional_list.length; i++) {
-        let option = optional_list.item(i);
-        option.hidden = !visible;
+    for (let elt of document.querySelectorAll(`.${class_name} .required_if_enabled`)) {
+        elt.required = enabled;
     }
 }
 
 function setAllInvisible() {
-    setAllVisible("noun_option", false);
-    setAllVisible("verb_option", false);
-    setAllVisible("conjunction_option", false);
+    setAllEnabled("noun_option", false);
+    setAllEnabled("verb_option", false);
+    setAllEnabled("conjunction_option", false);
 }
 
 export function partOfSpeechChange() {
     setAllInvisible();
 
     if (document.getElementById("verb_selected").selected) {
-        setAllVisible("verb_option", true);
+        setAllEnabled("verb_option", true);
     } else if (document.getElementById("noun_selected").selected) {
-        setAllVisible("noun_option", true);
+        setAllEnabled("noun_option", true);
     } else if (document.getElementById("conjunction_selected").selected) {
-        setAllVisible("conjunction_option", true);
+        setAllEnabled("conjunction_option", true);
     }
 }

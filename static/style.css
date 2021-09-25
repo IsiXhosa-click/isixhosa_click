@@ -247,6 +247,45 @@ caption, .caption {
     background: #484848;
 }
 
+.required {
+    color: red;
+}
+
+button.disabled {
+    color: rgb(109, 109, 109);
+}
+
+[data-descr] {
+    position: relative;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    cursor: help;
+}
+
+[data-descr]:hover::after, [data-descr]:focus::after {
+    content: attr(data-descr);
+    position: absolute;
+    left: 0;
+    top: 2em;
+    min-width: 20em;
+    border: 1px #aaaaaa solid;
+    border-radius: 10px;
+    background-color: #ffffcc;
+    padding: 12px;
+    color: #000000;
+    font-size: 1em;
+    z-index: 1;
+}
+
+ul.examples > li > h3 {
+    font-size: 1em;
+    margin: 0;
+}
+
+ul.examples > li > p {
+    margin: 0.5em 0;
+}
+
 @media screen and (max-width: 800px) {
     header {
         margin-top: 4.2rem;
@@ -287,13 +326,4 @@ caption, .caption {
     #hamburger {
         display: inline;
     }
-}
-
-ul.examples > li > h3 {
-    font-size: 1em;
-    margin: 0;
-}
-
-ul.examples > li > p {
-    margin: 0.5em 0;
 }
