@@ -445,10 +445,15 @@ pub struct SuggestedLinkedWord {
 impl SuggestedLinkedWord {
     pub fn fetch(db: &impl UserAccessDb, suggestion: u64) -> SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "
-            SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
-                first_existing_word_id, second_existing_word_id, suggested_word_id,
-                second_suggested_word_id
-            FROM linked_word_suggestions WHERE suggestion_id = ?1;
+            SELECT linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
+                   linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
+                   linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
+                   linked_word_suggestions.suggested_word_id,
+                   linked_word_suggestions.second_suggested_word_id,
+                   linked_words.first_word_id, linked_words.second_word_id
+            FROM linked_word_suggestions
+            LEFT JOIN linked_words ON existing_linked_word_id = link_id
+            WHERE suggestion_id = ?1;
         ";
 
         let conn = db.get().unwrap();
@@ -499,11 +504,23 @@ impl SuggestedLinkedWord {
                    linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
                    linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
                    linked_word_suggestions.suggested_word_id,
-                   linked_word_suggestions.second_suggested_word_id
+                   linked_word_suggestions.second_suggested_word_id,
+                   linked_words.first_word_id, linked_words.second_word_id
             FROM linked_word_suggestions
-            INNER JOIN words ON linked_word_suggestions.first_existing_word_id = words.word_id
-            WHERE linked_word_suggestions.first_existing_word_id IS NOT NULL AND
-                  linked_word_suggestions.second_existing_word_id IS NOT NULL;
+
+            LEFT JOIN
+                linked_words
+                ON linked_word_suggestions.existing_linked_word_id = linked_words.link_id
+
+            INNER JOIN
+                words
+                ON linked_word_suggestions.first_existing_word_id = words.word_id OR
+                   linked_words.first_word_id = words.word_id
+
+            WHERE
+                linked_word_suggestions.existing_linked_word_id IS NOT NULL OR
+                linked_word_suggestions.first_existing_word_id IS NOT NULL OR
+                linked_word_suggestions.second_existing_word_id IS NOT NULL;
         ";
 
         let conn = db.get().unwrap();
@@ -514,12 +531,14 @@ impl SuggestedLinkedWord {
 
         examples
             .map(|row| {
-                let (first, second) = (
+                println!("Found row!");
+                let (first, second, fallback_first) = (
                     row.get::<&str, Option<u64>>("first_existing_word_id")?,
                     row.get::<&str, Option<u64>>("second_existing_word_id")?,
+                    row.get::<&str, Option<u64>>("first_word_id")?,
                 );
 
-                let chosen = first.or(second);
+                let chosen = first.or(second).or(fallback_first);
 
                 Ok((
                     WordId(chosen.unwrap()),
@@ -628,22 +647,33 @@ impl SuggestedLinkedWord {
             (None, None, None)
         };
 
+        let ignore_invalid_col = |e| match e {
+            rusqlite::Error::InvalidColumnName(n) if n == "first_word_id" || n == "second_word_id" => {},
+            _ => panic!("Error: {:#?}", e),
+        };
+
         let existing = |col| {
             row.get::<&str, Option<u64>>(col)
-                .unwrap()
+                .map_err(ignore_invalid_col)
+                .ok()
+                .flatten()
                 .map(WordOrSuggestionId::existing)
         };
         let suggested = |col| {
             row.get::<&str, Option<u64>>(col)
-                .unwrap()
+                .map_err(ignore_invalid_col)
+                .ok()
+                .flatten()
                 .map(WordOrSuggestionId::suggested)
         };
 
-        let word_ids: [Option<WordOrSuggestionId>; 4] = [
+        let word_ids: [Option<WordOrSuggestionId>; 6] = [
             existing("first_existing_word_id"),
             existing("second_existing_word_id"),
             suggested("suggested_word_id"),
             suggested("second_suggested_word_id"),
+            existing("first_word_id"),
+            existing("second_word_id"),
         ];
 
         let mut iter = array::IntoIter::new(word_ids).flatten().take(2);
@@ -695,7 +725,7 @@ pub enum MaybeEdited<T> {
 }
 
 impl<T> MaybeEdited<T> {
-    fn map<U, F: Fn(&T) -> U>(&self, f: F) -> MaybeEdited<U> {
+    pub fn map<U, F: Fn(&T) -> U>(&self, f: F) -> MaybeEdited<U> {
         match self {
             MaybeEdited::Edited { new, old } => MaybeEdited::Edited {
                 new: f(new),

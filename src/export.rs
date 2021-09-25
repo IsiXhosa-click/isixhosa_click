@@ -136,6 +136,10 @@ impl WordRecord {
                             <div class="example">{{ EnglishExample }}</div>
                             <div class="example">{{ XhosaExample }}</div>
                         {{/EnglishExample}}
+
+                        {{#WordNote}}
+                            <p>{{ WordNote }}</p>
+                        {{/WordNote}}
                     "#,
             );
 
@@ -168,6 +172,10 @@ impl WordRecord {
                             <div class="example">{{ EnglishExample }}</div>
                             <div class="example">{{ XhosaExample }}</div>
                         {{/EnglishExample}}
+
+                        {{#WordNote}}
+                            <p>{{ WordNote }}</p>
+                        {{/WordNote}}
                     "#,
             );
 
@@ -182,6 +190,7 @@ impl WordRecord {
                 Field::new("XhosaExtra"),
                 Field::new("EnglishExample"),
                 Field::new("XhosaExample"),
+                Field::new("WordNote"),
             ],
             vec![english_up, xhosa_up],
             Some(CSS),
@@ -260,6 +269,7 @@ impl WordRecord {
             xh_extra,
             en_example,
             xh_example,
+            self.note,
         ];
 
         Ok((

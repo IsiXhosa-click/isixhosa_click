@@ -25,6 +25,7 @@ pub enum PartOfSpeech {
     Conjunction = 7,
     Preposition = 8,
     Ideophone = 9,
+    BoundMorpheme = 10,
 }
 
 impl FromSql for PartOfSpeech {
@@ -53,6 +54,7 @@ impl Display for PartOfSpeech {
         let s = match self {
             PartOfSpeech::Relative => "relative (adjective)".to_owned(),
             PartOfSpeech::Adjective => "adjective (isiphawuli)".to_owned(),
+            PartOfSpeech::BoundMorpheme => "bound morpheme".to_owned(),
             _ => format!("{:?}", self).to_lowercase(),
         };
 
@@ -145,7 +147,7 @@ pub enum Transitivity {
 }
 
 impl Transitivity {
-    pub fn explicit_moderation_page(&self) -> &str {
+    pub fn explicit_moderation_page(&self) -> &'static str {
         match self {
             Transitivity::Transitive => "transitive-only",
             Transitivity::Intransitive => "intransitive",
@@ -153,7 +155,7 @@ impl Transitivity {
         }
     }
 
-    pub fn explicit_word_details_page(&self) -> &str {
+    pub fn explicit_word_details_page(&self) -> &'static str {
         match self {
             Transitivity::Transitive => "transitive-only",
             Transitivity::Intransitive => "intransitive",

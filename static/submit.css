@@ -184,11 +184,15 @@ fieldset.contains_table > legend {
 
 #transitivity > label {
     display: inline;
-    margin-right: 0.5em;
+    margin-right: 0.3em;
 }
 
 #transitivity > label > input {
     margin-left: 0.25em;
+}
+
+#intransitive_label {
+    margin: 0 !important;
 }
 
 @media screen and (min-width: 800px) {

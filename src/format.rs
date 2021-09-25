@@ -7,6 +7,7 @@ use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
 use std::borrow::Borrow;
 use std::fmt::{self, Display, Formatter};
+use crate::language::Transitivity;
 
 pub mod filters {
     use super::*;
@@ -277,6 +278,28 @@ impl DisplayHtml for NounClass {
     }
 }
 
+impl DisplayHtml for SuggestedWord {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        DisplayHtml::fmt(&self.english, f)?;
+        f.write_text(" - ")?;
+        DisplayHtml::fmt(&self.xhosa, f)?;
+
+        f.write_text(" (")?;
+        f.join_if_non_empty(" ", [
+            &text_if_bool("inchoative", "non-inchoative", self.is_inchoative),
+            &self.transitivity.map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x))) as &dyn DisplayHtml,
+            &text_if_bool("plural", "singular", self.is_plural),
+            &self.part_of_speech,
+            &self.noun_class,
+        ])?;
+        f.write_text(")")
+    }
+
+    fn is_empty_str(&self) -> bool {
+        false
+    }
+}
+
 macro_rules! impl_display_html {
     ($($typ:ty),*) => {
         $(impl DisplayHtml for $typ {
@@ -300,7 +323,7 @@ macro_rules! impl_display_html {
                 false
             }
         })*
-    }
+    };
 }
 
-impl_display_html!(WordHit, ExistingWord, SuggestedWord);
+impl_display_html!(WordHit, ExistingWord);

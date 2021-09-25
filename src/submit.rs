@@ -92,7 +92,7 @@ impl<'de> Deserialize<'de> for LinkedWordList {
             is_suggestion: String,
         }
 
-        let raw = dbg!(Vec::<Raw>::deserialize(deser)?);
+        let raw = Vec::<Raw>::deserialize(deser)?;
 
         Ok(LinkedWordList(
             raw.into_iter()
@@ -671,35 +671,57 @@ fn process_linked_words(
     let mut suggest_link_deletion = conn.prepare(SUGGEST_LINKED_WORD_DELETION).unwrap();
 
     let existing_word_id = w.existing_id;
+    let suggestion_id = w.suggestion_id;
+
     let mut maybe_insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
         if !new.has_any_changes(&old) {
             return;
         }
 
-        let other = diff_opt(
-            new.other,
-            &old.as_ref()
-                .map(|o| WordOrSuggestionId::existing(o.other.id)),
-            use_submitted,
-        );
+        let (first, second) = match &old {
+            Some(old) => {
+                match existing_word_id {
+                    Some(this_id) if this_id == old.first_word_id => {
+                        let second = diff(new.other, &WordOrSuggestionId::existing(old.second_word_id), use_submitted);
+                        (None, second)
+                    },
+                    Some(_) => {
+                        let first = diff(new.other, &WordOrSuggestionId::existing(old.first_word_id), use_submitted);
+                        (first, None)
+                    }
+                    None => {
+                        panic!("This `existing_id` is none, but there is an old linked word!");
+                    }
+                }
+            }
+            None => {
+                let existing = existing_word_id.map(WordOrSuggestionId::existing);
+                let suggested = suggestion_id.map(WordOrSuggestionId::suggested);
+                (existing.or(suggested), Some(new.other))
+            },
+        };
 
-        let other_existing = other.and_then(WordOrSuggestionId::into_existing);
-        let other_suggested = other.and_then(WordOrSuggestionId::into_suggested);
+        dbg!(first, second);
+
+        let first_existing = first.and_then(WordOrSuggestionId::into_existing);
+        let first_suggested = first.and_then(WordOrSuggestionId::into_suggested);
+        let second_existing = second.and_then(WordOrSuggestionId::into_existing);
+        let second_suggested = second.and_then(WordOrSuggestionId::into_suggested);
 
         upsert_suggested_link
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
                 "Linked word added",
-                suggested_word_id_if_new,
-                other_suggested,
+                first_suggested,
+                second_suggested,
                 diff_opt(
                     new.link_type,
                     &old.as_ref().map(|o| o.link_type),
                     use_submitted
                 ),
-                existing_word_id,
-                other_existing,
+                first_existing,
+                second_existing,
             ])
             .unwrap();
     };
