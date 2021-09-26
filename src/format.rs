@@ -1,12 +1,12 @@
 use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
 use crate::language::NounClassExt;
+use crate::language::Transitivity;
 use crate::search::WordHit;
 use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
 use std::fmt::{self, Display, Formatter};
-use crate::language::Transitivity;
 
 fn escape(s: &str) -> MarkupDisplay<Html, &str> {
     MarkupDisplay::new_unsafe(s, Html)
@@ -254,13 +254,19 @@ impl DisplayHtml for SuggestedWord {
         DisplayHtml::fmt(&self.xhosa, f)?;
         f.fmt.write_str("</span> (")?;
 
-        f.join_if_non_empty(" ", [
-            &text_if_bool("inchoative", "non-inchoative", self.is_inchoative),
-            &self.transitivity.map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x))) as &dyn DisplayHtml,
-            &text_if_bool("plural", "singular", self.is_plural),
-            &self.part_of_speech,
-            &self.noun_class,
-        ])?;
+        f.join_if_non_empty(
+            " ",
+            [
+                &text_if_bool("inchoative", "non-inchoative", self.is_inchoative),
+                &self
+                    .transitivity
+                    .map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x)))
+                    as &dyn DisplayHtml,
+                &text_if_bool("plural", "singular", self.is_plural),
+                &self.part_of_speech,
+                &self.noun_class,
+            ],
+        )?;
         f.write_text(")")
     }
 
@@ -280,7 +286,8 @@ pub struct HyperlinkWrapper<'a>(&'a WordHit);
 impl DisplayHtml for HyperlinkWrapper<'_> {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         if !self.0.is_suggestion {
-            f.fmt.write_fmt(format_args!("<a href=\"/word/{}\">", self.0.id))?;
+            f.fmt
+                .write_fmt(format_args!("<a href=\"/word/{}\">", self.0.id))?;
             self.0.fmt(f)?;
             f.fmt.write_str("</a>")
         } else {

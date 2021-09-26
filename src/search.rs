@@ -134,13 +134,9 @@ impl TantivyClient {
         }
     }
 
-    pub async fn search(
-        &self,
-        query: String,
-        include: IncludeResults,
-    ) -> Result<Vec<WordHit>> {
+    pub async fn search(&self, query: String, include: IncludeResults) -> Result<Vec<WordHit>> {
         self.searchers
-            .send(SearchRequest { query, include, })
+            .send(SearchRequest { query, include })
             .await
             .map_err(Into::into)
     }
@@ -374,6 +370,7 @@ pub struct SearchRequest {
     include: IncludeResults,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Copy, Clone)]
 pub enum IncludeResults {
     AcceptedOnly,
@@ -438,8 +435,10 @@ impl Handler<SearchRequest> for SearcherActor {
                     let suggested_by =
                         Term::from_field_u64(client.schema_info.suggesting_user, user.get());
                     let suggested_by = TermQuery::new(suggested_by, IndexRecordOption::Basic);
-                    let suggested_by =
-                        BooleanQuery::intersection(vec![Box::new(suggested_by), Box::new(terms.clone())]);
+                    let suggested_by = BooleanQuery::intersection(vec![
+                        Box::new(suggested_by),
+                        Box::new(terms.clone()),
+                    ]);
                     BooleanQuery::union(vec![Box::new(not_suggestion()), Box::new(suggested_by)])
                 }
                 IncludeResults::AcceptedOnly => not_suggestion(),

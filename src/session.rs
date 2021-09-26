@@ -1,4 +1,4 @@
-use crate::search::{TantivyClient, WordHit, IncludeResults};
+use crate::search::{IncludeResults, TantivyClient, WordHit};
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use serde::{Deserialize, Serialize};
@@ -123,7 +123,11 @@ impl Handler<WsMessage> for LiveSearchSession {
                         return;
                     }
 
-                    let results = self.tantivy.search(query.to_owned(), IncludeResults::AcceptedOnly).await.unwrap();
+                    let results = self
+                        .tantivy
+                        .search(query.to_owned(), IncludeResults::AcceptedOnly)
+                        .await
+                        .unwrap();
                     serde_json::to_string(&results).unwrap()
                 }
             };

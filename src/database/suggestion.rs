@@ -648,7 +648,8 @@ impl SuggestedLinkedWord {
         };
 
         let ignore_invalid_col = |e| match e {
-            rusqlite::Error::InvalidColumnName(n) if n == "first_word_id" || n == "second_word_id" => {},
+            rusqlite::Error::InvalidColumnName(n)
+                if n == "first_word_id" || n == "second_word_id" => {}
             _ => panic!("Error: {:#?}", e),
         };
 

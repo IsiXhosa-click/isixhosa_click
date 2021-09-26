@@ -27,10 +27,12 @@
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
 
-use crate::auth::{with_any_auth, Auth, DbBase, PublicAccessDb, Unauthorized, UnauthorizedReason, Permissions};
+use crate::auth::{
+    with_any_auth, Auth, DbBase, Permissions, PublicAccessDb, Unauthorized, UnauthorizedReason,
+};
 use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
-use crate::search::{TantivyClient, WordHit, IncludeResults};
+use crate::search::{IncludeResults, TantivyClient, WordHit};
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
 use auth::auth;
@@ -414,7 +416,10 @@ async fn query_search(
     _db: impl PublicAccessDb,
     tantivy: Arc<TantivyClient>,
 ) -> Result<impl warp::Reply, Rejection> {
-    let results = tantivy.search(query.query.clone(), IncludeResults::AcceptedOnly).await.unwrap();
+    let results = tantivy
+        .search(query.query.clone(), IncludeResults::AcceptedOnly)
+        .await
+        .unwrap();
 
     Ok(Search {
         auth,
@@ -438,9 +443,14 @@ fn live_search(
             None
         };
 
-        let addr = LiveSearchSession::new(sender, tantivy, include_suggestions_from_user, auth.has_permissions(Permissions::Moderator))
-            .create(Some(4))
-            .spawn_global();
+        let addr = LiveSearchSession::new(
+            sender,
+            tantivy,
+            include_suggestions_from_user,
+            auth.has_permissions(Permissions::Moderator),
+        )
+        .create(Some(4))
+        .spawn_global();
         tokio::spawn(addr.attach_stream(stream.map(WsMessage)));
         futures::future::ready(())
     })

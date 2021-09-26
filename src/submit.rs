@@ -560,7 +560,7 @@ pub async fn submit_suggestion(
     let suggesting_user = suggesting_user.id;
 
     if w.infinitive.starts_with('U') {
-        w.infinitive.replacen('U', "u", 1);
+        w.infinitive = w.infinitive.replacen('U', "u", 1);
     }
 
     tokio::task::spawn_blocking(move || {
@@ -574,7 +574,10 @@ pub async fn submit_suggestion(
         } else {
             "Word edited."
         };
-        let changes_summary = w.changes_summary.clone().unwrap_or_else(|| changes_summary_default.to_owned());
+        let changes_summary = w
+            .changes_summary
+            .clone()
+            .unwrap_or_else(|| changes_summary_default.to_owned());
 
         let params = params![
             w.suggestion_id,
@@ -687,26 +690,32 @@ fn process_linked_words(
         }
 
         let (first, second) = match &old {
-            Some(old) => {
-                match existing_word_id {
-                    Some(this_id) if this_id == old.first_word_id => {
-                        let second = diff(new.other, &WordOrSuggestionId::existing(old.second_word_id), use_submitted);
-                        (None, second)
-                    },
-                    Some(_) => {
-                        let first = diff(new.other, &WordOrSuggestionId::existing(old.first_word_id), use_submitted);
-                        (first, None)
-                    }
-                    None => {
-                        panic!("This `existing_id` is none, but there is an old linked word!");
-                    }
+            Some(old) => match existing_word_id {
+                Some(this_id) if this_id == old.first_word_id => {
+                    let second = diff(
+                        new.other,
+                        &WordOrSuggestionId::existing(old.second_word_id),
+                        use_submitted,
+                    );
+                    (None, second)
                 }
-            }
+                Some(_) => {
+                    let first = diff(
+                        new.other,
+                        &WordOrSuggestionId::existing(old.first_word_id),
+                        use_submitted,
+                    );
+                    (first, None)
+                }
+                None => {
+                    panic!("This `existing_id` is none, but there is an old linked word!");
+                }
+            },
             None => {
                 let existing = existing_word_id.map(WordOrSuggestionId::existing);
                 let suggested = suggestion_id.map(WordOrSuggestionId::suggested);
                 (existing.or(suggested), Some(new.other))
-            },
+            }
         };
 
         dbg!(first, second);
