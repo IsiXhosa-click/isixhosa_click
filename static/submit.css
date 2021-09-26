@@ -178,13 +178,8 @@ fieldset.contains_table > legend {
     gap: 1em;
 }
 
-#transitivity > label {
-    display: inline;
-    margin-right: 0.3em;
-}
-
-#transitivity > label > input {
-    margin-left: 0.25em;
+#transitivity {
+    gap: 1em;
 }
 
 #intransitive_label {
@@ -200,6 +195,10 @@ fieldset.contains_table > legend {
 
 #submit_button {
     width: max-content;
+}
+
+#changes_summary {
+    width: 98%;
 }
 
 @media screen and (min-width: 800px) {

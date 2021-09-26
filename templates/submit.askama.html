@@ -7,7 +7,7 @@
     <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
     {%- call macros::description("Submit a word to the free, open IsiXhosa.click live dictionary for Xhosa and English.") -%}
     <meta name="og:url" content="https://isixhosa.click/submit"/>
-    <link rel="stylesheet" href="/submit.css?v=3">
+    <link rel="stylesheet" href="/submit.css?v=4">
     {%- call macros::meta() -%}
 </head>
 
@@ -59,18 +59,22 @@
             <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded"
                 {#-#} class="column_list"
             >
-                {%- match action -%}
-                    {%- when SubmitFormAction::EditSuggestion with { suggestion_id, existing_id } -%}
-                        <select name="suggestion_id" hidden><option value="{{ suggestion_id }}"></select>
+                {%- let existing_id -%}
 
-                        {%- match existing_id -%}
-                            {%- when Some with (existing_id) -%}
-                                <select name="existing_id" hidden><option value="{{ existing_id }}"></select>
-                            {%- when None -%}
-                        {%- endmatch -%}
+                {%- match action -%}
+                    {%- when SubmitFormAction::EditSuggestion with { suggestion_id, existing_id: exist } -%}
+                        <select name="suggestion_id" hidden><option value="{{ suggestion_id }}"></select>
+                        {%- let existing_id = exist.clone() -%}
                     {%- when SubmitFormAction::EditExisting with (id) -%}
-                        <select name="existing_id" hidden><option value="{{ id }}"></select>
+                         {%- let existing_id = Some(id.clone()) -%}
                     {%- when other -%}
+                        {%- let existing_id = None -%}
+                {%- endmatch -%}
+
+                {%- match existing_id -%}
+                    {%- when Some with (existing_id) -%}
+                        <select name="existing_id" hidden><option value="{{ existing_id }}"></select>
+                    {%- when None -%}
                 {%- endmatch -%}
 
                 <span>Required fields are marked with a <span class="required">*</span>.</span>
@@ -88,7 +92,7 @@
                         <div>
                             <label for="xhosa">Xhosa<span class="required">*</span>:</label>
                             <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false"
-                             {#-#} value="{{ word.xhosa }}" required>
+                             {#-#} value="{{ word.xhosa }}" lang="xh" required>
                         </div>
 
                         <div>
@@ -99,7 +103,7 @@
                                 Xhosa with tone markings:
                             </label>
                             <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off"
-                             {#-#} spellcheck="false" value="{{ word.xhosa_tone_markings }}">
+                             {#-#} spellcheck="false" value="{{ word.xhosa_tone_markings }}" lang="xh">
                         </div>
 
                         <div>
@@ -197,7 +201,7 @@
                         <div class="verb_option" hidden>
                             <label for="infinitive">Infinitive form<span class="required">*</span>:</label>
                             <input type="text" id="infinitive" name="infinitive" autocomplete="off" spellcheck="false"
-                                {#-#} value="{{ word.infinitive }}" class="required_if_enabled">
+                                {#-#} value="{{ word.infinitive }}" class="required_if_enabled" lang="xh">
                         </div>
 
                         <div class="verb_option" hidden>
@@ -212,33 +216,34 @@
                                 {%- if word.is_inchoative %} checked {%- endif -%}>
                         </div>
 
-                        <div class="verb_option row_list" id="transitivity" hidden>
+                        <div class="verb_option row_list" hidden>
                             <span tabindex="0" data-descr="Whether the verb can take a direct object or not.">
-                                Transitivity:
+                                Transitivity<span class="required">*</span>:
                             </span>
 
-                            {#- ambitransitive is default -#}
-                            {%- let ambitransitive = word.transitivity == Some(Transitivity::Ambitransitive) ||
-                                word.transitivity.is_none()
-                            -%}
+                            <div> {#- This is table-cell -#}
+                                <div class="row_or_column" id="transitivity"> {#- inside of table-cell -#}
+                                    <div>
+                                         <input type="radio" id="either" name="transitivity" value="either" class="required_if_enabled"
+                                            {%- if word.transitivity == Some(Transitivity::Ambitransitive)  %} checked {%- endif -%}>
+                                        <label for="either">Either</label>
+                                    </div>
 
-                            <label for="either">Either
-                                <input type="radio" id="either" name="transitivity" value="either"
-                                    {%- if ambitransitive  %} checked {%- endif -%}
-                                >
-                            </label>
+                                    <div>
+                                         <input type="radio" id="transitive" name="transitivity" value="transitive" class="required_if_enabled"
+                                            {%- if word.transitivity == Some(Transitivity::Transitive) %} checked {%- endif -%}>
+                                        <label for="transitive">Transitive only</label>
+                                    </div>
 
-                            <label for="transitive">Transitive only
-                                <input type="radio" id="transitive" name="transitivity" value="transitive"
-                                    {%- if word.transitivity == Some(Transitivity::Transitive) %} checked {%- endif -%}>
-                            </label>
+                                    <div>
+                                        <input type="radio" id="intransitive" name="transitivity" value="intransitive" class="required_if_enabled"
+                                            {%- if word.transitivity == Some(Transitivity::Intransitive) %} checked {%- endif -%}>
+                                        <label for="intransitive" id="intransitive_label">Intransitive only</label>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <label for="intransitive" id="intransitive_label">Intransitive only
-                                <input type="radio" id="intransitive" name="transitivity" value="intransitive"
-                                    {%- if word.transitivity == Some(Transitivity::Intransitive) %} checked {%- endif -%}>
-                            </label>
-
-                            <input type="radio" id="transitivity_unselected" name="transitivity" value="" hidden>
+                            <input type="radio" id="transitivity_unselected" name="transitivity" value="" hidden class="required_if_enabled">
                         </div>
 
                         {#- Conjunction options -#}
@@ -280,6 +285,14 @@
                 </fieldset>
 
                 <div class="column_list spaced_flex_list">
+                    {%- if existing_id.is_some() -%}
+                        <div>
+                            <label for="changes_summary">Changes made and why<span class="required">*</span>:</label>
+                            <textarea id="changes_summary" name="changes_summary" autocomplete="off" spellcheck="true"
+                                {#-#} placeholder="Briefly explain the changes you made and why." required></textarea>
+                        </div>
+                    {%- endif -%}
+
                     <div>
                         <input type="checkbox" id="tos_agree" name="tos_agree" required>
                         <label for="tos_agree">
@@ -303,9 +316,9 @@
             </form>
 
             <script type="module">
-                import { addExample, addExamples } from "/submit/example.js?v=1";
+                import { addExample, addExamples } from "/submit/example.js?v=2";
                 import { partOfSpeechChange } from "/submit/part_of_speech_specific.js?v=1";
-                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js?v=3";
+                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js?v=4";
 
                 window.addEventListener("DOMContentLoaded", function() {
                     for (let input of document.getElementsByTagName("input")) {

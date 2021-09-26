@@ -231,6 +231,7 @@ impl SuggestedWord {
         let old = e.and_then(|e| e.followed_by.clone());
         let followed_by = val.map(|x| x.parse().ok());
         let followed_by = match followed_by {
+            Some(new) if e.is_none() => MaybeEdited::New(new),
             Some(new) if old != new => MaybeEdited::Edited { old, new },
             _ => MaybeEdited::Old(old),
         };
@@ -518,9 +519,8 @@ impl SuggestedLinkedWord {
                    linked_words.first_word_id = words.word_id
 
             WHERE
-                linked_word_suggestions.existing_linked_word_id IS NOT NULL OR
-                linked_word_suggestions.first_existing_word_id IS NOT NULL OR
-                linked_word_suggestions.second_existing_word_id IS NOT NULL;
+                linked_word_suggestions.suggested_word_id IS NULL AND
+                linked_word_suggestions.second_suggested_word_id IS NULL;
         ";
 
         let conn = db.get().unwrap();
@@ -724,7 +724,7 @@ pub enum MaybeEdited<T> {
 }
 
 impl<T> MaybeEdited<T> {
-    pub fn map<U, F: Fn(&T) -> U>(&self, f: F) -> MaybeEdited<U> {
+    pub fn map<'a, U, F: Fn(&'a T) -> U>(&'a self, f: F) -> MaybeEdited<U> {
         match self {
             MaybeEdited::Edited { new, old } => MaybeEdited::Edited {
                 new: f(new),

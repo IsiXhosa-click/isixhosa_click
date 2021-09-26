@@ -5,38 +5,8 @@ use crate::search::WordHit;
 use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
-use std::borrow::Borrow;
 use std::fmt::{self, Display, Formatter};
 use crate::language::Transitivity;
-
-pub mod filters {
-    use super::*;
-
-    pub fn html<'a, T: DisplayHtml + 'a>(
-        v: T,
-    ) -> askama::Result<MarkupDisplay<Html, DisplayHtmlWrapper<'a, T>>> {
-        let w = DisplayHtmlWrapper {
-            val: OwnedOrBorrowed::Owned(v),
-            plain_text: false,
-        };
-
-        Ok(MarkupDisplay::new_safe(w, Html))
-    }
-}
-
-enum OwnedOrBorrowed<'a, T> {
-    Owned(T),
-    Borrowed(&'a T),
-}
-
-impl<'a, T> Borrow<T> for OwnedOrBorrowed<'a, T> {
-    fn borrow(&self) -> &T {
-        match self {
-            OwnedOrBorrowed::Owned(v) => v,
-            OwnedOrBorrowed::Borrowed(b) => b,
-        }
-    }
-}
 
 fn escape(s: &str) -> MarkupDisplay<Html, &str> {
     MarkupDisplay::new_unsafe(s, Html)
@@ -87,14 +57,13 @@ impl<'a, 'b> HtmlFormatter<'a, 'b> {
 }
 
 pub struct DisplayHtmlWrapper<'a, T> {
-    val: OwnedOrBorrowed<'a, T>,
+    val: &'a T,
     plain_text: bool,
 }
 
 impl<T: DisplayHtml> Display for DisplayHtmlWrapper<'_, T> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        let b: &T = self.val.borrow();
-        b.fmt(&mut HtmlFormatter {
+        self.val.fmt(&mut HtmlFormatter {
             fmt,
             plain_text: self.plain_text,
         })
@@ -110,7 +79,7 @@ pub trait DisplayHtml {
         Self: Sized,
     {
         DisplayHtmlWrapper {
-            val: OwnedOrBorrowed::Borrowed(self),
+            val: self,
             plain_text: true,
         }
     }
@@ -120,7 +89,7 @@ pub trait DisplayHtml {
         Self: Sized,
     {
         DisplayHtmlWrapper {
-            val: OwnedOrBorrowed::Borrowed(self),
+            val: self,
             plain_text: false,
         }
     }
@@ -281,10 +250,10 @@ impl DisplayHtml for NounClass {
 impl DisplayHtml for SuggestedWord {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         DisplayHtml::fmt(&self.english, f)?;
-        f.write_text(" - ")?;
+        f.fmt.write_str(" - <span lang=\"xh\">")?;
         DisplayHtml::fmt(&self.xhosa, f)?;
+        f.fmt.write_str("</span> (")?;
 
-        f.write_text(" (")?;
         f.join_if_non_empty(" ", [
             &text_if_bool("inchoative", "non-inchoative", self.is_inchoative),
             &self.transitivity.map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x))) as &dyn DisplayHtml,
@@ -293,6 +262,30 @@ impl DisplayHtml for SuggestedWord {
             &self.noun_class,
         ])?;
         f.write_text(")")
+    }
+
+    fn is_empty_str(&self) -> bool {
+        false
+    }
+}
+
+impl MaybeEdited<WordHit> {
+    pub fn hyperlinked(&self) -> MaybeEdited<HyperlinkWrapper<'_>> {
+        self.map(|x| HyperlinkWrapper(x))
+    }
+}
+
+pub struct HyperlinkWrapper<'a>(&'a WordHit);
+
+impl DisplayHtml for HyperlinkWrapper<'_> {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        if !self.0.is_suggestion {
+            f.fmt.write_fmt(format_args!("<a href=\"/word/{}\">", self.0.id))?;
+            self.0.fmt(f)?;
+            f.fmt.write_str("</a>")
+        } else {
+            self.0.fmt(f)
+        }
     }
 
     fn is_empty_str(&self) -> bool {

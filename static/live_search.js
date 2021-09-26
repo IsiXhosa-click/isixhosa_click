@@ -173,7 +173,7 @@ export function formatResult(result, elt) {
             let strong = document.createElement("strong");
             strong.className = "noun_class_prefix";
 
-            if (result.is_plural) {
+            if (result.noun_class === class_pair[1]) {
                 strong.innerText = class_pair[1]
                 elt.innerText += ` - class ${class_pair[0]}/`
                 elt.appendChild(strong);

@@ -1,6 +1,6 @@
 {%- macro searchbox(start_query) -%}
     <script type="module">
-        import { LiveSearch } from "/live_search.js?v=3";
+        import { LiveSearch } from "/live_search.js?v=4";
 
         window.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
@@ -21,12 +21,14 @@
 
             function createItem(formatted, id) {
                 let link = document.createElement("a");
+                let span = document.createElement("span");
                 link.href = `/word/${id}`;
                 link.className = "hit";
-                return link;
+                return span;
             }
 
-            function postCreateItem(link) {
+            function postCreateItem(span) {
+                let link = span.parentElement;
                 let goArrow = document.createElement("span");
                 goArrow.classList.add("material-icons", "go_arrow");
                 goArrow.innerText = "arrow_forward";

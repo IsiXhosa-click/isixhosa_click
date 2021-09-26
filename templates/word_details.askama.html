@@ -20,7 +20,7 @@
             <article>
                 <div>
                     <header id="word_header" class="row_list">
-                        <h1>{{ word.english }} - {{ word.xhosa }}</h1>
+                        <h1>{{ word.english }} - <span lang="xh">{{ word.xhosa }}</span></h1>
                         <a id="edit_word" title="Suggest edit" href="/word/{{ word.word_id }}/edit">
                             <span class="material-icons">edit</span>
                         </a>
@@ -99,7 +99,7 @@
                                     {%- if !word.infinitive.is_empty() -%}
                                         <tr>
                                             <th scope="row">Infinitive</th>
-                                            <td>{{ word.infinitive }}</td>
+                                            <td lang="xh">{{ word.infinitive }}</td>
                                         </tr>
                                     {%- endif -%}
 
@@ -151,7 +151,7 @@
                                             >
                                                 Xhosa with tone markings
                                             </th>
-                                            <td>{{ word.xhosa_tone_markings }}</td>
+                                            <td lang="xh">{{ word.xhosa_tone_markings }}</td>
                                         </tr>
                                     {%- endif -%}
 
@@ -175,7 +175,7 @@
                                         <h3>English</h3>
                                         <p>{{ ex.english }}</p>
                                         <h3>Xhosa</h3>
-                                        <p>{{ ex.xhosa }}</p>
+                                        <p lang="xh">{{ ex.xhosa }}</p>
                                     </li>
                                 {%- endfor -%}
                                 </ul>

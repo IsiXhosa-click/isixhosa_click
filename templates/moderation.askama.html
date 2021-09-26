@@ -229,7 +229,7 @@
                                         {%- if !s.xhosa_tone_markings.is_empty_str() -%}
                                             <tr>
                                                 <th scope="row">Xhosa with tone markings</th>
-                                                <td>{{ s.xhosa_tone_markings.to_html()|safe }}</td>
+                                                <td lang="xh">{{ s.xhosa_tone_markings.to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
@@ -243,7 +243,7 @@
                                         {%- if !s.infinitive.is_empty_str() -%}
                                             <tr>
                                                 <th scope="row">Infinitive form</th>
-                                                <td>{{ s.infinitive.to_html()|safe }}</td>
+                                                <td lang="xh">{{ s.infinitive.to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
@@ -273,7 +273,7 @@
                                                     <h3>English</h3>
                                                     <p>{{ ex.english.to_html()|safe }}</p>
                                                     <h3>Xhosa</h3>
-                                                     <p>{{ ex.xhosa.to_html()|safe }}</p>
+                                                    <p lang="xh">{{ ex.xhosa.to_html()|safe }}</p>
                                                 </li>
                                             {%- endfor -%}
                                         </ul>
@@ -296,7 +296,7 @@
                                                 {%- for l in s.linked_words -%}
                                                     <tr>
                                                         <td>{{ l.link_type.to_html()|safe }}</td>
-                                                        <td>{{ l.other(s.this_id()).to_html()|safe }}</td>
+                                                        <td>{{ l.other(s.this_id()).hyperlinked().to_html()|safe }}</td>
                                                     </tr>
                                                 {%- endfor -%}
                                             </tbody>

@@ -134,6 +134,8 @@ pub struct WordSubmission {
     pub english: String,
     pub xhosa: String,
     pub part_of_speech: PartOfSpeech,
+    #[serde_as(as = "NoneAsEmptyString")]
+    changes_summary: Option<String>,
     note: String,
     xhosa_tone_markings: String,
     infinitive: String,
@@ -557,17 +559,22 @@ pub async fn submit_suggestion(
     let mut w = word;
     let suggesting_user = suggesting_user.id;
 
+    if w.infinitive.starts_with('U') {
+        w.infinitive.replacen('U', "u", 1);
+    }
+
     tokio::task::spawn_blocking(move || {
         let conn = db.get().unwrap();
 
         let orig = WordFormTemplate::fetch_from_db(&db, w.existing_id, None).unwrap_or_default();
         let use_submitted = w.existing_id.is_none();
 
-        let changes_summary = if w.existing_id.is_none() {
-            "Word added"
+        let changes_summary_default = if w.existing_id.is_none() {
+            "Word added."
         } else {
-            "Word edited"
+            "Word edited."
         };
+        let changes_summary = w.changes_summary.clone().unwrap_or_else(|| changes_summary_default.to_owned());
 
         let params = params![
             w.suggestion_id,
@@ -631,8 +638,8 @@ pub async fn submit_suggestion(
             }
         }
 
-        process_linked_words(&mut w, &db, suggested_word_id_if_new);
-        process_examples(&mut w, &db, suggested_word_id_if_new);
+        process_linked_words(&mut w, &db, suggested_word_id_if_new, &changes_summary);
+        process_examples(&mut w, &db, suggested_word_id_if_new, &changes_summary);
     })
     .await
     .unwrap();
@@ -642,6 +649,7 @@ fn process_linked_words(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
     suggested_word_id_if_new: Option<i64>,
+    changes_summary: &str,
 ) {
     const INSERT_LINKED_WORD_SUGGESTION: &str = "
         INSERT INTO linked_word_suggestions (
@@ -712,7 +720,7 @@ fn process_linked_words(
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
-                "Linked word added",
+                changes_summary,
                 first_suggested,
                 second_suggested,
                 diff_opt(
@@ -776,7 +784,7 @@ fn process_linked_words(
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
-                "Linked word added",
+                changes_summary,
                 suggested_word_id_if_new,
                 other_suggested,
                 new.link_type,
@@ -791,6 +799,7 @@ fn process_examples(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
     suggested_word_id_if_new: Option<i64>,
+    changes_summary: &str,
 ) {
     const INSERT_EXAMPLE_SUGGESTION: &str = "
         INSERT INTO example_suggestions (
@@ -828,7 +837,7 @@ fn process_examples(
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
-                "Example edited",
+                changes_summary,
                 suggested_word_id_if_new,
                 existing_id,
                 diff_opt(
@@ -902,7 +911,7 @@ fn process_examples(
             .execute(params![
                 new.suggestion_id,
                 new.existing_id,
-                "Example added",
+                changes_summary,
                 suggested_word_id_if_new,
                 w.existing_id,
                 new.english,

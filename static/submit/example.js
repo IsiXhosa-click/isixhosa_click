@@ -15,7 +15,7 @@ function removeExample(button_id) {
     }
 }
 
-function textField(name, label_txt, val, spellcheck) {
+function textField(name, label_txt, val, english) {
     let div = document.createElement("div");
     div.className = "table_row_if_space";
     let label = document.createElement("label");
@@ -24,10 +24,14 @@ function textField(name, label_txt, val, spellcheck) {
     label.innerText = label_txt;
     textarea.name = name;
     textarea.autocomplete = "off";
-    textarea.spellcheck = spellcheck;
+    textarea.spellcheck = english;
 
     if (val != null) {
         textarea.value = val;
+    }
+
+    if (!english) {
+        textarea.lang = "xh";
     }
 
     textarea.setAttribute("data-lpignore", "true");
