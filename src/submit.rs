@@ -22,6 +22,7 @@ use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
 use serde_with::{serde_as, NoneAsEmptyString};
+use std::num::NonZeroU64;
 use std::sync::Arc;
 
 #[derive(Template, Debug)]
@@ -134,7 +135,6 @@ pub struct WordSubmission {
     pub english: String,
     pub xhosa: String,
     pub part_of_speech: PartOfSpeech,
-    #[serde_as(as = "NoneAsEmptyString")]
     changes_summary: Option<String>,
     note: String,
     xhosa_tone_markings: String,
@@ -222,7 +222,7 @@ pub fn submit(
         .and(warp::any().map(SubmitFormAction::default))
         .and_then(submit_word_page);
 
-    let submit_form = body::content_length_limit(4 * 1024)
+    let submit_form = body::content_length_limit(64 * 1024)
         .and(with_user_auth(db.clone()))
         .and(warp::any().map(move || tantivy.clone()))
         .and(qs_form())
@@ -532,12 +532,13 @@ pub async fn submit_suggestion(
     suggesting_user: &User,
     db: &impl UserAccessDb,
 ) {
+    // Intentionally suggesting_user is not set to excluded
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
-            suggestion_id, existing_word_id, changes_summary, english, xhosa, part_of_speech,
-            xhosa_tone_markings, infinitive, is_plural, is_inchoative, transitivity, followed_by,
-            noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+            suggestion_id, suggesting_user, existing_word_id, changes_summary, english, xhosa,
+            part_of_speech, xhosa_tone_markings, infinitive, is_plural, is_inchoative, transitivity,
+            followed_by, noun_class, note
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 existing_word_id = excluded.existing_word_id,
                 changes_summary = excluded.changes_summary,
@@ -581,6 +582,7 @@ pub async fn submit_suggestion(
 
         let params = params![
             w.suggestion_id,
+            suggesting_user.get(),
             w.existing_id,
             changes_summary,
             diff(w.english.clone(), &orig.english, use_submitted),
@@ -641,8 +643,20 @@ pub async fn submit_suggestion(
             }
         }
 
-        process_linked_words(&mut w, &db, suggested_word_id_if_new, &changes_summary);
-        process_examples(&mut w, &db, suggested_word_id_if_new, &changes_summary);
+        process_linked_words(
+            &mut w,
+            &db,
+            suggesting_user,
+            suggested_word_id_if_new,
+            &changes_summary,
+        );
+        process_examples(
+            &mut w,
+            &db,
+            suggesting_user,
+            suggested_word_id_if_new,
+            &changes_summary,
+        );
     })
     .await
     .unwrap();
@@ -651,14 +665,16 @@ pub async fn submit_suggestion(
 fn process_linked_words(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
+    suggesting_user: NonZeroU64,
     suggested_word_id_if_new: Option<i64>,
     changes_summary: &str,
 ) {
     const INSERT_LINKED_WORD_SUGGESTION: &str = "
         INSERT INTO linked_word_suggestions (
-            suggestion_id, existing_linked_word_id, changes_summary, suggested_word_id,
-            second_suggested_word_id, link_type, first_existing_word_id, second_existing_word_id
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            suggestion_id, suggesting_user, existing_linked_word_id, changes_summary,
+            suggested_word_id, second_suggested_word_id, link_type, first_existing_word_id,
+            second_existing_word_id
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 changes_summary = excluded.changes_summary,
                 suggested_word_id = excluded.suggested_word_id,
@@ -718,8 +734,6 @@ fn process_linked_words(
             }
         };
 
-        dbg!(first, second);
-
         let first_existing = first.and_then(WordOrSuggestionId::into_existing);
         let first_suggested = first.and_then(WordOrSuggestionId::into_suggested);
         let second_existing = second.and_then(WordOrSuggestionId::into_existing);
@@ -728,6 +742,7 @@ fn process_linked_words(
         upsert_suggested_link
             .execute(params![
                 new.suggestion_id,
+                suggesting_user.get(),
                 new.existing_id,
                 changes_summary,
                 first_suggested,
@@ -792,6 +807,7 @@ fn process_linked_words(
         upsert_suggested_link
             .execute(params![
                 new.suggestion_id,
+                suggesting_user.get(),
                 new.existing_id,
                 changes_summary,
                 suggested_word_id_if_new,
@@ -807,14 +823,15 @@ fn process_linked_words(
 fn process_examples(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
+    suggesting_user: NonZeroU64,
     suggested_word_id_if_new: Option<i64>,
     changes_summary: &str,
 ) {
     const INSERT_EXAMPLE_SUGGESTION: &str = "
         INSERT INTO example_suggestions (
-            suggestion_id, existing_example_id, changes_summary, suggested_word_id,
+            suggestion_id, suggesting_user, existing_example_id, changes_summary, suggested_word_id,
             existing_word_id, english, xhosa
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 changes_summary = excluded.changes_summary,
                 suggested_word_id = excluded.suggested_word_id,
@@ -845,6 +862,7 @@ fn process_examples(
         upsert_example
             .execute(params![
                 new.suggestion_id,
+                suggesting_user.get(),
                 new.existing_id,
                 changes_summary,
                 suggested_word_id_if_new,
@@ -919,6 +937,7 @@ fn process_examples(
         upsert_example
             .execute(params![
                 new.suggestion_id,
+                suggesting_user.get(),
                 new.existing_id,
                 changes_summary,
                 suggested_word_id_if_new,

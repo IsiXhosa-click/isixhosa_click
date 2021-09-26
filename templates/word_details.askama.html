@@ -205,6 +205,17 @@
                                 </table>
                             </div>
                         {%- endif -%}
+
+                        {%- if !word.contributors.is_empty() -%}
+                            <details>
+                                <summary>Contributors</summary>
+                                <ul id="contributors">
+                                    {%- for contributor in word.contributors -%}
+                                        <li>{{ contributor.to_html()|safe }}</li>
+                                    {%- endfor -%}
+                                </ul>
+                            </details>
+                        {%- endif -%}
                     </div>
                 </div>
             </article>

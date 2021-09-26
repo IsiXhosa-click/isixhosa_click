@@ -22,6 +22,7 @@ use std::process::Command;
 use std::time::Duration;
 use tempdir::TempDir;
 
+// TODO restore users
 pub fn restore(cfg: Config) {
     let conn = Connection::open(&cfg.database_path).unwrap();
 
@@ -29,6 +30,7 @@ pub fn restore(cfg: Config) {
     restore_words(&cfg, &conn);
     restore_examples(&cfg, &conn);
     restore_linked_words(&cfg, &conn);
+    restore_contributions(&cfg, &conn);
 
     // Force reindex on next start
     std::fs::remove_dir_all(&cfg.tantivy_path).unwrap();
@@ -56,6 +58,8 @@ fn export(cfg: &Config, src: &Connection) {
     write_words(cfg, &dest);
     write_examples(cfg, &dest);
     write_linked_words(cfg, &dest);
+    write_users(cfg, &dest);
+    write_contributions(cfg, &dest);
 
     let output = Command::new("git")
         .current_dir(&cfg.plaintext_export_path)
@@ -338,6 +342,40 @@ impl TryFrom<&Row<'_>> for LinkedWordRecord {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ContributionRecord {
+    pub word_id: u64,
+    pub user_id: u64,
+}
+
+impl TryFrom<&Row<'_>> for ContributionRecord {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(ContributionRecord {
+            word_id: row.get("word_id")?,
+            user_id: row.get("user_id")?,
+        })
+    }
+}
+
+#[derive(Serialize)]
+pub struct UserRecord {
+    pub user_id: u64,
+    pub username: String,
+}
+
+impl TryFrom<&Row<'_>> for UserRecord {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(UserRecord {
+            user_id: row.get("user_id")?,
+            username: row.get("username")?,
+        })
+    }
+}
+
 fn csv_writer(cfg: &Config, file: &str) -> csv::Writer<BufWriter<File>> {
     let path = cfg.plaintext_export_path.join(file);
     let writer = BufWriter::new(File::create(path).unwrap());
@@ -523,6 +561,54 @@ fn restore_linked_words(cfg: &Config, conn: &Connection) {
             .execute(params![l.link_id, l.link_type, l.first, l.second])
             .unwrap();
     }
+}
+
+#[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
+fn write_contributions(cfg: &Config, conn: &Connection) {
+    const SELECT: &str = "SELECT word_id, user_id FROM user_attributions ORDER BY word_id;";
+
+    let mut csv = csv_writer(cfg, "user_attributions.csv");
+
+    conn.prepare(SELECT)
+        .unwrap()
+        .query(params![])
+        .unwrap()
+        .map(|row| ContributionRecord::try_from(row))
+        .map_err(|e| -> anyhow::Error { e.into() })
+        .for_each(|example| csv.serialize(example).map_err(Into::into))
+        .unwrap()
+}
+
+#[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
+fn restore_contributions(cfg: &Config, conn: &Connection) {
+    const INSERT: &str = "
+        INSERT INTO user_attributions (word_id, user_id) VALUES (?1, ?2);
+    ";
+
+    let mut csv = csv_reader(cfg, "user_attributions.csv");
+    let mut insert = conn.prepare(INSERT).unwrap();
+
+    for res in csv.deserialize() {
+        let l: ContributionRecord = res.unwrap();
+        insert.execute(params![l.word_id, l.user_id]).unwrap();
+    }
+}
+
+#[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
+fn write_users(cfg: &Config, conn: &Connection) {
+    const SELECT: &str =
+        "SELECT user_id, username FROM users WHERE display_name = 1 ORDER BY user_id;";
+
+    let mut csv = csv_writer(cfg, "users.csv");
+
+    conn.prepare(SELECT)
+        .unwrap()
+        .query(params![])
+        .unwrap()
+        .map(|row| UserRecord::try_from(row))
+        .map_err(|e| -> anyhow::Error { e.into() })
+        .for_each(|example| csv.serialize(example).map_err(Into::into))
+        .unwrap()
 }
 
 fn sweep_tokens(conn: &Connection) {

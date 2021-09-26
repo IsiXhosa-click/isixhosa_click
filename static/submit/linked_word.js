@@ -1,4 +1,4 @@
-import { LiveSearch, formatResult } from "/live_search.js?v=4";
+import { LiveSearch, formatResult } from "/live_search.js?v=5";
 import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;
@@ -78,7 +78,7 @@ function createLinkedWordSearch(preset_word, this_id, this_is_new_suggestion) {
     function createLinkedWordContainer() {
         let item = document.createElement("li");
         item.className = "select_list_option"
-        return item;
+        return [item, item];
     }
 
     input.addEventListener("blur", function() {

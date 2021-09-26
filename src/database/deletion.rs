@@ -1,4 +1,4 @@
-use crate::auth::ModeratorAccessDb;
+use crate::auth::{ModeratorAccessDb, PublicUserInfo};
 use crate::database::existing::{ExistingExample, ExistingLinkedWord};
 use crate::search::WordHit;
 use crate::submit::WordId;
@@ -12,6 +12,7 @@ use std::convert::TryFrom;
 #[derive(Debug)]
 pub struct WordDeletionSuggestion {
     pub suggestion_id: u64,
+    pub suggesting_user: PublicUserInfo,
     pub word: WordHit,
     pub reason: String,
 }
@@ -21,10 +22,12 @@ impl WordDeletionSuggestion {
         const SELECT: &str =
             "SELECT words.word_id, words.english, words.xhosa, words.part_of_speech, words.is_plural,
                     words.is_inchoative, words.transitivity, words.followed_by, words.noun_class,
-                    word_deletion_suggestions.reason, word_deletion_suggestions.suggestion_id
+                    word_deletion_suggestions.reason, word_deletion_suggestions.suggestion_id,
+                    users.username, users.display_name, word_deletion_suggestions.suggesting_user
             FROM words
             INNER JOIN word_deletion_suggestions
-            ON words.word_id = word_deletion_suggestions.word_id
+                ON words.word_id = word_deletion_suggestions.word_id
+            INNER JOIN users ON word_deletion_suggestions.suggesting_user = users.user_id
             ORDER BY words.word_id;";
 
         let conn = db.get().unwrap();
@@ -37,15 +40,14 @@ impl WordDeletionSuggestion {
             .unwrap()
             .map(|row| {
                 Ok(WordDeletionSuggestion {
-                    suggestion_id: row.get::<&str, i64>("suggestion_id").unwrap() as u64,
+                    suggestion_id: row.get::<&str, i64>("suggestion_id")? as u64,
+                    suggesting_user: PublicUserInfo::try_from(row)?,
                     word: WordHit::try_from_row_and_id(
                         row,
-                        WordOrSuggestionId::existing(
-                            row.get::<&str, i64>("word_id").unwrap() as u64
-                        ),
+                        WordOrSuggestionId::existing(row.get::<&str, i64>("word_id")? as u64),
                     )
                     .unwrap(),
-                    reason: row.get("reason").unwrap(),
+                    reason: row.get("reason")?,
                 })
             })
             .collect()
@@ -80,6 +82,7 @@ impl WordDeletionSuggestion {
 #[derive(Debug)]
 pub struct ExampleDeletionSuggestion {
     pub suggestion_id: u64,
+    pub suggesting_user: PublicUserInfo,
     pub example: ExistingExample,
     pub reason: String,
 }
@@ -90,6 +93,7 @@ impl TryFrom<&Row<'_>> for ExampleDeletionSuggestion {
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
         Ok(ExampleDeletionSuggestion {
             suggestion_id: row.get::<&str, i64>("suggestion_id")? as u64,
+            suggesting_user: PublicUserInfo::try_from(row)?,
             example: ExistingExample::try_from(row)?,
             reason: row.get("reason")?,
         })
@@ -100,10 +104,12 @@ impl ExampleDeletionSuggestion {
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT examples.example_id, examples.word_id, examples.xhosa, examples.english,
-                    example_deletion_suggestions.suggestion_id, example_deletion_suggestions.reason
+                    example_deletion_suggestions.suggestion_id, example_deletion_suggestions.reason,
+                    users.username, users.display_name, example_deletion_suggestions.suggesting_user
             FROM examples
+            INNER JOIN users ON example_deletion_suggestions.suggesting_user = users.user_id
             INNER JOIN example_deletion_suggestions
-            ON examples.example_id = example_deletion_suggestions.example_id;";
+                ON examples.example_id = example_deletion_suggestions.example_id;";
 
         let conn = db.get().unwrap();
         let mut query = conn.prepare(SELECT).unwrap();
@@ -168,6 +174,7 @@ impl ExampleDeletionSuggestion {
 #[derive(Debug)]
 pub struct LinkedWordDeletionSuggestion {
     pub suggestion_id: u64,
+    pub suggesting_user: PublicUserInfo,
     pub link: ExistingLinkedWord,
     pub reason: String,
 }
@@ -180,6 +187,7 @@ impl LinkedWordDeletionSuggestion {
     ) -> Result<Self, rusqlite::Error> {
         Ok(LinkedWordDeletionSuggestion {
             suggestion_id: row.get::<&str, i64>("suggestion_id")? as u64,
+            suggesting_user: PublicUserInfo::try_from(row)?,
             link: ExistingLinkedWord::try_from_row_populate_other(row, db, skip_populating)?,
             reason: row.get("reason")?,
         })
@@ -189,10 +197,12 @@ impl LinkedWordDeletionSuggestion {
         const SELECT: &str =
             "SELECT linked_words.link_id, linked_words.link_type, linked_words.first_word_id,
                     linked_words.second_word_id, linked_word_deletion_suggestions.suggestion_id,
-                    linked_word_deletion_suggestions.reason
+                    linked_word_deletion_suggestions.reason, users.username, users.display_name,
+                    linked_word_deletion_suggestions.suggesting_user
             FROM linked_words
+            INNER JOIN users ON linked_word_deletion_suggestions.suggesting_user = users.user_id
             INNER JOIN linked_word_deletion_suggestions
-            ON linked_words.link_id = linked_word_deletion_suggestions.linked_word_id;";
+                ON linked_words.link_id = linked_word_deletion_suggestions.linked_word_id;";
 
         let conn = db.get().unwrap();
         let mut query = conn.prepare(SELECT).unwrap();

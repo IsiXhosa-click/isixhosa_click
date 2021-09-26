@@ -58,7 +58,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use submit::submit;
 use tokio::task;
-use warp::filters::compression::gzip;
+use warp::filters::compression::brotli;
 use warp::http::header::CONTENT_TYPE;
 use warp::http::uri::Authority;
 use warp::http::{uri, StatusCode, Uri};
@@ -253,9 +253,10 @@ fn main() {
 }
 
 fn set_up_db(conn: &Connection) {
-    const CREATIONS: [&str; 11] = [
+    const CREATIONS: [&str; 12] = [
         include_str!("sql/users.sql"),
         include_str!("sql/words.sql"),
+        include_str!("sql/user_attributions.sql"),
         include_str!("sql/word_suggestions.sql"),
         include_str!("sql/word_deletion_suggestions.sql"),
         include_str!("sql/examples.sql"),
@@ -365,11 +366,11 @@ async fn server(cfg: Config) {
 
     tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
 
-    // Add post filters such as minification, logging, and gzip
+    // Add post filters such as minification, logging, and brotli
     let serve = routes
         .and_then(minify)
         .with(warp::log("isixhosa"))
-        .with(gzip());
+        .with(brotli());
 
     warp::serve(serve)
         .tls()

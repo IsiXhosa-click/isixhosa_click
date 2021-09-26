@@ -1,6 +1,7 @@
 use std::{convert::Infallible, sync::Arc};
 
 use crate::auth::db_impl::DbImpl;
+use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use crate::Config;
 use askama::Template;
@@ -11,8 +12,10 @@ use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Toke
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use rand::Rng;
+use rusqlite::{params, Row};
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
+use std::convert::TryFrom;
 use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroU64;
 use std::str::FromStr;
@@ -23,6 +26,7 @@ use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
+use fallible_iterator::FallibleIterator;
 
 type OpenIDClient = Client<Discovered, StandardClaims>;
 
@@ -153,7 +157,7 @@ pub struct SignupForm {
     username: String,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
-    display_name: bool,
+    dont_display_name: bool,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
     tos_agree: bool,
@@ -173,6 +177,66 @@ pub struct User {
     pub email: String,
     pub permissions: Permissions,
     pub locked: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct PublicUserInfo {
+    pub id: NonZeroU64,
+    pub username: String,
+    pub display_name: bool,
+}
+
+impl PublicUserInfo {
+    pub fn fetch_public_contributors_for_word(
+        db: &impl PublicAccessDb,
+        word: u64,
+    ) -> Vec<PublicUserInfo> {
+        const SELECT: &str = "
+            SELECT users.user_id as suggesting_user, users.username, display_name
+            FROM user_attributions
+            INNER JOIN users ON users.user_id = user_attributions.user_id
+            WHERE word_id = ?1 AND users.display_name = 1;
+        ";
+
+        let conn = db.get().unwrap();
+
+        let mut query = conn
+            .prepare(SELECT)
+            .unwrap();
+
+        query
+            .query(params![word])
+            .unwrap()
+            .map(|row| PublicUserInfo::try_from(row))
+            .collect()
+            .unwrap()
+    }
+}
+
+impl TryFrom<&Row<'_>> for PublicUserInfo {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(PublicUserInfo {
+            id: NonZeroU64::new(row.get::<&str, u64>("suggesting_user")?).unwrap(),
+            username: row.get("username")?,
+            display_name: row.get("display_name")?,
+        })
+    }
+}
+
+impl DisplayHtml for PublicUserInfo {
+    fn fmt(&self, f: &mut HtmlFormatter) -> std::fmt::Result {
+        f.write_text(
+            Some(&self.username[..])
+                .filter(|_| self.display_name)
+                .unwrap_or_default(),
+        )
+    }
+
+    fn is_empty_str(&self) -> bool {
+        !self.display_name
+    }
 }
 
 #[derive(Template)]
@@ -243,7 +307,7 @@ pub async fn auth(
     let sign_up = warp::post()
         .and(warp::path("signup"))
         .and(warp::path::end())
-        .and(warp::body::content_length_limit(4 * 1024))
+        .and(warp::body::content_length_limit(64 * 1024))
         .and(with_any_auth(db))
         .and(with_session())
         .and(with_client_host)
@@ -546,7 +610,7 @@ async fn signup_form_submit(
             &db,
             userinfo,
             form.username,
-            form.display_name,
+            !form.dont_display_name,
             false,
             email,
             Permissions::User,

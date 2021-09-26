@@ -148,7 +148,7 @@ pub fn accept(
         .and_then(process_one);
 
     let submit_edit = warp::post()
-        .and(body::content_length_limit(4 * 1024))
+        .and(body::content_length_limit(64 * 1024))
         .and(with_moderator_auth(db.clone()))
         .and(with_tantivy)
         .and(qs_form())

@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use rusqlite::{params, OptionalExtension, Row};
 
-use crate::auth::{ModeratorAccessDb, PublicAccessDb};
+use crate::auth::{ModeratorAccessDb, PublicAccessDb, PublicUserInfo};
 use crate::database::WordOrSuggestionId;
 use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::WordHit;
@@ -31,6 +31,7 @@ pub struct ExistingWord {
 
     pub examples: Vec<ExistingExample>,
     pub linked_words: Vec<ExistingLinkedWord>,
+    pub contributors: Vec<PublicUserInfo>,
 }
 
 impl ExistingWord {
@@ -39,6 +40,7 @@ impl ExistingWord {
         if let Some(word) = word.as_mut() {
             word.examples = ExistingExample::fetch_all_for_word(db, id);
             word.linked_words = ExistingLinkedWord::fetch_all_for_word(db, id);
+            word.contributors = PublicUserInfo::fetch_public_contributors_for_word(db, id);
         }
 
         word
@@ -106,6 +108,7 @@ impl TryFrom<&Row<'_>> for ExistingWord {
             note: row.get("note")?,
             examples: vec![],
             linked_words: vec![],
+            contributors: vec![],
         })
     }
 }

@@ -260,6 +260,11 @@
                                                 <td>{{ s.note.to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
+
+                                        <tr>
+                                            <th scope="row">Suggested by</th>
+                                            <td>{{ s.suggesting_user.username }}</td>
+                                        </tr>
                                     </table>
                                 </div>
 
@@ -343,6 +348,11 @@
                                             <th scope="row">Reason</th>
                                             <td>{{ s.reason }}</td>
                                         </tr>
+
+                                        <tr>
+                                            <th scope="row">Suggested by</th>
+                                            <td>{{ s.suggesting_user.username }}</td>
+                                        </tr>
                                     </table>
                                 </div>
 
@@ -396,6 +406,8 @@
                                                     <h3><del>Xhosa</del></h3>
                                                     <p><del>{{ del.example.xhosa }}</del></p>
 
+                                                    <p>Suggested by {{ del.suggesting_user.username }}</p>
+
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_deletion_action(true, "Accept deletion") -%}
                                                         {%- call example_deletion_action(false, "Reject deletion") -%}
@@ -429,6 +441,8 @@
                                                         {{ del.link.other.to_html()|safe }} -
                                                         {{ del.link.link_type.to_html()|safe -}}
                                                     </del>
+
+                                                    <p>Suggested by {{ del.suggesting_user.username }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call linked_word_deletion_suggestion_action(true, "Accept deletion") -%}

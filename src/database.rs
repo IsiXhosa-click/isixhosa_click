@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 use rusqlite::{params, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 
-use crate::auth::PublicAccessDb;
+use crate::auth::{ModeratorAccessDb, PublicAccessDb, PublicUserInfo};
 use crate::search::WordHit;
 use crate::serialization::GetWithSentinelExt;
 use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
@@ -45,8 +45,10 @@ impl WordHit {
         ";
         const SELECT_SUGGESTED: &str = "
             SELECT
-                english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity, noun_class
+                english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity, noun_class,
+                username, display_name, suggesting_user
             FROM word_suggestions
+            INNER JOIN users ON word_suggestions.suggesting_user = users.user_id
             WHERE suggestion_id = ?1;
         ";
 
@@ -69,6 +71,18 @@ impl WordHit {
             .unwrap();
         v
     }
+}
+
+pub fn add_attribution(db: &impl ModeratorAccessDb, user: &PublicUserInfo, word: WordId) {
+    const INSERT: &str =
+        "INSERT INTO user_attributions (user_id, word_id) VALUES (?1, ?2) ON CONFLICT DO NOTHING;";
+
+    db.get()
+        .unwrap()
+        .prepare(INSERT)
+        .unwrap()
+        .execute(params![user.id.get(), word.0])
+        .unwrap();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

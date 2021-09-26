@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS word_suggestions (
     suggestion_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    suggesting_user      INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     -- In case of an update to an existing word
     existing_word_id     INTEGER REFERENCES words(word_id) ON DELETE CASCADE,
     changes_summary      TEXT NOT NULL,

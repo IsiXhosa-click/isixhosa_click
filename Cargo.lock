@@ -1346,7 +1346,6 @@ dependencies = [
  "tantivy",
  "tempdir",
  "tokio",
- "unicode-normalization",
  "warp",
  "xtra",
 ]

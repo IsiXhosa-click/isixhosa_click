@@ -1,6 +1,5 @@
 {%- macro searchbox(start_query) -%}
-    <script type="module">
-        import { LiveSearch } from "/live_search.js?v=4";
+    <script type="module">import {LiveSearch} from "/live_search.js?v=5";
 
         window.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
@@ -19,12 +18,8 @@
                 return list;
             }
 
-            function createItem(formatted, id) {
-                let link = document.createElement("a");
-                let span = document.createElement("span");
-                link.href = `/word/${id}`;
-                link.className = "hit";
-                return span;
+            function createItem() {
+                return document.createElement("span");
             }
 
             function postCreateItem(span) {
@@ -35,10 +30,14 @@
                 link.appendChild(goArrow);
             }
 
-            function createItemContainer() {
+            function createItemContainer(id) {
                 let container = document.createElement("li");
                 container.className = "hit_container";
-                return container;
+                let link = document.createElement("a");
+                link.href = `/word/${id}`;
+                link.className = "hit";
+                container.appendChild(link);
+                return [container, link];
             }
 
             new LiveSearch(

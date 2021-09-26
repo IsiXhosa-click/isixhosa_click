@@ -90,14 +90,13 @@ export class LiveSearch {
             results.forEach(function (result) {
                 let item = searcher.create_item(formatResult(result), result.id, result.is_suggestion);
                 formatResult(result, item);
-                searcher.post_create_item(item);
 
-                let item_container = searcher.create_item_container();
+                let [item_container_parent, item_container_inner] = searcher.create_item_container(result.id);
                 let append = item;
 
-                if (item_container != null) {
-                    item_container.appendChild(item);
-                    append = item_container;
+                if (item_container_parent != null) {
+                    item_container_inner.appendChild(item);
+                    append = item_container_parent;
                 }
 
                 if (container != null) {
@@ -105,6 +104,8 @@ export class LiveSearch {
                 } else {
                     searcher.hits.appendChild(append);
                 }
+
+                searcher.post_create_item(item);
             });
 
             searcher.input.classList.add("has_results");

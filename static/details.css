@@ -34,3 +34,18 @@ td:first-child, th:first-child {
 h2.caption {
     margin: 0 0 0.5em;
 }
+
+/* Comma separated list */
+ul#contributors {
+    list-style: none;
+    padding-left: 1em;
+    margin-top: 0.5em;
+}
+
+ul#contributors li {
+    display: inline;
+}
+
+ul#contributors li:not(:last-child):after {
+    content: ", ";
+}

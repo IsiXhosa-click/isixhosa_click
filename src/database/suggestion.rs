@@ -1,7 +1,7 @@
-use crate::auth::{ModeratorAccessDb, UserAccessDb};
+use crate::auth::{ModeratorAccessDb, PublicUserInfo, UserAccessDb};
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
-use crate::database::WordOrSuggestionId;
+use crate::database::{add_attribution, WordOrSuggestionId};
 use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::{TantivyClient, WordDocument, WordHit};
 use crate::serialization::WithDeleteSentinel;
@@ -21,6 +21,7 @@ use std::sync::Arc;
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
     pub suggestion_id: u64,
+    pub suggesting_user: PublicUserInfo,
     pub word_id: Option<u64>,
 
     pub changes_summary: String,
@@ -54,10 +55,11 @@ impl SuggestedWord {
     pub fn fetch_all_full(db: &impl ModeratorAccessDb) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "
             SELECT
-                suggestion_id, existing_word_id, changes_summary,
+                suggestion_id, suggesting_user, existing_word_id, changes_summary,
                 english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-                is_inchoative, transitivity, followed_by, noun_class, note
+                is_inchoative, transitivity, followed_by, noun_class, note, username, display_name
             FROM word_suggestions
+            INNER JOIN users ON word_suggestions.suggesting_user = users.user_id
             ORDER BY suggestion_id;";
 
         let conn = db.get().unwrap();
@@ -83,8 +85,9 @@ impl SuggestedWord {
             SELECT
                 suggestion_id, existing_word_id, changes_summary, english, xhosa, part_of_speech,
                 xhosa_tone_markings, infinitive, is_plural, is_inchoative, transitivity,
-                followed_by, noun_class, note
+                followed_by, noun_class, note, username, display_name, suggesting_user
             FROM word_suggestions
+            INNER JOIN users ON word_suggestions.suggesting_user = users.user_id
             WHERE suggestion_id = ?1;
         ";
 
@@ -156,8 +159,11 @@ impl SuggestedWord {
             .unwrap()
             .query_row(params, |row| row.get("word_id"))
             .unwrap();
+        let id = id as u64;
 
-        id as u64
+        add_attribution(db, &self.suggesting_user, WordId(id));
+
+        id
     }
 
     pub fn accept_whole_word_suggestion(
@@ -237,6 +243,7 @@ impl SuggestedWord {
         };
 
         SuggestedWord {
+            suggesting_user: PublicUserInfo::try_from(row).unwrap(),
             suggestion_id: row.get("suggestion_id").unwrap(),
             word_id: row.get("existing_word_id").unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
@@ -292,6 +299,7 @@ impl SuggestedWord {
 #[derive(Clone, Debug)]
 pub struct SuggestedExample {
     pub changes_summary: String,
+    pub suggesting_user: PublicUserInfo,
 
     pub suggestion_id: u64,
     pub existing_example_id: Option<u64>,
@@ -310,10 +318,11 @@ impl SuggestedExample {
                    example_suggestions.suggestion_id, example_suggestions.existing_word_id,
                    example_suggestions.existing_example_id, example_suggestions.changes_summary,
                    example_suggestions.xhosa, example_suggestions.suggested_word_id,
-                   example_suggestions.english
+                   example_suggestions.english, users.username, users.display_name,
+                   example_suggestions.suggesting_user
             FROM example_suggestions
-            INNER JOIN words
-            ON example_suggestions.existing_word_id = words.word_id;
+            INNER JOIN users ON example_suggestions.suggesting_user = users.user_id
+            INNER JOIN words ON example_suggestions.existing_word_id = words.word_id;
         ";
 
         let conn = db.get().unwrap();
@@ -345,8 +354,13 @@ impl SuggestedExample {
         suggested_word_id: u64,
     ) -> Vec<SuggestedExample> {
         const SELECT_SUGGESTION: &str = "
-        SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id, changes_summary, xhosa, english
-            FROM example_suggestions WHERE suggested_word_id = ?1;";
+            SELECT
+                suggestion_id, existing_word_id, suggested_word_id, existing_example_id,
+                changes_summary, xhosa, english, username, display_name, suggesting_user
+            FROM example_suggestions
+            INNER JOIN users ON example_suggestions.suggesting_user = users.user_id
+            WHERE suggested_word_id = ?1;
+        ";
 
         let conn = db.get().unwrap();
         let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
@@ -360,9 +374,13 @@ impl SuggestedExample {
 
     pub fn fetch(db: &impl UserAccessDb, suggestion_id: u64) -> Option<SuggestedExample> {
         const SELECT: &str = "
-            SELECT suggestion_id, existing_word_id, suggested_word_id, existing_example_id,
-                   changes_summary, xhosa, english
-            FROM example_suggestions WHERE suggestion_id = ?1;";
+            SELECT
+                suggestion_id, existing_word_id, suggested_word_id, existing_example_id,
+                changes_summary, xhosa, english, username, display_name, suggesting_user
+            FROM example_suggestions
+            INNER JOIN users ON example_suggestions.suggesting_user = users.user_id
+            WHERE suggested_word_id = ?1;
+        ";
 
         let conn = db.get().unwrap();
         let ex = conn
@@ -403,6 +421,7 @@ impl SuggestedExample {
             .query_row(params, |row| row.get("example_id"))
             .unwrap();
 
+        add_attribution(db, &self.suggesting_user, WordId(word));
         SuggestedExample::delete(db, self.suggestion_id);
 
         id
@@ -422,6 +441,7 @@ impl SuggestedExample {
         let e = e.as_ref();
 
         SuggestedExample {
+            suggesting_user: PublicUserInfo::try_from(row).unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
             suggestion_id: row.get("suggestion_id").unwrap(),
             existing_example_id: row.get("existing_example_id").unwrap(),
@@ -435,6 +455,7 @@ impl SuggestedExample {
 #[derive(Clone, Debug)]
 pub struct SuggestedLinkedWord {
     pub changes_summary: String,
+    pub suggesting_user: PublicUserInfo,
     pub suggestion_id: u64,
     pub existing_linked_word_id: Option<u64>,
 
@@ -451,9 +472,11 @@ impl SuggestedLinkedWord {
                    linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
                    linked_word_suggestions.suggested_word_id,
                    linked_word_suggestions.second_suggested_word_id,
-                   linked_words.first_word_id, linked_words.second_word_id
+                   linked_words.first_word_id, linked_words.second_word_id, users.username,
+                   users.display_name, linked_word_suggestions.suggesting_user
             FROM linked_word_suggestions
             LEFT JOIN linked_words ON existing_linked_word_id = link_id
+            INNER JOIN users ON linked_word_suggestions.suggesting_user = users.user_id
             WHERE suggestion_id = ?1;
         ";
 
@@ -476,8 +499,9 @@ impl SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "
             SELECT suggestion_id, link_type, changes_summary, existing_linked_word_id,
                 first_existing_word_id, second_existing_word_id, suggested_word_id,
-                second_suggested_word_id
+                second_suggested_word_id, username, display_name, suggesting_user
             FROM linked_word_suggestions
+            INNER JOIN users ON linked_word_suggestions.suggesting_user = users.user_id
             WHERE suggested_word_id = ?1 OR second_suggested_word_id = ?1;
         ";
 
@@ -506,8 +530,11 @@ impl SuggestedLinkedWord {
                    linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
                    linked_word_suggestions.suggested_word_id,
                    linked_word_suggestions.second_suggested_word_id,
-                   linked_words.first_word_id, linked_words.second_word_id
+                   linked_words.first_word_id, linked_words.second_word_id, users.username,
+                   users.display_name
             FROM linked_word_suggestions
+
+            INNER JOIN users ON linked_word_suggestions.suggesting_user = users.user_id
 
             LEFT JOIN
                 linked_words
@@ -588,6 +615,8 @@ impl SuggestedLinkedWord {
             .query_row(params, |row| row.get("link_id"))
             .unwrap();
 
+        add_attribution(db, &self.suggesting_user, WordId(first));
+        add_attribution(db, &self.suggesting_user, WordId(second));
         SuggestedLinkedWord::delete(db, self.suggestion_id);
 
         id
@@ -699,6 +728,7 @@ impl SuggestedLinkedWord {
         let (first, second) = (next(other_first), next(other_second));
 
         SuggestedLinkedWord {
+            suggesting_user: PublicUserInfo::try_from(row).unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
             suggestion_id: row.get("suggestion_id").unwrap(),
             existing_linked_word_id: row.get("existing_linked_word_id").unwrap(),

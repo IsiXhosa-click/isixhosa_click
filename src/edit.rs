@@ -23,7 +23,7 @@ pub fn edit(
     let submit_form = warp::post()
         .and(warp::path![u64])
         .and(warp::path::end())
-        .and(body::content_length_limit(4 * 1024))
+        .and(body::content_length_limit(64 * 1024))
         .and(warp::any().map(move || tantivy.clone()))
         .and(with_user_auth(db.clone()))
         .and(qs_form())

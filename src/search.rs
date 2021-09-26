@@ -207,7 +207,8 @@ impl WriterActor {
         let stemmed = if doc.part_of_speech == PartOfSpeech::Noun {
             isixhosa::noun::guess_noun_base(&doc.xhosa, doc.noun_class)
         } else {
-            doc.xhosa.clone()
+            // Remove (i) from latent i verbs
+            doc.xhosa.trim_start_matches("(i)").to_owned()
         };
 
         let mut tantivy_doc = tantivy::doc!(

@@ -58,13 +58,18 @@
 
             <form action="/signup" method="post" enctype="application/x-www-form-urlencoded" class="column_list spaced_flex_list">
                 <div>
-                    <label for="username">Display name<span class="required">*</span>:</label>
+                    <label for="username" tabindex="0"
+                        {#-#} data-descr="This is the name that others will see you by, and what you will be credited
+                        {#-#} with for your submissions."{#-#}
+                    >
+                        Display name<span class="required">*</span>:
+                    </label>
                     <input type="text" id="username" name="username" placeholder="John Doe" spellcheck="false" required>
                 </div>
 
                 <div>
-                    <input type="checkbox" id="display_name" name="display_name">
-                    <label for="display_name">
+                    <input type="checkbox" id="dont_display_name" name="dont_display_name">
+                    <label for="dont_display_name">
                         Do not publicly credit me or my display name for my submissions, on the word page or anywhere else.
                         Note that if you select this option, you waive your right to be attributed for your edits - see the
                         Terms of Service for more information.
