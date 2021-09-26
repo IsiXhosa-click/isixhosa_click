@@ -31,14 +31,22 @@ article, main {
     box-sizing: border-box;
 }
 
-#main_wrap > header, main > article > div > header {
+article h1 {
+    font-size: 2em;
+}
+
+article h2 {
+    font-size: 1.5em;
+}
+
+#main_wrap header, main > article > div > header {
     margin: 4.2rem auto 0;
     max-width: 100%;
     box-sizing: border-box;
     line-height: normal;
 }
 
-#main_wrap > header {
+#main_wrap header {
     width: 35em;
 }
 

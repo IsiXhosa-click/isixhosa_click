@@ -320,6 +320,11 @@ async fn server(cfg: Config) {
     let search = warp::path("search")
         .and(path::end())
         .and(live_search.or(query_search).or(search_page));
+    let terms_of_use = warp::path("terms_of_use")
+        .and(path::end())
+        .and(with_any_auth(db.clone()))
+        .map(|auth, _| TermsOfUsePage { auth });
+
     let about = warp::get()
         .and(warp::path("about"))
         .and(path::end())
@@ -336,6 +341,7 @@ async fn server(cfg: Config) {
     let routes = warp::fs::dir(cfg.static_site_files.clone())
         .or(warp::fs::dir(cfg.other_static_files.clone()))
         .or(search)
+        .or(terms_of_use)
         .or(submit(db.clone(), tantivy.clone()))
         .or(accept(db.clone(), tantivy.clone()))
         .or(details(db.clone()))
@@ -401,6 +407,12 @@ struct NotFound {
 struct AboutPage {
     auth: Auth,
     word_count: u64,
+}
+
+#[derive(Template, Clone, Debug)]
+#[template(path = "terms_of_use.askama.html")]
+struct TermsOfUsePage {
+    auth: Auth,
 }
 
 #[derive(Template)]

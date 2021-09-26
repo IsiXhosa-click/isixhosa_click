@@ -160,10 +160,10 @@ pub struct SignupForm {
     dont_display_name: bool,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
-    tos_agree: bool,
+    license_agree: bool,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
-    privacy_policy_agree: bool,
+    tou_agree: bool,
     #[serde(flatten)]
     openid_query: OpenIdLoginQuery,
 }
@@ -565,7 +565,7 @@ async fn signup_form_submit(
         _ => return Ok(warp::reply::with_status("", StatusCode::FORBIDDEN).into_response()),
     };
 
-    if !form.privacy_policy_agree || !form.tos_agree {
+    if !form.tou_agree || !form.license_agree {
         return Ok(SignUpTemplate {
             auth: Default::default(),
             openid_query: form.openid_query,
