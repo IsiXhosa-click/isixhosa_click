@@ -688,7 +688,10 @@ fn process_linked_words(
         "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1;";
 
     const SUGGEST_LINKED_WORD_DELETION: &str =
-        "INSERT INTO linked_word_deletion_suggestions (linked_word_id, reason) VALUES (?1, ?2)";
+        "
+            INSERT INTO linked_word_deletion_suggestions (linked_word_id, reason, suggesting_user)
+            VALUES (?1, ?2, ?3);
+         ";
 
     let use_submitted = w.existing_id.is_none() && w.suggestion_id.is_none();
 
@@ -790,7 +793,7 @@ fn process_linked_words(
                     maybe_insert_link(new, Some(prev));
                 } else {
                     suggest_link_deletion
-                        .execute(params![prev.link_id, "No reason given"])
+                        .execute(params![prev.link_id, w.changes_summary, suggesting_user.get()])
                         .unwrap();
                 }
             }
@@ -844,7 +847,10 @@ fn process_examples(
         "DELETE FROM example_suggestions WHERE suggestion_id = ?1;";
 
     const SUGGEST_EXAMPLE_DELETION: &str =
-        "INSERT INTO example_deletion_suggestions (example_id, reason) VALUES (?1, ?2);";
+        "
+            INSERT INTO example_deletion_suggestions (example_id, reason, suggesting_user)
+            VALUES (?1, ?2, ?3);
+        ";
 
     let conn = db.get().unwrap();
     let mut upsert_example = conn.prepare(INSERT_EXAMPLE_SUGGESTION).unwrap();
@@ -910,7 +916,7 @@ fn process_examples(
                     Some(new) => maybe_insert_example(new, Some(prev)),
                     None => {
                         suggest_example_deletion
-                            .execute(params![prev.example_id, "No reason given"])
+                            .execute(params![prev.example_id, w.changes_summary, suggesting_user.get()])
                             .unwrap();
                     }
                 }

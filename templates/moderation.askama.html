@@ -393,6 +393,7 @@
                                                      <p>{{ ex.xhosa.to_html()|safe }}</p>
 
                                                      <p>Suggested by {{ ex.suggesting_user.username }}</p>
+                                                     <p>Changes summary: {{ ex.changes_summary }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_suggestion_action("accept", "Accept") -%}
@@ -409,6 +410,7 @@
                                                     <p><del>{{ del.example.xhosa }}</del></p>
 
                                                     <p>Suggested by {{ del.suggesting_user.username }}</p>
+                                                    <p>Changes summary: {{ del.reason }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_deletion_action(true, "Accept deletion") -%}
@@ -445,6 +447,7 @@
                                                     </del>
 
                                                     <p>Suggested by {{ del.suggesting_user.username }}</p>
+                                                    <p>Changes summary: {{ del.reason }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call linked_word_deletion_suggestion_action(true, "Accept deletion") -%}
