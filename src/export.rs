@@ -565,7 +565,14 @@ fn restore_linked_words(cfg: &Config, conn: &Connection) {
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
 fn write_contributions(cfg: &Config, conn: &Connection) {
-    const SELECT: &str = "SELECT word_id, user_id FROM user_attributions ORDER BY word_id;";
+    const SELECT: &str = "
+        SELECT
+            user_attributions.word_id, user_attributions.user_id
+        FROM user_attributions
+        INNER JOIN users ON user_attributions.user_id = users.user_id
+        WHERE users.display_name = 1
+        ORDER BY word_id;
+    ";
 
     let mut csv = csv_writer(cfg, "user_attributions.csv");
 
