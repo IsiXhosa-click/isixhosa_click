@@ -528,7 +528,7 @@ impl SuggestedLinkedWord {
                    linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
                    linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
                    linked_word_suggestions.first_existing_word_id, linked_word_suggestions.second_existing_word_id,
-                   linked_word_suggestions.suggested_word_id,
+                   linked_word_suggestions.suggested_word_id, linked_word_suggestions.suggesting_user,
                    linked_word_suggestions.second_suggested_word_id,
                    linked_words.first_word_id, linked_words.second_word_id, users.username,
                    users.display_name
