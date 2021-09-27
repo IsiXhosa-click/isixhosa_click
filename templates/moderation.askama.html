@@ -392,8 +392,8 @@
                                                     <h3>Xhosa</h3>
                                                      <p>{{ ex.xhosa.to_html()|safe }}</p>
 
-                                                     <p>Suggested by {{ ex.suggesting_user.username }}</p>
-                                                     <p>Changes summary: {{ ex.changes_summary }}</p>
+                                                     <p><strong>Suggested by</strong> {{ ex.suggesting_user.username }}</p>
+                                                     <p><strong>Changes summary:</strong> {{ ex.changes_summary }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_suggestion_action("accept", "Accept") -%}
@@ -409,8 +409,8 @@
                                                     <h3><del>Xhosa</del></h3>
                                                     <p><del>{{ del.example.xhosa }}</del></p>
 
-                                                    <p>Suggested by {{ del.suggesting_user.username }}</p>
-                                                    <p>Changes summary: {{ del.reason }}</p>
+                                                    <p><strong>Suggested by</strong> {{ del.suggesting_user.username }}</p>
+                                                    <p><strong>Changes summary:</strong> {{ del.reason }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_deletion_action(true, "Accept deletion") -%}
@@ -446,8 +446,8 @@
                                                         {{ del.link.link_type.to_html()|safe -}}
                                                     </del>
 
-                                                    <p>Suggested by {{ del.suggesting_user.username }}</p>
-                                                    <p>Changes summary: {{ del.reason }}</p>
+                                                    <p><strong>Suggested by</strong> {{ del.suggesting_user.username }}</p>
+                                                    <p><strong>Changes summary:</strong> {{ del.reason }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call linked_word_deletion_suggestion_action(true, "Accept deletion") -%}
