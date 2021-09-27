@@ -46,7 +46,11 @@ article h2 {
     line-height: normal;
 }
 
-#main_wrap header {
+article > header {
+    width: 100%;
+}
+
+#main_wrap > header {
     width: 35em;
 }
 
