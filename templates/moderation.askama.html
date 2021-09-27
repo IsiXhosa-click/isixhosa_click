@@ -392,6 +392,8 @@
                                                     <h3>Xhosa</h3>
                                                      <p>{{ ex.xhosa.to_html()|safe }}</p>
 
+                                                     <p>Suggested by {{ ex.suggesting_user.username }}</p>
+
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_suggestion_action("accept", "Accept") -%}
                                                         {%- call example_suggestion_action("reject", "Reject") -%}

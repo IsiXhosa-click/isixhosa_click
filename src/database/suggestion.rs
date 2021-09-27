@@ -379,7 +379,7 @@ impl SuggestedExample {
                 changes_summary, xhosa, english, username, display_name, suggesting_user
             FROM example_suggestions
             INNER JOIN users ON example_suggestions.suggesting_user = users.user_id
-            WHERE suggested_word_id = ?1;
+            WHERE suggestion_id = ?1;
         ";
 
         let conn = db.get().unwrap();
