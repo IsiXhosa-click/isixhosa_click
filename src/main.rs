@@ -58,7 +58,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use submit::submit;
 use tokio::task;
-use warp::filters::compression::brotli;
+use warp::filters::compression::gzip;
 use warp::http::header::CONTENT_TYPE;
 use warp::http::uri::Authority;
 use warp::http::{uri, StatusCode, Uri};
@@ -372,11 +372,11 @@ async fn server(cfg: Config) {
 
     tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
 
-    // Add post filters such as minification, logging, and brotli
+    // Add post filters such as minification, logging, and gzip
     let serve = routes
         .and_then(minify)
         .with(warp::log("isixhosa"))
-        .with(brotli());
+        .with(gzip());
 
     warp::serve(serve)
         .tls()
