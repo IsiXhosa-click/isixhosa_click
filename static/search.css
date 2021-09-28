@@ -61,7 +61,7 @@ a.hit {
 }
 
 a.hit > .go_arrow {
-    margin-left: auto;
+    margin: auto 0 auto auto;
     visibility: hidden;
 }
 
