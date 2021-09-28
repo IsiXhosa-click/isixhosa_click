@@ -222,6 +222,11 @@
                                         </tr>
 
                                         <tr>
+                                            <th scope="row">Suggested by</th>
+                                            <td>{{ s.suggesting_user.username }}</td>
+                                        </tr>
+
+                                        <tr>
                                             <th scope="row">Changes summary</th>
                                             <td>{{ s.changes_summary }}</td>
                                         </tr>
@@ -260,11 +265,6 @@
                                                 <td>{{ s.note.to_html()|safe }}</td>
                                             </tr>
                                         {%- endif -%}
-
-                                        <tr>
-                                            <th scope="row">Suggested by</th>
-                                            <td>{{ s.suggesting_user.username }}</td>
-                                        </tr>
                                     </table>
                                 </div>
 
@@ -345,13 +345,13 @@
                                         </tr>
 
                                         <tr>
-                                            <th scope="row">Reason</th>
-                                            <td>{{ s.reason }}</td>
+                                            <th scope="row">Suggested by</th>
+                                            <td>{{ s.suggesting_user.username }}</td>
                                         </tr>
 
                                         <tr>
-                                            <th scope="row">Suggested by</th>
-                                            <td>{{ s.suggesting_user.username }}</td>
+                                            <th scope="row">Reason</th>
+                                            <td>{{ s.reason }}</td>
                                         </tr>
                                     </table>
                                 </div>
@@ -431,6 +431,9 @@
                                                 <li>
                                                     {{- l.other(WordId(word.id.clone()).into()).to_html()|safe }}
                                                     - {{ l.link_type.to_html()|safe -}}
+
+                                                    <p><strong>Suggested by</strong> {{ l.suggesting_user.username }}</p>
+                                                    <p><strong>Changes summary:</strong> {{ l.changes_summary }}</p>
 
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call linked_word_suggestion_action("accept", "Accept") -%}
