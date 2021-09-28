@@ -468,7 +468,7 @@ impl Handler<SearchRequest> for SearcherActor {
                     OrderedFloat(strsim::jaro_winkler(&req.query, &hit.english)),
                 ))
             });
-            results.truncate(5);
+            results.truncate(10);
             Ok::<_, anyhow::Error>(results)
         })
         .await
