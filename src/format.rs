@@ -245,6 +245,19 @@ impl DisplayHtml for NounClassPrefixes {
     }
 }
 
+pub struct NounClassInHit<T>(pub T);
+
+impl<T: DisplayHtml> DisplayHtml for NounClassInHit<T> {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        f.write_text(" - class ")?;
+        self.0.fmt(f)
+    }
+
+    fn is_empty_str(&self) -> bool {
+        self.0.is_empty_str()
+    }
+}
+
 impl DisplayHtml for SuggestedWord {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         DisplayHtml::fmt(&self.english, f)?;
@@ -262,7 +275,7 @@ impl DisplayHtml for SuggestedWord {
                     as &dyn DisplayHtml,
                 &text_if_bool("plural", "singular", self.is_plural),
                 &self.part_of_speech,
-                &self.noun_class,
+                &self.noun_class.map(|opt| opt.map(NounClassInHit)),
             ],
         )?;
         f.write_text(")")
@@ -312,7 +325,7 @@ macro_rules! impl_display_html {
                     &self.transitivity as &dyn DisplayHtml,
                     &text_if_bool("plural", "singular", self.is_plural),
                     &self.part_of_speech,
-                    &self.noun_class,
+                    &self.noun_class.map(NounClassInHit),
                 ])?;
                 f.write_text(")")
             }
