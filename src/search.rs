@@ -1,8 +1,8 @@
 use crate::database::WordOrSuggestionId;
 
-use crate::language::{PartOfSpeech, Transitivity};
+use crate::language::{PartOfSpeech, Transitivity, NounClassPrefixes, NounClassExt};
 use crate::serialization::GetWithSentinelExt;
-use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
+use crate::serialization::{SerOnlyDisplay};
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
@@ -518,7 +518,7 @@ pub struct WordHit {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transitivity: Option<SerOnlyDisplay<Transitivity>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub noun_class: Option<SerializePrimitive<NounClass, u8>>,
+    pub noun_class: Option<NounClassPrefixes>,
     pub is_suggestion: bool,
 }
 
@@ -615,8 +615,7 @@ impl WordHit {
             is_inchoative: get_bool(&doc, schema_info.is_inchoative, "is_inchoative")?,
             transitivity: get_with_sentinel(&doc, schema_info.transitivity).map(SerOnlyDisplay),
             is_suggestion,
-            noun_class: get_with_sentinel(&doc, schema_info.noun_class)
-                .map(SerializePrimitive::new),
+            noun_class: get_with_sentinel(&doc, schema_info.noun_class).map(|c: NounClass| c.to_prefixes()),
         })
     }
 }
@@ -632,7 +631,7 @@ impl From<WordDocument> for WordHit {
             is_inchoative: d.is_inchoative,
             transitivity: d.transitivity.map(SerOnlyDisplay),
             is_suggestion: d.suggesting_user.is_some(),
-            noun_class: d.noun_class.map(SerializePrimitive::new),
+            noun_class: d.noun_class.map(|c| c.to_prefixes()),
         }
     }
 }

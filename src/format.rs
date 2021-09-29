@@ -1,9 +1,9 @@
 use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
-use crate::language::NounClassExt;
+use crate::language::{NounClassExt, NounClassPrefixes};
 use crate::language::Transitivity;
 use crate::search::WordHit;
-use crate::serialization::{SerOnlyDisplay, SerializePrimitive};
+use crate::serialization::{SerOnlyDisplay};
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
 use std::fmt::{self, Display, Formatter};
@@ -22,7 +22,7 @@ impl<'a, 'b> HtmlFormatter<'a, 'b> {
         escape(text).fmt(self.fmt)
     }
 
-    pub fn write_noun_class_prefix(&mut self, text: &str, strong: bool) -> fmt::Result {
+    fn write_noun_class_prefix(&mut self, text: &str, strong: bool) -> fmt::Result {
         if !self.plain_text && strong {
             write!(
                 self.fmt,
@@ -125,16 +125,6 @@ impl DisplayHtml for String {
     }
 }
 
-impl<T: DisplayHtml, P> DisplayHtml for SerializePrimitive<T, P> {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
-        self.val.fmt(f)
-    }
-
-    fn is_empty_str(&self) -> bool {
-        self.val.is_empty_str()
-    }
-}
-
 impl<T: DisplayHtml> DisplayHtml for SerOnlyDisplay<T> {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         self.0.fmt(f)
@@ -231,12 +221,20 @@ impl<T: DisplayHtml> DisplayHtml for MaybeEdited<T> {
 
 impl DisplayHtml for NounClass {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
-        let prefixes = self.to_prefixes();
+        self.to_prefixes().fmt(f)
+    }
 
-        f.write_noun_class_prefix(prefixes.singular, prefixes.selected_singular)?;
-        if let Some(plural) = prefixes.plural {
+    fn is_empty_str(&self) -> bool {
+        self.to_prefixes().is_empty_str()
+    }
+}
+
+impl DisplayHtml for NounClassPrefixes {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        f.write_noun_class_prefix(self.singular, self.selected_singular)?;
+        if let Some(plural) = self.plural {
             f.write_text("/")?;
-            f.write_noun_class_prefix(plural, !prefixes.selected_singular)?;
+            f.write_noun_class_prefix(plural, !self.selected_singular)?;
         }
 
         Ok(())

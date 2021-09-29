@@ -117,30 +117,6 @@ export class LiveSearch {
     }
 }
 
-const NOUN_CLASS_PAIRS = {
-    1: ["um", "aba"],
-    2: ["um", "aba"],
-
-    3: ["u", "oo"],
-    4: ["u", "oo"],
-
-    5: ["um", "imi"],
-    6: ["um", "imi"],
-
-    7: ["ili", "ama"],
-    8: ["ili", "ama"],
-
-    9: ["isi", "izi"],
-    10: ["isi", "izi"],
-
-    11: ["in", "izin"],
-    12: ["in", "izin"],
-
-    13: ["ulu"],
-    14: ["ubu"],
-    15: ["uku"]
-};
-
 export function formatResult(result, elt) {
     let plural = "";
     if (result.is_plural) {
@@ -170,21 +146,20 @@ export function formatResult(result, elt) {
         elt.innerText = text;
 
         if (result.noun_class != null) {
-            let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
             let strong = document.createElement("strong");
             strong.className = "noun_class_prefix";
 
-            if (result.noun_class === class_pair[1]) {
-                strong.innerText = class_pair[1]
-                elt.innerText += ` - class ${class_pair[0]}/`
+            if (!result.noun_class.selected_singular) {
+                strong.innerText = result.noun_class.plural;
+                elt.innerText += ` - class ${result.noun_class.singular}/`
                 elt.appendChild(strong);
             } else {
-                strong.innerText = class_pair[0]
+                strong.innerText = result.noun_class.singular
                 elt.innerText += ` - class `
                 elt.appendChild(strong);
 
-                if (class_pair[1] != null) {
-                    elt.innerHTML += `/${class_pair[1]}`;
+                if (result.noun_class.plural != null) {
+                    elt.innerHTML += `/${result.noun_class.plural}`;
                 }
             }
         }
@@ -193,12 +168,10 @@ export function formatResult(result, elt) {
     } else {
         let noun_class = "";
         if (result.noun_class != null) {
-            let class_pair = NOUN_CLASS_PAIRS[result.noun_class];
-
-            if (class_pair[1] != null) {
-                noun_class = ` - class ${class_pair[0]}/${class_pair[1]}`;
+            if (result.noun_class.plural != null) {
+                noun_class = ` - class ${result.noun_class.singular}/${result.noun_class.plural}`;
             } else {
-                noun_class = ` - class ${class_pair[0]}`;
+                noun_class = ` - class ${result.noun_class.singular}`;
             }
         }
 

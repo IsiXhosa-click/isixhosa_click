@@ -1,4 +1,4 @@
-import { LiveSearch, formatResult } from "/live_search.js?v=5";
+import { LiveSearch, formatResult } from "/live_search.js?v=6";
 import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;

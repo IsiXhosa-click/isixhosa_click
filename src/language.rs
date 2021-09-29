@@ -228,6 +228,7 @@ impl FromSql for Transitivity {
 }
 
 /// Noun class prefixes with singular and plural
+#[derive(Copy, Clone, Debug, Serialize, Hash, Eq, PartialEq)]
 pub struct NounClassPrefixes {
     pub selected_singular: bool,
     pub singular: &'static str,

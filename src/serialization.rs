@@ -1,14 +1,12 @@
 use askama_warp::warp::http::header::CONTENT_TYPE;
-use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::Row;
-use serde::de::{DeserializeOwned, Error};
+use serde::de::{DeserializeOwned};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::{TryFrom, TryInto};
 use std::error::Error as StdError;
 use std::fmt::{self, Debug, Display, Formatter};
-use std::marker::PhantomData;
 use warp::hyper::body::Bytes;
 use warp::{Buf, Filter, Rejection};
 
@@ -51,67 +49,6 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerOnlyDisplay<T> {
         D: Deserializer<'de>,
     {
         T::deserialize(deserializer).map(SerOnlyDisplay)
-    }
-}
-
-pub trait OptionMapNounClassExt {
-    fn map_noun_class(&self) -> Option<NounClass>;
-}
-
-impl<P> OptionMapNounClassExt for Option<SerializePrimitive<NounClass, P>> {
-    fn map_noun_class(&self) -> Option<NounClass> {
-        self.as_ref().map(|s| s.val)
-    }
-}
-
-impl OptionMapNounClassExt for Option<NounClass> {
-    fn map_noun_class(&self) -> Option<NounClass> {
-        *self
-    }
-}
-
-#[derive(Copy, Clone, Hash, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct SerializePrimitive<T, P> {
-    pub val: T,
-    phantom: PhantomData<fn() -> P>,
-}
-
-impl<T, P> SerializePrimitive<T, P> {
-    pub fn new(val: T) -> Self {
-        SerializePrimitive {
-            val,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<T, P> Serialize for SerializePrimitive<T, P>
-where
-    T: Into<P> + Copy,
-    P: Serialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.val.into().serialize(serializer)
-    }
-}
-
-impl<'de, T, P> Deserialize<'de> for SerializePrimitive<T, P>
-where
-    T: TryFromPrimitive<Primitive = P> + Copy,
-    P: Deserialize<'de> + Copy + Into<i64>,
-{
-    fn deserialize<D>(de: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let primitive = P::deserialize(de)?;
-        let discrim = primitive.into();
-        T::try_from_primitive(primitive)
-            .map(SerializePrimitive::new)
-            .map_err(|_| D::Error::custom(DiscrimOutOfRange(discrim, std::any::type_name::<T>())))
     }
 }
 
