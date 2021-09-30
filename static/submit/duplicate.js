@@ -41,7 +41,8 @@ export function addDuplicateSearchFor(input_id, this_word_id) {
         createItem,
         function () {},
         createItemContainer,
-        r => r.id != this_word_id && (r.english === input.value || r.xhosa === input.value), /* filter */
+        r => r.id != this_word_id &&  /* filter */
+            (r.english.toLowerCase() === input.value.toLowerCase() || r.xhosa.toLowerCase() === input.value.toLowerCase()),
         true /* include own suggestions */
     );
 }
