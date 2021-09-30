@@ -228,7 +228,7 @@ fieldset.contains_table > legend {
     position: absolute;
     visibility: hidden;
     left: 0;
-    top: -0.25em;
+    margin-top: -0.25em;
     z-index: 1;
 }
 
@@ -245,7 +245,8 @@ fieldset.contains_table > legend {
     color: #080808;
     background: white;
     display: none;
-    width: 22em;
+    width: 12rem;
+    margin-top: -0.4rem;
     border: solid 1px lightgray;
     border-radius: 3px;
 }
