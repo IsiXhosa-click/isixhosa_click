@@ -1,6 +1,6 @@
 use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
-use crate::language::{NounClassExt, NounClassPrefixes};
+use crate::language::{NounClassExt, NounClassPrefixes, PartOfSpeech};
 use crate::language::Transitivity;
 use crate::search::WordHit;
 use crate::serialization::{SerOnlyDisplay};
@@ -169,12 +169,14 @@ fn text_if_bool<T: TextIfBoolIn>(
     yes: &'static str,
     no: &'static str,
     b: T,
+    show_no_when_new: bool,
 ) -> MaybeEdited<&'static str> {
     match b.into_maybe_edited() {
         MaybeEdited::Edited { new, old } => MaybeEdited::Edited {
             new: if new { yes } else { no },
             old: if old { yes } else { no },
         },
+        MaybeEdited::New(b) if show_no_when_new => MaybeEdited::New(if b { yes } else { no }),
         MaybeEdited::New(b) if b => MaybeEdited::New(yes),
         MaybeEdited::Old(b) if b => MaybeEdited::Old(yes),
         _ => MaybeEdited::Old(""),
@@ -268,12 +270,12 @@ impl DisplayHtml for SuggestedWord {
         f.join_if_non_empty(
             " ",
             [
-                &text_if_bool("inchoative", "non-inchoative", self.is_inchoative),
+                &text_if_bool("inchoative", "non-inchoative", self.is_inchoative, self.part_of_speech.was_or_is(&PartOfSpeech::Verb)),
                 &self
                     .transitivity
                     .map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x)))
                     as &dyn DisplayHtml,
-                &text_if_bool("plural", "singular", self.is_plural),
+                &text_if_bool("plural", "singular", self.is_plural, self.part_of_speech.was_or_is(&PartOfSpeech::Noun)),
                 &self.part_of_speech,
                 &self.noun_class.map(|opt| opt.map(NounClassInHit)),
             ],
@@ -283,6 +285,12 @@ impl DisplayHtml for SuggestedWord {
 
     fn is_empty_str(&self) -> bool {
         false
+    }
+}
+
+impl WordHit {
+    pub fn hyperlinked(&self) -> HyperlinkWrapper<'_> {
+        HyperlinkWrapper(self)
     }
 }
 
@@ -321,9 +329,9 @@ macro_rules! impl_display_html {
 
                 f.write_text(" (")?;
                 f.join_if_non_empty(" ", [
-                    &text_if_bool("inchoative", "non-inchoative", self.is_inchoative),
+                    &text_if_bool("inchoative", "non-inchoative", self.is_inchoative, self.part_of_speech == PartOfSpeech::Verb),
                     &self.transitivity as &dyn DisplayHtml,
-                    &text_if_bool("plural", "singular", self.is_plural),
+                    &text_if_bool("plural", "singular", self.is_plural, self.part_of_speech == PartOfSpeech::Noun),
                     &self.part_of_speech,
                     &self.noun_class.map(NounClassInHit),
                 ])?;

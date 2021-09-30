@@ -6,7 +6,7 @@
     <title>Moderation - IsiXhosa.click</title>
     <meta name="og:title" content="Moderation - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/moderation"/>
-    <link rel="stylesheet" href="/moderation.css">
+    <link rel="stylesheet" href="/moderation.css?v=1">
     {%- call macros::meta() -%}
 </head>
 
@@ -429,7 +429,7 @@
                                         <ul>
                                             {%- for l in assoc.linked_word_suggestions -%}
                                                 <li>
-                                                    {{- l.other(WordId(word.id.clone()).into()).to_html()|safe }}
+                                                    {{- l.other(WordId(word.id.clone()).into()).hyperlinked().to_html()|safe }}
                                                     - {{ l.link_type.to_html()|safe -}}
 
                                                     <p><strong>Suggested by</strong> {{ l.suggesting_user.username }}</p>
@@ -445,7 +445,7 @@
                                             {%- for del in assoc.linked_word_deletion_suggestions -%}
                                                 <li>
                                                     <del>
-                                                        {{ del.link.other.to_html()|safe }} -
+                                                        {{ del.link.other.hyperlinked().to_html()|safe }} -
                                                         {{ del.link.link_type.to_html()|safe -}}
                                                     </del>
 

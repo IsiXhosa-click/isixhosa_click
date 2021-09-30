@@ -6,8 +6,8 @@ h3.suggested_word_text strong.noun_class_prefix {
     font-weight: bolder;
 }
 
-h3.suggested_word_text > a {
-    text-decoration: none;
+a {
+    text-decoration: none; /* interferes with <ins> */
 }
 
 td:first-child, th:first-child {

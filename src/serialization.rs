@@ -28,6 +28,12 @@ impl StdError for DiscrimOutOfRange {}
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct SerOnlyDisplay<T>(pub T);
 
+impl<T: PartialEq> PartialEq<T> for SerOnlyDisplay<T> {
+    fn eq(&self, other: &T) -> bool {
+        &self.0 == other
+    }
+}
+
 impl<T: Display> Display for SerOnlyDisplay<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)

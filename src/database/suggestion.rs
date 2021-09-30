@@ -775,6 +775,16 @@ impl<T> MaybeEdited<T> {
     }
 }
 
+impl<T: PartialEq> MaybeEdited<T> {
+    pub fn was_or_is(&self, other: &T) -> bool {
+        match self {
+            MaybeEdited::Edited { new, old } => new == other || old == other,
+            MaybeEdited::New(new) => new == other,
+            MaybeEdited::Old(old) => old == other,
+        }
+    }
+}
+
 impl<T> MaybeEdited<Option<T>> {
     pub fn is_none(&self) -> bool {
         use MaybeEdited::*;
