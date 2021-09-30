@@ -217,3 +217,59 @@ fieldset.contains_table > legend {
         vertical-align: middle;
     }
 }
+
+.duplicates_container {
+    color: #b50000;
+    position: relative;
+    font-size: 0.75em;
+}
+
+.duplicates_popover {
+    position: absolute;
+    visibility: hidden;
+    left: 0;
+    top: -0.25em;
+    z-index: 1;
+}
+
+:is(#xhosa.has_results, #english.has_results) + .duplicates_container > .duplicates_popover {
+    visibility: visible;
+}
+
+/* English is above so z-index is higher */
+#english + .duplicates_container {
+    z-index: 2;
+}
+
+.duplicates {
+    color: #080808;
+    background: white;
+    display: none;
+    width: 22em;
+    border: solid 1px lightgray;
+    border-radius: 3px;
+}
+
+:is(#xhosa.has_results, #english.has_results) + :is(.duplicates_container:hover, .duplicates_container:focus) > .duplicates_popover > .duplicates {
+    display: inline-block;
+}
+
+.duplicates > .hits {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.duplicates > .hits > li {
+    border: solid 1px lightgray;
+}
+
+.duplicates > .hits > li > a {
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+}
+
+.duplicates > .hits > li:hover {
+    background: whitesmoke;
+}

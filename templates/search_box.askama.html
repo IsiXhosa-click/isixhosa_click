@@ -1,5 +1,5 @@
 {%- macro searchbox(start_query) -%}
-    <script type="module">import {LiveSearch} from "/live_search.js?v=7";
+    <script type="module">import {LiveSearch} from "/live_search.js?v=8";
 
         window.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
@@ -47,8 +47,7 @@
                 createItem,
                 postCreateItem,
                 createItemContainer,
-                null, /* skip word id */
-                false, /* skip is suggestion */
+                r => true, /* filter */
                 false /* include own suggestions */
             );
         });

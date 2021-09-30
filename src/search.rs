@@ -473,7 +473,7 @@ impl Handler<SearchRequest> for SearcherActor {
         })
         .await
         .expect("Error executing search task")
-        .unwrap() // TODO error handling
+        .unwrap() // TODO(error handling)
     }
 }
 

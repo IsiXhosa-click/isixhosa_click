@@ -2,25 +2,21 @@
 
 // Before launch:
 // - TODO suggest possible duplicates in submit form
-// - TODO better way to suggest plurals?
 
 // Soon after launch, perhaps before:
+// - informal/archaic meanings
 // - standalone example & linked word suggestion editing
-// - principled HTTP response codes with previous_success in form submit and so on
-// - ability to search for and ban users
+// - forum for xhosa questions
 // - error handling - dont crash always probably & on panic, always crash (viz. tokio workers)!
-// - move PartOfSpeech to isixhosa crate
 // - better search engine optimisation
 // - cache control headers/etags
-// - integration testing
-// - attributions - editing users & references & so on
+// - attributions - references
+// - learn page with additional resources/links page
 
 // Well after launch:
-// - forum for xhosa questions (discourse?)
 // - rate limiting
+// - integration testing
 // - tracing for logging over log: open telemetry/ELK stack or similar?
-// - additional resources/links page
-// - suggestion publicising, voting & commenting
 // - conjugation tables
 // - user profiles showing statistics (for mods primarily but maybe can publicise it?)
 // - semantic fields/categories linking related words to browse all at once

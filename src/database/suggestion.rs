@@ -583,7 +583,7 @@ impl SuggestedLinkedWord {
         map.into_iter()
     }
 
-    // TODO error handling
+    // TODO(error handling)
     pub fn accept(&self, db: &impl ModeratorAccessDb) -> i64 {
         const INSERT: &str = "
             INSERT INTO linked_words (link_id, link_type, first_word_id, second_word_id)

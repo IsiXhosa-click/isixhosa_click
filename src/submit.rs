@@ -1,6 +1,4 @@
-// TODO form validation for extra fields & make sure not empty str (or is empty str)
-// TODO HTML sanitisation - allow markdown in text only, no html
-
+// TODO(form validation): server side form validation
 use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::{TantivyClient, WordDocument, WordHit};
 use askama::Template;
@@ -35,13 +33,13 @@ struct SubmitTemplate {
 }
 
 impl SubmitTemplate {
-    fn this_word_id_js(&self) -> (String, bool) {
+    fn this_word_id_js(&self) -> String {
         match self.action {
-            SubmitFormAction::EditExisting(existing) => (existing.to_string(), false),
+            SubmitFormAction::EditExisting(existing) => existing.to_string(),
             SubmitFormAction::EditSuggestion { suggestion_id, .. } => {
-                (suggestion_id.to_string(), true)
+                suggestion_id.to_string()
             }
-            _ => ("null".to_owned(), false),
+            _ => "null".to_owned(),
         }
     }
 }
@@ -215,7 +213,6 @@ pub fn submit(
     db: DbBase,
     tantivy: Arc<TantivyClient>,
 ) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
-    // TODO handle unauthorized by redirect
     let submit_page = warp::get()
         .and(with_user_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is none

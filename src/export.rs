@@ -22,7 +22,7 @@ use std::process::Command;
 use std::time::Duration;
 use tempdir::TempDir;
 
-// TODO restore users
+// TODO(restore users)
 pub fn restore(cfg: Config) {
     let conn = Connection::open(&cfg.database_path).unwrap();
 

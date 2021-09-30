@@ -7,7 +7,7 @@
     <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/submit"/>
     {%- call macros::description("Submit a word to the free, open IsiXhosa.click live dictionary for Xhosa and English.") -%}
-    <link rel="stylesheet" href="/submit.css?v=4">
+    <link rel="stylesheet" href="/submit.css?v=5">
     {%- call macros::meta() -%}
 </head>
 
@@ -85,14 +85,30 @@
                     <div class="table">
                         <div>
                             <label for="english">English<span class="required">*</span>:</label>
-                            <input type="text" id="english" name="english" autocomplete="off" spellcheck="true"
-                             {#-#} value="{{ word.english }}" required>
+                            <div>
+                                <input type="text" id="english" name="english" autocomplete="off" spellcheck="true"
+                                 {#-#} value="{{ word.english }}" required>
+                                <div class="duplicates_container">
+                                    <div class="duplicates_popover">
+                                        <div>Possible duplicates</div>
+                                        <div class="duplicates"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
                             <label for="xhosa">Xhosa<span class="required">*</span>:</label>
-                            <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false"
-                             {#-#} value="{{ word.xhosa }}" lang="xh" required>
+                            <div>
+                                <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false"
+                                 {#-#} value="{{ word.xhosa }}" lang="xh" required>
+                                <div class="duplicates_container">
+                                    <div class="duplicates_popover">
+                                        <div>Possible duplicates</div>
+                                        <div class="duplicates"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div>
@@ -318,7 +334,8 @@
             <script type="module">
                 import { addExample, addExamples } from "/submit/example.js?v=2";
                 import { partOfSpeechChange } from "/submit/part_of_speech_specific.js?v=1";
-                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js?v=5";
+                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js?v=6";
+                import { addDuplicateSearchFor } from "/submit/duplicate.js?v=0";
 
                 window.addEventListener("DOMContentLoaded", function() {
                     for (let input of document.getElementsByTagName("input")) {
@@ -344,32 +361,25 @@
                 });
 
                 window.addEventListener("load", function() {
-                    function htmlDecode(input) {
-                        let doc = new DOMParser().parseFromString(input, "text/html");
-                        return doc.documentElement.textContent;
-                    }
-
-                    {%- let (this_word_id, this_is_new_suggestion) = self.this_word_id_js() -%}
+                    {%- let this_word_id = self.this_word_id_js() -%}
 
                     addExamples({{ word.examples|json }});
-                    addLinkedWords({{ word.linked_words|json }}, {{ this_word_id }}, {{ this_is_new_suggestion }});
+                    addLinkedWords({{ word.linked_words|json }}, {{ this_word_id }});
                     partOfSpeechChange(); /* Refresh part of speech sections */
+                    addDuplicateSearchFor("english", {{ this_word_id }});
+                    addDuplicateSearchFor("xhosa", {{ this_word_id }});
 
                     document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
                     document.getElementById("add_example").addEventListener("click", function() { addExample() });
                     document.getElementById("add_linked_word").addEventListener("click", function() {
-                        addLinkedWord({{ this_word_id }}, {{ this_is_new_suggestion }});
+                        addLinkedWord({{ this_word_id }});
                     });
                     document.getElementById("submit_word").addEventListener("submit", function() {
-                        let linked_words = document.getElementsByClassName("word_select_search");
-
-                        for (let i = 0; i < linked_words.length; i++) {
-                            let word = linked_words.item(i);
-                            let value = {
+                        for (let word of document.getElementsByClassName("word_select_search")) {
+                            word.value = JSON.stringify({
                                 id: word.getAttribute("data-selected_word_id"),
                                 is_suggestion: word.getAttribute("data-selected_is_suggestion"),
-                            };
-                            word.value = JSON.stringify(value);
+                            });
                         }
 
                         if (!document.getElementById("noun_selected").selected) {

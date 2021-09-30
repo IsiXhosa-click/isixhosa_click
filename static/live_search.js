@@ -11,8 +11,7 @@ export class LiveSearch {
         create_item,
         post_create_item,
         create_item_container,
-        skip_word_id,
-        skip_is_suggestion,
+        filter_fn,
         include_own_suggestions
     ) {
         this.input = input;
@@ -22,8 +21,7 @@ export class LiveSearch {
         this.create_item = create_item;
         this.post_create_item = post_create_item;
         this.create_item_container = create_item_container;
-        this.skip_word_id = skip_word_id;
-        this.skip_is_suggestion = skip_is_suggestion;
+        this.filter_fn = filter_fn;
 
         this.id = next_id;
         next_id++;
@@ -88,8 +86,7 @@ export class LiveSearch {
         let searcher = this;
         searcher.hits.innerHTML = "";
 
-        // noinspection EqualityComparisonWithCoercionJS -- this is done intentionally for string to number eq
-        results = results.filter(result => !(result.id == searcher.skip_word_id && result.is_suggestion == searcher.skip_is_suggestion));
+        results = results.filter(searcher.filter_fn);
 
         if (results.length === 0) {
             let p = document.createElement("p");
@@ -106,7 +103,7 @@ export class LiveSearch {
                 let item = searcher.create_item(formatResult(result), result.id, result.is_suggestion);
                 formatResult(result, item);
 
-                let [item_container_parent, item_container_inner] = searcher.create_item_container(result.id);
+                let [item_container_parent, item_container_inner] = searcher.create_item_container(result.id, result.is_suggestion);
                 let append = item;
 
                 if (item_container_parent != null) {
