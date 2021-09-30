@@ -1,4 +1,5 @@
 let ws;
+let reopen_last_tried = 0;
 let next_id = 1;
 let searchers = {};
 
@@ -29,32 +30,46 @@ export class LiveSearch {
 
         searchers[this.id] = this;
 
-        if (ws == null) {
-            ws = new WebSocket(
-                "wss://" + location.host + `/search?include_own_suggestions=${include_own_suggestions}`
-            );
+        async function maybeOpenWs() {
+            if (ws == null && (Date.now() - reopen_last_tried) > 1000) {
+                reopen_last_tried = Date.now();
 
-            ws.onopen = function() {
-                ws.send("");
-                setInterval(function() { ws.send(""); }, 10000);
-                setInterval(function() {
-                    for (let searcher of Object.values(searchers)) {
-                        searcher.refresh();
+                ws = new WebSocket(
+                    "wss://" + location.host + `/search?include_own_suggestions=${include_own_suggestions}`
+                );
+
+                ws.onopen = function () { ws.send(""); };
+                ws.onerror = function() { ws = null; };
+                ws.onclose = function() { ws = null; };
+
+                ws.onmessage = function (event) {
+                    let reply = JSON.parse(event.data);
+                    let searcher = searchers[reply.state];
+
+                    if (searcher != null) {
+                        searcher.processResults(reply.results);
                     }
-                }, 250);
-            };
-
-            ws.onerror = console.error;
-
-            ws.onmessage = function(event) {
-                let reply = JSON.parse(event.data);
-                let searcher = searchers[reply.state];
-
-                if (searcher != null) {
-                    searcher.processResults(reply.results);
                 }
             }
         }
+
+        maybeOpenWs();
+
+        setInterval(function () {
+            if (ws != null && ws.readyState === WebSocket.OPEN) {
+                ws.send("");
+            }
+        }, 10000);
+
+        setInterval(function () {
+            maybeOpenWs();
+
+            if (ws != null && ws.readyState === WebSocket.OPEN) {
+                for (let searcher of Object.values(searchers)) {
+                    searcher.refresh();
+                }
+            }
+        }, 250);
     }
 
     refresh() {
