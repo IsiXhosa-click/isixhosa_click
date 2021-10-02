@@ -274,3 +274,7 @@ fieldset.contains_table > legend {
 .duplicates > .hits > li:hover {
     background: whitesmoke;
 }
+
+div > p {
+    margin: 0;
+}

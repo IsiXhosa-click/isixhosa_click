@@ -1,0 +1,95 @@
+{%- import "macros.askama.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <title>404 - IsiXhosa.click</title>
+    <meta name="og:title" content="Style guide - IsiXhosa.click"/>
+    <meta name="og:description" content="The style guide for entries on IsiXhosa.click">
+    <meta name="og:url" content="https://isixhosa.click/style_guide"/>
+    <link rel="stylesheet" href="/style_guide.css?v=0">
+    {%- call macros::meta() -%}
+</head>
+
+<body>
+    {%- call macros::navbar() -%}
+    <div id="main_wrap">
+        <header><h1>Style guide</h1></header>
+
+        <main>
+            <h2>Entry guidelines</h2>
+
+            <p>An <dfn id="entry-dfn">entry</dfn> is a single page for a word.</p>
+
+            <ul>
+                <li>Each entry should describe one distinct meaning of a word</li>
+                <li>If a word has two or more alternate meanings (e.g hamba - go and hamba - walk),
+                    <strong>two separate entries should be created.</strong></li>
+                <li>These entries can then be used using the <a href="#linked-word-dfn">linked word feature</a>,
+                    using the <a href="#alternate-use-dfn">alternate use</a> link type.</li>
+                <li>If the word is uncommon, informal, or archaic, this should be made clear in the note section.</li>
+            </ul>
+
+            <p>Here are some style preferences about writing the English and Xhosa translations for an entry:</p>
+            <ul>
+                <li>Do <strong>not</strong> capitalise the first letter of an entry, unless it is a proper noun
+                    (e.g Cape Town - iKapa).</li>
+                <li>Extra information about a words usage can be put in the note field or shown by the examples.</li>
+                <li>Do <strong>not</strong> prefix a verb with a dash. Prefer go - hamba to go - -hamba.
+                    This may be acceptable in cases where a verb is immediately followed by a bound morpheme like
+                    na-, for instance in the entry of <a href="/word/89">brush against - thintana na-</a></li>
+                <li>Try to come up with a close English translation for the Xhosa word. If there are multiple suitable
+                    options, if they are all in common usage, you might consider making multiple
+                    <a href="#entry-dfn">entries</a> and <a href="#linked-word-dfn">linking them</a> with the
+                    <a href="#related-meaning-dfn">related meaning</a> link type.</li>
+                <li>For <a href="#inchoative-dfn">inchoative</a> verbs representing a subject becoming some state,
+                    put the word become in the English. For instance,
+                    <a href="/word/241">become injured - enzakala</a>.</li>
+            </ul>
+
+            <h2>Linked words</h2>
+
+            <p><dfn id="linked-word-dfn">Linked words</dfn> are a core concept of the site. They allow for words to be
+            linked to one another. For instance, singular and plural words can be linked together, or synonyms.</p>
+
+            <h3>Types of linked words</h3>
+
+            <ul>
+                <li><dfn id="singular-or-plural-dfn">Singular or plural form:</dfn> this is used to link two words which are
+                    related by plurality. E.g: <a href="/word/504">ixesha</a> and
+                    <a href="/word/505">amaxesha</a>.</li>
+                <li><dfn id="alternate-use-dfn">Alternate use:</dfn> this is used to link two words which have two or
+                     more slightly different meanings in either language, however they are still the same word.
+                     E.g: <a href="/word/257">need - funa</a> and <a href="/word/236">want - funa</a>.</li>
+                <li><dfn id="related-meaning-dfn">Related meaning:</dfn> this is used to link synonyms, words from the
+                    same root, or otherwise similarly-meaning words. E.g: <a href="/word/64">funda</a> and
+                    <a href="/word/221">fundisa</a>, <a href="/word/86">thanda</a> and
+                    <a href="/word/33">isithandwa</a>, and <a href="/word/123">sika</a> and
+                    <a href="/word/156">cheba</a>.</li>
+                <li><dfn id="antonym-dfn">Antonym:</dfn> this is used to link words with opposite meanings to eachother.
+                    E.g: <a href="/word/149">khumbula</a> and <a href="/word/130">libala</a>.</li>
+                <li><dfn id="confusable-dfn">Confusable:</dfn> unrelated words which could be confused based on how they
+                    sound or are spelled. E.g: <a href="/word/39">ibali</a> and
+                    <a href="/word/38">ibala</a>.</li>
+            </ul>
+
+            <h2>Example sentences</h2>
+
+            <p>Example sentences are another core feature of the site. They help to show the use of the word in a real
+            sentence, and can clarify meaning of the word. Try and abide by the following rules when writing examples:</p>
+
+            <ul>
+                <li>Submit full sentences rather than just phrases. E.g: "Intlanzi idada echibini." is a better
+                example for <a href="/word/406">intlanzi</a> than "Intlanzi enkulu".</li>
+                <li>Use punctuation at the end of an examples, as well as proper spelling and grammar.</li>
+                <li>Try and add at least one example per word.</li>
+                <li>Examples should be used to fully demonstrate the meanings and usages of a word. E.g:
+                    "Ihashe libaleka ebaleni." is a better example for <a href="/word/38">ibala</a> than
+                    "Ibala likhulu." as the first example shows it is a field of grass rather than a field of study.</li>
+                <li>Therefore, avoid examples which are simplistic like "I do [verb]." or "I like [noun]."</li>
+                <li>If a word has a common construction it's often used with, add it in an example!</li>
+            </ul>
+        </main>
+    </div>
+</body>
+</html>

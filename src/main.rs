@@ -319,14 +319,18 @@ async fn server(cfg: Config) {
     let terms_of_use = warp::path("terms_of_use")
         .and(path::end())
         .and(with_any_auth(db.clone()))
-        .map(|auth, _| TermsOfUsePage { auth });
+        .map(|auth, _| TermsOfUse { auth });
+    let style_guide = warp::path("style_guide")
+        .and(path::end())
+        .and(with_any_auth(db.clone()))
+        .map(|auth, _| StyleGuide { auth });
 
     let about = warp::get()
         .and(warp::path("about"))
         .and(path::end())
         .and(with_any_auth(db.clone()))
         .and_then(|auth, db| async move {
-            Ok::<AboutPage, Infallible>(AboutPage {
+            Ok::<About, Infallible>(About {
                 auth,
                 word_count: tokio::task::spawn_blocking(move || ExistingWord::count_all(&db))
                     .await
@@ -338,6 +342,7 @@ async fn server(cfg: Config) {
         .or(warp::fs::dir(cfg.other_static_files.clone()))
         .or(search)
         .or(terms_of_use)
+        .or(style_guide)
         .or(submit(db.clone(), tantivy.clone()))
         .or(accept(db.clone(), tantivy.clone()))
         .or(details(db.clone()))
@@ -400,14 +405,20 @@ struct NotFound {
 
 #[derive(Template, Clone, Debug)]
 #[template(path = "about.askama.html")]
-struct AboutPage {
+struct About {
     auth: Auth,
     word_count: u64,
 }
 
 #[derive(Template, Clone, Debug)]
 #[template(path = "terms_of_use.askama.html")]
-struct TermsOfUsePage {
+struct TermsOfUse {
+    auth: Auth,
+}
+
+#[derive(Template, Clone, Debug)]
+#[template(path = "style_guide.askama.html")]
+struct StyleGuide {
     auth: Auth,
 }
 
