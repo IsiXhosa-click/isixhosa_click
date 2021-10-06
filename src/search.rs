@@ -464,7 +464,7 @@ impl Handler<SearchRequest> for SearcherActor {
 
             results.sort_by_cached_key(|hit| {
                 Reverse(max(
-                    OrderedFloat(strsim::jaro_winkler(&req.query, &hit.xhosa)),
+                    OrderedFloat(strsim::jaro_winkler(&req.query, &hit.xhosa.trim_start_matches("(i)"))),
                     OrderedFloat(strsim::jaro_winkler(&req.query, &hit.english)),
                 ))
             });
