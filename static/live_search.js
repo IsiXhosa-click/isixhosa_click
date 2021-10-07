@@ -152,7 +152,7 @@ export function formatResult(result, elt) {
         part_of_speech = "relative";
     }
 
-    let text = `${result.english} - ${result.xhosa} (${inchoative}${transitive}${part_of_speech}`;
+    let text = `${result.english} - ${result.xhosa} (${inchoative}${transitive}${plural}${part_of_speech}`;
 
     if (elt != null) {
         elt.innerText = text;
