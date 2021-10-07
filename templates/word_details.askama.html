@@ -74,7 +74,7 @@
                                         <td>{{ word.part_of_speech }}</td>
                                     </tr>
 
-                                    {%- if word.part_of_speech == PartOfSpeech::Noun -%}
+                                    {%- if word.part_of_speech == PartOfSpeech::Noun || word.is_plural -%}
                                         <tr>
                                             <th scope="row">Plurality</th>
                                             <td>

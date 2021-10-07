@@ -1,3 +1,5 @@
+Copyright Restioson, 2021, available under the following license:
+
 ### GNU AFFERO GENERAL PUBLIC LICENSE
 
 Version 3, 19 November 2007
