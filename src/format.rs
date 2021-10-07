@@ -331,7 +331,7 @@ macro_rules! impl_display_html {
                 f.join_if_non_empty(" ", [
                     &text_if_bool("inchoative", "non-inchoative", self.is_inchoative, self.part_of_speech == PartOfSpeech::Verb),
                     &self.transitivity as &dyn DisplayHtml,
-                    &text_if_bool("plural", "singular", self.is_plural, self.part_of_speech == PartOfSpeech::Noun || self.is_plural),
+                    &text_if_bool("plural", "singular", self.is_plural, self.part_of_speech == PartOfSpeech::Noun),
                     &self.part_of_speech,
                     &self.noun_class.map(NounClassInHit),
                 ])?;
