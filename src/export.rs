@@ -226,7 +226,7 @@ impl WordRecord {
 
                 if self.is_plural {
                     format!(
-                        "class {}<strong>{}</strong>",
+                        "class {}/<strong>{}</strong>",
                         prefixes.singular,
                         prefixes.plural.unwrap_or("undefined")
                     )
