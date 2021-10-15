@@ -38,12 +38,12 @@
                     {%- match previous_success -%}
                         {%- when Some with (prev) -%}
                             <script>
-                                // HACK(restioson): stop F5 from resubmitting form
+                                /* HACK(restioson): stop F5 from resubmitting form */
                                 if (window.history.replaceState) {
                                     window.history.replaceState(null, null, window.location.href);
                                 }
 
-                                // HACK(restioson): move user back to /word/id
+                                /* HACK(restioson): move user back to /word/id */
                                 history.replaceState(null, null, window.location.origin + "/word/{{ word.word_id }}");
                             </script>
 

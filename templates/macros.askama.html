@@ -27,7 +27,7 @@
                 <div id="login_bar_container">
                     <button id="login_bar" class="row_list">
                         <div class="material-icons" id="user_icon">account_circle</div>
-                        <div id="login_bar_text">{{ auth.username().unwrap_or_default() -}}</div>
+                        <div id="login_bar_text">{{- username -}}</div>
                     </button>
 
                     <div id="login_popover_container">
@@ -40,7 +40,6 @@
                     </div>
                 </div>
         {%- endmatch -%}
-
     </nav>
 
     <script type="module">
@@ -83,7 +82,7 @@
     <link rel="apple-touch-icon" sizes="144x144" href="/icons/apple-icon-144x144.png">
     <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-icon-152x152.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-icon-180x180.png">
-    <link rel="icon" type="image/png" sizes="192x192"  href="/icons/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/android-icon-192x192.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96x96.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">

@@ -1,8 +1,8 @@
 use crate::database::WordOrSuggestionId;
 
-use crate::language::{PartOfSpeech, Transitivity, NounClassPrefixes, NounClassExt};
+use crate::language::{NounClassExt, NounClassPrefixes, PartOfSpeech, Transitivity};
 use crate::serialization::GetWithSentinelExt;
-use crate::serialization::{SerOnlyDisplay};
+use crate::serialization::SerOnlyDisplay;
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
@@ -464,7 +464,10 @@ impl Handler<SearchRequest> for SearcherActor {
 
             results.sort_by_cached_key(|hit| {
                 Reverse(max(
-                    OrderedFloat(strsim::jaro_winkler(&req.query, &hit.xhosa.trim_start_matches("(i)"))),
+                    OrderedFloat(strsim::jaro_winkler(
+                        &req.query,
+                        &hit.xhosa.trim_start_matches("(i)"),
+                    )),
                     OrderedFloat(strsim::jaro_winkler(&req.query, &hit.english)),
                 ))
             });
@@ -615,7 +618,8 @@ impl WordHit {
             is_inchoative: get_bool(&doc, schema_info.is_inchoative, "is_inchoative")?,
             transitivity: get_with_sentinel(&doc, schema_info.transitivity).map(SerOnlyDisplay),
             is_suggestion,
-            noun_class: get_with_sentinel(&doc, schema_info.noun_class).map(|c: NounClass| c.to_prefixes()),
+            noun_class: get_with_sentinel(&doc, schema_info.noun_class)
+                .map(|c: NounClass| c.to_prefixes()),
         })
     }
 }

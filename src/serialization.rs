@@ -2,7 +2,7 @@ use askama_warp::warp::http::header::CONTENT_TYPE;
 use num_enum::TryFromPrimitive;
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
 use rusqlite::Row;
-use serde::de::{DeserializeOwned};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::{TryFrom, TryInto};
 use std::error::Error as StdError;

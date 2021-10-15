@@ -56,7 +56,7 @@ export function addExample(english, xhosa, suggestion_id, existing_id) {
 
     let icon = document.createElement("span");
     icon.className = "material-icons";
-    icon.innerText = "delete"
+    icon.innerText = "delete";
     delete_button.appendChild(icon);
     delete_button.setAttribute("aria-label", "delete");
 

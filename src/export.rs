@@ -621,7 +621,7 @@ fn write_users(cfg: &Config, conn: &Connection) {
 fn sweep_tokens(conn: &Connection) {
     const DELETE: &str =
         "DELETE FROM login_tokens WHERE JULIANDAY(?1) - JULIANDAY(last_used) > ?2;";
-    const TOKEN_EXPIRY_DAYS: f64 = 14.0;
+    const TOKEN_EXPIRY_DAYS: f64 = 30.0;
 
     conn.prepare(DELETE)
         .unwrap()

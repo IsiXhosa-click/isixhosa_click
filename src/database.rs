@@ -6,11 +6,11 @@ use rusqlite::{params, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
 
 use crate::auth::{ModeratorAccessDb, PublicAccessDb, PublicUserInfo};
+use crate::language::NounClassExt;
 use crate::search::WordHit;
 use crate::serialization::GetWithSentinelExt;
 use crate::serialization::SerOnlyDisplay;
 use crate::submit::WordId;
-use crate::language::NounClassExt;
 use isixhosa::noun::NounClass;
 
 pub mod deletion;
@@ -32,7 +32,9 @@ impl WordHit {
             is_inchoative: row.get("is_inchoative")?,
             transitivity: row.get_with_sentinel("transitivity")?.map(SerOnlyDisplay),
             is_suggestion: id.is_suggested(),
-            noun_class: row.get_with_sentinel("noun_class")?.map(|c: NounClass| c.to_prefixes()),
+            noun_class: row
+                .get_with_sentinel("noun_class")?
+                .map(|c: NounClass| c.to_prefixes()),
         })
     }
 

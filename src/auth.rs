@@ -8,6 +8,7 @@ use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
 use dashmap::DashMap;
+use fallible_iterator::FallibleIterator;
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
@@ -26,7 +27,6 @@ use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-use fallible_iterator::FallibleIterator;
 
 type OpenIDClient = Client<Discovered, StandardClaims>;
 
@@ -200,9 +200,7 @@ impl PublicUserInfo {
 
         let conn = db.get().unwrap();
 
-        let mut query = conn
-            .prepare(SELECT)
-            .unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
 
         query
             .query(params![word])

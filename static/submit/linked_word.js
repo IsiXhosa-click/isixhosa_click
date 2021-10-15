@@ -60,7 +60,7 @@ function createLinkedWordSearch(preset_word, this_id) {
     function createLinkedWordButton(word, word_id, is_suggestion) {
         let button = document.createElement("button");
         button.type = "button";
-        button.className = "select_list_option"
+        button.className = "select_list_option";
         button.addEventListener("blur", selectFocusOut);
         button.addEventListener("focus", selectFocusIn);
         button.addEventListener("click", function () {
@@ -71,13 +71,13 @@ function createLinkedWordSearch(preset_word, this_id) {
             input.setAttribute("data-restore_choice", "false");
             input.value = word;
             button.blur();
-        })
+        });
         return button;
     }
 
     function createLinkedWordContainer() {
         let item = document.createElement("li");
-        item.className = "select_list_option"
+        item.className = "select_list_option";
         return [item, item];
     }
 

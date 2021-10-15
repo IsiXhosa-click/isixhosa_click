@@ -36,7 +36,7 @@ export class LiveSearch {
                     "wss://" + location.host + `/search?include_own_suggestions=${include_own_suggestions}`
                 );
 
-                ws.onopen = function () { ws.send(""); };
+                ws.onopen = function() { ws.send(""); };
                 ws.onerror = function() { ws = null; };
                 ws.onclose = function() { ws = null; };
 
@@ -163,11 +163,11 @@ export function formatResult(result, elt) {
 
             if (!result.noun_class.selected_singular) {
                 strong.innerText = result.noun_class.plural;
-                elt.innerText += ` - class ${result.noun_class.singular}/`
+                elt.innerText += ` - class ${result.noun_class.singular}/`;
                 elt.appendChild(strong);
             } else {
-                strong.innerText = result.noun_class.singular
-                elt.innerText += ` - class `
+                strong.innerText = result.noun_class.singular;
+                elt.innerText += ` - class `;
                 elt.appendChild(strong);
 
                 if (result.noun_class.plural != null) {

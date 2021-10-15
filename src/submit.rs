@@ -36,9 +36,7 @@ impl SubmitTemplate {
     fn this_word_id_js(&self) -> String {
         match self.action {
             SubmitFormAction::EditExisting(existing) => existing.to_string(),
-            SubmitFormAction::EditSuggestion { suggestion_id, .. } => {
-                suggestion_id.to_string()
-            }
+            SubmitFormAction::EditSuggestion { suggestion_id, .. } => suggestion_id.to_string(),
             _ => "null".to_owned(),
         }
     }
@@ -684,8 +682,7 @@ fn process_linked_words(
     const DELETE_LINKED_WORD_SUGGESTION: &str =
         "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1;";
 
-    const SUGGEST_LINKED_WORD_DELETION: &str =
-        "
+    const SUGGEST_LINKED_WORD_DELETION: &str = "
             INSERT INTO linked_word_deletion_suggestions (linked_word_id, reason, suggesting_user)
             VALUES (?1, ?2, ?3);
          ";
@@ -790,7 +787,11 @@ fn process_linked_words(
                     maybe_insert_link(new, Some(prev));
                 } else {
                     suggest_link_deletion
-                        .execute(params![prev.link_id, w.changes_summary, suggesting_user.get()])
+                        .execute(params![
+                            prev.link_id,
+                            w.changes_summary,
+                            suggesting_user.get()
+                        ])
                         .unwrap();
                 }
             }
@@ -843,8 +844,7 @@ fn process_examples(
     const DELETE_EXAMPLE_SUGGESTION: &str =
         "DELETE FROM example_suggestions WHERE suggestion_id = ?1;";
 
-    const SUGGEST_EXAMPLE_DELETION: &str =
-        "
+    const SUGGEST_EXAMPLE_DELETION: &str = "
             INSERT INTO example_deletion_suggestions (example_id, reason, suggesting_user)
             VALUES (?1, ?2, ?3);
         ";
@@ -913,7 +913,11 @@ fn process_examples(
                     Some(new) => maybe_insert_example(new, Some(prev)),
                     None => {
                         suggest_example_deletion
-                            .execute(params![prev.example_id, w.changes_summary, suggesting_user.get()])
+                            .execute(params![
+                                prev.example_id,
+                                w.changes_summary,
+                                suggesting_user.get()
+                            ])
                             .unwrap();
                     }
                 }
@@ -923,6 +927,9 @@ fn process_examples(
     }
 
     for new in &mut w.examples {
+        new.english = new.english.trim().to_owned();
+        new.xhosa = new.xhosa.trim().to_owned();
+
         if new.english.is_empty() && new.xhosa.is_empty() {
             continue;
         }

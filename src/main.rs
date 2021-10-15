@@ -175,12 +175,14 @@ where
 async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     let response = reply.into_response();
     if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
-        let content_type = content_type.to_str().unwrap();
+        let mime = content_type.to_str().unwrap();
 
-        if content_type.starts_with("text/html") {
+        if mime.starts_with("text/html") {
             #[allow(clippy::redundant_closure)] // lifetime issue
             return process_body(response, |s| html_minifier::minify(s)).await;
-        } else if content_type.starts_with("text/css") {
+        } else if mime.starts_with("text/javascript") || mime.starts_with("application/javascript") {
+            return process_body(response, |s| Ok::<String, ()>(minifier::js::minify(s))).await;
+        } else if mime.starts_with("text/css") {
             return process_body(response, minifier::css::minify).await;
         }
     }
@@ -338,6 +340,10 @@ async fn server(cfg: Config) {
             })
         });
 
+    let favico_redirect = warp::get()
+        .and(warp::path("favicon.ico"))
+        .map(|| warp::redirect(Uri::from_static("/icons/favicon.ico")));
+
     let routes = warp::fs::dir(cfg.static_site_files.clone())
         .or(warp::fs::dir(cfg.other_static_files.clone()))
         .or(search)
@@ -352,6 +358,7 @@ async fn server(cfg: Config) {
             .map(|| warp::redirect(Uri::from_static("/search"))))
         .or(about)
         .or(auth(db.clone(), &cfg).await)
+        .or(favico_redirect)
         .recover(handle_auth_error)
         .or(auth::with_any_auth(db).map(|auth, _db| {
             warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()

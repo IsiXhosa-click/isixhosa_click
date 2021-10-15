@@ -63,12 +63,12 @@
                 {%- when Some with (prev) -%}
                     {%- if prev.success -%}
                         <script>
-                            // HACK(restioson): stop F5 from resubmitting form
+                            /* HACK(restioson): stop F5 from resubmitting form */
                             if (window.history.replaceState) {
                                 window.history.replaceState(null, null, window.location.href);
                             }
 
-                            // HACK(restioson): move user back to /moderation
+                            /* HACK(restioson): move user back to /moderation */
                             history.replaceState(null, null, window.location.origin + "/moderation");
                         </script>
                     {%- endif -%}

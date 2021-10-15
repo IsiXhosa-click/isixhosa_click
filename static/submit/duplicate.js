@@ -19,7 +19,7 @@ function createItemContainer(id, is_suggestion) {
     if (!is_suggestion) {
         inner = document.createElement("a");
         inner.href = `/word/${id}`;
-        inner.rel = "noopener noreferrer"
+        inner.rel = "noopener noreferrer";
         inner.target = "_blank"
     } else {
         inner = document.createElement("span");

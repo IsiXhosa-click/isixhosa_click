@@ -22,7 +22,7 @@
         {%- match previous_success -%}
             {%- when Some with (true) -%}
                 <script>
-                    // HACK(restioson): stop F5 from resubmitting form
+                    /* HACK(restioson): stop F5 from resubmitting form */
                     if (window.history.replaceState) {
                         window.history.replaceState(null, null, window.location.href);
                     }

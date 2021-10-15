@@ -1,9 +1,9 @@
 use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
-use crate::language::{NounClassExt, NounClassPrefixes, PartOfSpeech};
 use crate::language::Transitivity;
+use crate::language::{NounClassExt, NounClassPrefixes, PartOfSpeech};
 use crate::search::WordHit;
-use crate::serialization::{SerOnlyDisplay};
+use crate::serialization::SerOnlyDisplay;
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
 use std::fmt::{self, Display, Formatter};
@@ -270,12 +270,22 @@ impl DisplayHtml for SuggestedWord {
         f.join_if_non_empty(
             " ",
             [
-                &text_if_bool("inchoative", "non-inchoative", self.is_inchoative, self.part_of_speech.was_or_is(&PartOfSpeech::Verb)),
+                &text_if_bool(
+                    "inchoative",
+                    "non-inchoative",
+                    self.is_inchoative,
+                    self.part_of_speech.was_or_is(&PartOfSpeech::Verb),
+                ),
                 &self
                     .transitivity
                     .map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x)))
                     as &dyn DisplayHtml,
-                &text_if_bool("plural", "singular", self.is_plural, self.part_of_speech.was_or_is(&PartOfSpeech::Noun)),
+                &text_if_bool(
+                    "plural",
+                    "singular",
+                    self.is_plural,
+                    self.part_of_speech.was_or_is(&PartOfSpeech::Noun),
+                ),
                 &self.part_of_speech,
                 &self.noun_class.map(|opt| opt.map(NounClassInHit)),
             ],
