@@ -558,7 +558,6 @@ impl SuggestedLinkedWord {
 
         examples
             .map(|row| {
-                println!("Found row!");
                 let (first, second, fallback_first) = (
                     row.get::<&str, Option<u64>>("first_existing_word_id")?,
                     row.get::<&str, Option<u64>>("second_existing_word_id")?,
