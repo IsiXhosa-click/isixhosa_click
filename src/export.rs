@@ -142,7 +142,7 @@ impl WordRecord {
                         {{/EnglishExample}}
 
                         {{#WordNote}}
-                            <p>{{ WordNote }}</p>
+                            <p class="example">{{ WordNote }}</p>
                         {{/WordNote}}
                     "#,
             );
@@ -178,7 +178,7 @@ impl WordRecord {
                         {{/EnglishExample}}
 
                         {{#WordNote}}
-                            <p>{{ WordNote }}</p>
+                            <p class="example">{{ WordNote }}</p>
                         {{/WordNote}}
                     "#,
             );
