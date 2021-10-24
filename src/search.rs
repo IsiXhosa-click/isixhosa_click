@@ -402,7 +402,6 @@ impl SearcherActor {
             };
 
             let distance = std::cmp::min(distance, search_level);
-            eprintln!("Searching distance = {}", distance);
 
             let english = Term::from_field_text(client.schema_info.english, &token.text);
             let xhosa = Term::from_field_text(client.schema_info.xhosa, &token.text);
