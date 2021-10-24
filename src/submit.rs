@@ -210,7 +210,7 @@ impl LinkedWordSubmission {
 pub fn submit(
     db: DbBase,
     tantivy: Arc<TantivyClient>,
-) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
+) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let submit_page = warp::get()
         .and(with_user_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is none

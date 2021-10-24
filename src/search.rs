@@ -12,16 +12,16 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Serialize;
 use std::cmp::{max, Reverse};
+use std::collections::HashSet;
 use std::convert::{TryFrom, TryInto};
-
 use std::fmt::{Debug, Formatter};
 use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tantivy::collector::DocSetCollector;
+use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
-use tantivy::doc;
+use tantivy::{doc, LeasedItem, Searcher};
 use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{
     Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
@@ -34,6 +34,7 @@ use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
+const RESULTS: usize = 10;
 
 pub struct TantivyClient {
     schema_info: SchemaInfo,
@@ -383,6 +384,83 @@ impl Message for SearchRequest {
     type Result = Vec<WordHit>;
 }
 
+impl SearcherActor {
+    fn query_terms(
+        searcher: &mut LeasedItem<Searcher>,
+        client: &TantivyClient,
+        search_level: u8,
+        req: &SearchRequest,
+        out: &mut HashSet<WordHit>,
+    ) {
+        let mut tokenized = client.english_tokenizer.token_stream(&req.query);
+        let mut queries: Vec<Box<dyn Query + 'static>> = Vec::with_capacity(3);
+        tokenized.process(&mut |token| {
+            let distance = match token.text.len() {
+                0..=2 => 0,
+                3..=5 => 1,
+                _ => 2,
+            };
+
+            let distance = std::cmp::min(distance, search_level);
+            eprintln!("Searching distance = {}", distance);
+
+            let english = Term::from_field_text(client.schema_info.english, &token.text);
+            let xhosa = Term::from_field_text(client.schema_info.xhosa, &token.text);
+            let xhosa_stemmed =
+                Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
+
+            let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
+            let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
+            let query_xhosa_stemmed = FuzzyTermQuery::new_prefix(xhosa_stemmed, distance, true);
+
+            let this_term: Vec<Box<dyn Query + 'static>> = vec![
+                Box::new(query_english),
+                Box::new(query_xhosa),
+                Box::new(query_xhosa_stemmed)
+            ];
+
+            queries.push(Box::new(BooleanQuery::union(this_term)));
+        });
+
+        let terms = BooleanQuery::intersection(queries);
+
+        let not_suggestion = || {
+            let not_suggestion = Term::from_field_u64(client.schema_info.suggesting_user, 0);
+            let not_suggestion = TermQuery::new(not_suggestion, IndexRecordOption::Basic);
+            BooleanQuery::intersection(vec![Box::new(not_suggestion), Box::new(terms.clone())])
+        };
+
+        let query = match req.include {
+            IncludeResults::AcceptedAndAllSuggestions => terms,
+            IncludeResults::AcceptedAndSuggestionsFrom(user) => {
+                let suggested_by =
+                    Term::from_field_u64(client.schema_info.suggesting_user, user.get());
+                let suggested_by = TermQuery::new(suggested_by, IndexRecordOption::Basic);
+                let suggested_by = BooleanQuery::intersection(vec![
+                    Box::new(suggested_by),
+                    Box::new(terms.clone()),
+                ]);
+                BooleanQuery::union(vec![Box::new(not_suggestion()), Box::new(suggested_by)])
+            }
+            IncludeResults::AcceptedOnly => not_suggestion(),
+        };
+
+        let iter = searcher
+            .search(&query, &TopDocs::with_limit(RESULTS * 5)) // TODO unsure
+            .unwrap()
+            .into_iter()
+            .map(|(_, doc_address)| {
+                searcher
+                    .doc(doc_address)
+                    .map_err(anyhow::Error::from)
+                    .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
+                    .unwrap()
+            });
+
+        out.extend(iter);
+    }
+}
+
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
     async fn handle(
@@ -393,70 +471,20 @@ impl Handler<SearchRequest> for SearcherActor {
         req.query = req.query.to_lowercase().replace("(", "").replace(")", "");
         req.query.truncate(32);
 
-        let searcher = self.reader.searcher();
+        let mut searcher = self.reader.searcher();
         let client = self.client.clone();
-
-        // Drop BoxTokenStream which is not Send
-        let query = {
-            let mut tokenized = client.english_tokenizer.token_stream(&req.query);
-            let mut queries: Vec<Box<dyn Query + 'static>> = Vec::with_capacity(3);
-            tokenized.process(&mut |token| {
-                let distance = match token.text.len() {
-                    0..=2 => 0,
-                    3..=5 => 1,
-                    _ => 2,
-                };
-
-                let english = Term::from_field_text(client.schema_info.english, &token.text);
-                let xhosa = Term::from_field_text(client.schema_info.xhosa, &token.text);
-                let xhosa_stemmed =
-                    Term::from_field_text(client.schema_info.xhosa_stemmed, &token.text);
-
-                let query_english = FuzzyTermQuery::new_prefix(english, distance, true);
-                let query_xhosa = FuzzyTermQuery::new_prefix(xhosa, distance, true);
-                let query_xhosa_stemmed = FuzzyTermQuery::new_prefix(xhosa_stemmed, distance, true);
-
-                queries.reserve(3);
-                queries.push(Box::new(query_english));
-                queries.push(Box::new(query_xhosa));
-                queries.push(Box::new(query_xhosa_stemmed));
-            });
-
-            let terms = BooleanQuery::union(queries);
-
-            let not_suggestion = || {
-                let not_suggestion = Term::from_field_u64(client.schema_info.suggesting_user, 0);
-                let not_suggestion = TermQuery::new(not_suggestion, IndexRecordOption::Basic);
-                BooleanQuery::intersection(vec![Box::new(not_suggestion), Box::new(terms.clone())])
-            };
-
-            match req.include {
-                IncludeResults::AcceptedAndAllSuggestions => terms,
-                IncludeResults::AcceptedAndSuggestionsFrom(user) => {
-                    let suggested_by =
-                        Term::from_field_u64(client.schema_info.suggesting_user, user.get());
-                    let suggested_by = TermQuery::new(suggested_by, IndexRecordOption::Basic);
-                    let suggested_by = BooleanQuery::intersection(vec![
-                        Box::new(suggested_by),
-                        Box::new(terms.clone()),
-                    ]);
-                    BooleanQuery::union(vec![Box::new(not_suggestion()), Box::new(suggested_by)])
-                }
-                IncludeResults::AcceptedOnly => not_suggestion(),
-            }
-        };
+        let mut results = HashSet::with_capacity(10);
 
         tokio::task::spawn_blocking(move || {
-            let mut results: Vec<WordHit> = searcher
-                .search(&query, &DocSetCollector)? // TODO limit this probably
-                .into_iter()
-                .map(|doc_address| {
-                    searcher
-                        .doc(doc_address)
-                        .map_err(anyhow::Error::from)
-                        .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
-                })
-                .collect::<Result<_>>()?;
+            for level in 0..=2 {
+                SearcherActor::query_terms(&mut searcher, &client, level, &req, &mut results);
+
+                if results.len() >= RESULTS {
+                    break;
+                }
+            }
+
+            let mut results: Vec<WordHit> = results.into_iter().collect();
 
             results.sort_by_cached_key(|hit| {
                 Reverse(max(
@@ -467,7 +495,8 @@ impl Handler<SearchRequest> for SearcherActor {
                     OrderedFloat(strsim::jaro_winkler(&req.query, &hit.english)),
                 ))
             });
-            results.truncate(10);
+
+            results.truncate(RESULTS);
             Ok::<_, anyhow::Error>(results)
         })
         .await

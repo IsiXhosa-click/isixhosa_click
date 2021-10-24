@@ -1,5 +1,3 @@
-#![feature(associated_type_bounds)]
-
 // Before launch:
 // - TODO suggest possible duplicates in submit form
 

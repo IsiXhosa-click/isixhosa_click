@@ -133,7 +133,7 @@ enum ActionTarget {
 pub fn accept(
     db: DbBase,
     tantivy: Arc<TantivyClient>,
-) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
+) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let with_tantivy = warp::any().map(move || tantivy.clone());
 
     let show_all = warp::get()

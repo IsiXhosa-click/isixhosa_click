@@ -7,7 +7,7 @@ use crate::NotFound;
 use askama::Template;
 use warp::{Filter, Rejection, Reply};
 
-pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
+pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Reply>+ Clone {
     warp::path!["word" / u64]
         .and(warp::path::end())
         .and(warp::get())

@@ -254,7 +254,7 @@ enum SignUpFailure {
 pub async fn auth(
     db: DbBase,
     cfg: &Config,
-) -> impl Filter<Error = Rejection, Extract: Reply> + Clone {
+) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let redirect = Config::host_builder(&cfg.host, cfg.https_port)
         .path_and_query("/login/oauth2/code/oidc")
         .build()
