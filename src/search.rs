@@ -19,7 +19,7 @@ use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tantivy::collector::TopDocs;
+use tantivy::collector::DocSetCollector;
 use tantivy::directory::MmapDirectory;
 use tantivy::doc;
 use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
@@ -446,15 +446,11 @@ impl Handler<SearchRequest> for SearcherActor {
             }
         };
 
-        // TODO(logging): find out when there are more than 64 top docs for a long-ish query to see
-        // when it needs to be increased
-        let top_docs = TopDocs::with_limit(64);
-
         tokio::task::spawn_blocking(move || {
             let mut results: Vec<WordHit> = searcher
-                .search(&query, &top_docs)?
+                .search(&query, &DocSetCollector)? // TODO limit this probably
                 .into_iter()
-                .map(|(_score, doc_address)| {
+                .map(|doc_address| {
                     searcher
                         .doc(doc_address)
                         .map_err(anyhow::Error::from)
