@@ -6,7 +6,7 @@
     <title>Moderation - IsiXhosa.click</title>
     <meta name="og:title" content="Moderation - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/moderation"/>
-    <link rel="stylesheet" href="/moderation.css?v=1">
+    <link rel="stylesheet" href="/moderation.css?v=2">
     {%- call macros::meta() -%}
 </head>
 
@@ -75,10 +75,31 @@
                 {% when other -%}
             {%- endmatch -%}
 
+            <script>
+                function confirmWithDuplicates(suggestion_type, method, prompt, form, suggestion_id) {
+                    if (suggestion_type === "word" && method === "accept") {
+                        /* TODO */
+                    }
+
+                    document.getElementById("confirm_label").innerText = prompt;
+                    document.getElementById("confirm_yes").onclick = function() { form.submit(); };
+                    document.getElementById("confirm").classList.add("open");
+
+                    return false;
+                }
+
+                window.addEventListener("DOMContentLoaded", function() {
+                    document.getElementById("confirm_no").addEventListener("click", function () {
+                        document.getElementById("confirm").classList.remove("open");
+                        document.getElementById("confirm_yes").onclick = function () {};
+                    });
+                });
+            </script>
+
             {%- macro action(method, label, suggestion_type, suggestion_id, prompt) -%}
                 <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded"
                       {%- if (method != "edit") -%}
-                        onsubmit="return confirm('{{ prompt }}')"
+                        onsubmit="return confirmWithDuplicates('{{ suggestion_type }}', '{{ method }}', '{{ prompt }}', this, {{ suggestion_id }})"
                       {%- endif -%}
                 >
                     <select name="suggestion_type" hidden><option value="{{ suggestion_type }}"></select>
@@ -471,6 +492,16 @@
                 {%- endif -%}
             </div>
         </main>
+    </div>
+
+    <div id="confirm">
+        <div>
+            <div id="confirm_label"></div>
+            <div id="confirm_buttons">
+                <button id="confirm_yes">Yes</button>
+                <button id="confirm_no">No</button>
+            </div>
+        </div>
     </div>
 </body>
 

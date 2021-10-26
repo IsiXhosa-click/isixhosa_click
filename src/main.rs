@@ -28,6 +28,7 @@ use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
 use crate::search::{IncludeResults, TantivyClient, WordHit};
 use crate::session::{LiveSearchSession, WsMessage};
+use crate::serialization::false_fn;
 use askama::Template;
 use auth::auth;
 use chrono::Local;
@@ -59,7 +60,7 @@ use warp::http::{uri, StatusCode, Uri};
 use warp::path::FullPath;
 use warp::reject::Reject;
 use warp::reply::Response;
-use warp::{path, Filter, Rejection, Reply};
+use warp::{path, Filter, Rejection, Reply, reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
 
@@ -399,7 +400,10 @@ struct LiveSearchParams {
 
 #[derive(Deserialize, Clone, Debug)]
 struct SearchQuery {
+    #[serde(alias = "q")]
     query: String,
+    #[serde(default = "false_fn")]
+    raw: bool,
 }
 
 #[derive(Template, Clone, Debug)]
@@ -446,11 +450,17 @@ async fn query_search(
         .await
         .unwrap();
 
-    Ok(Search {
-        auth,
-        query: query.query,
-        hits: results,
-    })
+    if !query.raw {
+        let template = Search {
+            auth,
+            query: query.query,
+            hits: results,
+        };
+
+        Ok(askama_warp::reply(&template, "html"))
+    } else {
+        Ok(reply::json(&results).into_response())
+    }
 }
 
 fn live_search(
