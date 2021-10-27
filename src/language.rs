@@ -12,6 +12,7 @@ use std::str::FromStr;
 
 #[derive(
     IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, Copy, Clone, Debug, Hash, PartialEq, Eq,
+    Ord, PartialOrd
 )]
 #[repr(u8)]
 #[serde(rename_all = "snake_case")]

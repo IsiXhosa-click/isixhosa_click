@@ -108,7 +108,7 @@ impl Handler<WsMessage> for LiveSearchSession {
                     let reply = Reply {
                         results: self
                             .tantivy
-                            .search(query.search, self.include)
+                            .search(query.search, self.include, false)
                             .await
                             .unwrap(),
                         state: query.state,
@@ -125,7 +125,7 @@ impl Handler<WsMessage> for LiveSearchSession {
 
                     let results = self
                         .tantivy
-                        .search(query.to_owned(), IncludeResults::AcceptedOnly)
+                        .search(query.to_owned(), IncludeResults::AcceptedOnly, false)
                         .await
                         .unwrap();
                     serde_json::to_string(&results).unwrap()

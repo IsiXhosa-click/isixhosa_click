@@ -21,9 +21,7 @@
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
 
-use crate::auth::{
-    with_any_auth, Auth, DbBase, Permissions, PublicAccessDb, Unauthorized, UnauthorizedReason,
-};
+use crate::auth::{with_any_auth, Auth, DbBase, Permissions, PublicAccessDb, Unauthorized, UnauthorizedReason, ModeratorAccessDb, with_moderator_auth, User};
 use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
 use crate::search::{IncludeResults, TantivyClient, WordHit};
@@ -48,6 +46,7 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::fmt::Debug;
+use std::num::NonZeroU64;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -63,6 +62,7 @@ use warp::reply::Response;
 use warp::{path, Filter, Rejection, Reply, reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
+use crate::database::suggestion::SuggestedWord;
 
 mod auth;
 mod database;
@@ -305,18 +305,26 @@ async fn server(cfg: Config) {
         hits: Default::default(),
         query: Default::default(),
     });
-    let query_search = warp::query()
+
+    let query_search = warp::path::end()
+        .and(warp::query())
         .and(with_any_auth(db.clone()))
         .and(with_tantivy.clone())
         .and_then(query_search);
-    let live_search = with_any_auth(db.clone())
+    let live_search = warp::path::end()
+        .and(with_any_auth(db.clone()))
         .and(warp::ws())
-        .and(with_tantivy)
+        .and(with_tantivy.clone())
         .and(warp::query())
         .map(live_search);
+    let duplicate_search = warp::path("duplicates")
+        .and(warp::path::end())
+        .and(warp::query())
+        .and(with_moderator_auth(db.clone()))
+        .and(with_tantivy)
+        .and_then(duplicate_search);
     let search = warp::path("search")
-        .and(path::end())
-        .and(live_search.or(query_search).or(search_page));
+        .and(duplicate_search.or(live_search).or(query_search).or(search_page));
     let terms_of_use = warp::path("terms_of_use")
         .and(path::end())
         .and(with_any_auth(db.clone()))
@@ -446,7 +454,7 @@ async fn query_search(
     tantivy: Arc<TantivyClient>,
 ) -> Result<impl warp::Reply, Rejection> {
     let results = tantivy
-        .search(query.query.clone(), IncludeResults::AcceptedOnly)
+        .search(query.query.clone(), IncludeResults::AcceptedOnly, false)
         .await
         .unwrap();
 
@@ -461,6 +469,35 @@ async fn query_search(
     } else {
         Ok(reply::json(&results).into_response())
     }
+}
+
+#[derive(Deserialize)]
+struct DuplicateQuery {
+    suggestion: NonZeroU64,
+}
+
+async fn duplicate_search(
+    query: DuplicateQuery,
+    _user: User,
+    db: impl ModeratorAccessDb,
+    tantivy: Arc<TantivyClient>
+) -> Result<impl warp::Reply, Rejection> {
+    let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
+
+    let include = IncludeResults::AcceptedAndAllSuggestions;
+    let res = match suggestion.filter(|w| w.word_id.is_none()) {
+        Some(w) => {
+            let mut results = tantivy.search(w.english.current().clone(), include, true).await.unwrap();
+            let xhosa = tantivy.search(w.xhosa.current().clone(), include, true).await.unwrap();
+
+            results.extend(xhosa);
+            results.retain(|res| !(res.id == query.suggestion.get() && res.is_suggestion));
+            results
+        }
+        None => vec![],
+    };
+
+    Ok(reply::json(&res))
 }
 
 fn live_search(

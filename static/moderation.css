@@ -65,8 +65,14 @@ table {
     text-align: center;
 }
 
+@media screen and (max-width: 800px) {
+    #confirm > div {
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+}
+
 #confirm_buttons {
-    margin-top: 1rem;
     display: flex;
     flex-direction: row;
     gap: 2rem;
@@ -75,4 +81,25 @@ table {
 
 #confirm_buttons > button {
     width: 3rem;
+}
+
+#confirm_duplicates:empty {
+    display: none;
+}
+
+#confirm_duplicates > ol {
+    margin: 0;
+    padding: 0;
+}
+
+#confirm_duplicates::before {
+    content: "Possible duplicates:";
+}
+
+#confirm_duplicates:empty::before {
+    content: "";
+}
+
+#confirm_duplicates li::marker {
+    font-size: 1rem;
 }

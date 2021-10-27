@@ -171,7 +171,7 @@
 
                                 <ul class="examples">
                                 {%- for ex in word.examples -%}
-                                    <li>
+                                    <li id="example-{{ ex.example_id }}">
                                         <h3>English</h3>
                                         <p>{{ ex.english }}</p>
                                         <h3>Xhosa</h3>
@@ -196,7 +196,7 @@
 
                                     <tbody>
                                         {%- for link in word.linked_words -%}
-                                            <tr>
+                                            <tr id="link-{{ link.link_id }}">
                                                 <td>{{ link.link_type.to_html()|safe }}</td>
                                                 <td><a href="/word/{{ link.other.id }}">{{ link.other.to_html()|safe }}</a></td>
                                             </tr>

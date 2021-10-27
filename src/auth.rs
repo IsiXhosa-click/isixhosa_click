@@ -168,6 +168,7 @@ pub struct SignupForm {
     openid_query: OpenIdLoginQuery,
 }
 
+// TODO this is probably passed around a bit too much?
 #[derive(Debug, Clone)]
 pub struct User {
     pub id: NonZeroU64,
@@ -202,6 +203,7 @@ impl PublicUserInfo {
 
         let mut query = conn.prepare(SELECT).unwrap();
 
+        #[allow(clippy::redundant_closure)] // lifetime issue
         query
             .query(params![word])
             .unwrap()

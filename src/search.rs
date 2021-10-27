@@ -11,7 +11,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use serde::Serialize;
-use std::cmp::{max, Reverse};
+use std::cmp::{max, Ordering};
 use std::collections::HashSet;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Debug, Formatter};
@@ -135,9 +135,9 @@ impl TantivyClient {
         }
     }
 
-    pub async fn search(&self, query: String, include: IncludeResults) -> Result<Vec<WordHit>> {
+    pub async fn search(&self, query: String, include: IncludeResults, duplicate: bool) -> Result<Vec<WordHit>> {
         self.searchers
-            .send(SearchRequest { query, include })
+            .send(SearchRequest { query, include, duplicate })
             .await
             .map_err(Into::into)
     }
@@ -370,6 +370,7 @@ impl Actor for SearcherActor {}
 pub struct SearchRequest {
     query: String,
     include: IncludeResults,
+    duplicate: bool,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -467,6 +468,45 @@ impl Handler<SearchRequest> for SearcherActor {
         mut req: SearchRequest,
         _ctx: &mut xtra::Context<Self>,
     ) -> Vec<WordHit> {
+        #[derive(PartialEq, Eq)]
+        struct WordHitWithSim {
+            hit: WordHit,
+            sim: OrderedFloat<f64>,
+        }
+
+        impl WordHitWithSim {
+            fn new(hit: WordHit, query: &str) -> WordHitWithSim {
+                WordHitWithSim {
+                    sim: max(
+                        OrderedFloat(strsim::jaro_winkler(
+                            query,
+                            hit.xhosa.trim_start_matches("(i)"),
+                        )),
+                        OrderedFloat(strsim::jaro_winkler(query, &hit.english)),
+                    ),
+                    hit,
+                }
+            }
+        }
+
+        impl PartialOrd for WordHitWithSim {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+
+        impl Ord for WordHitWithSim {
+            fn cmp(&self, other: &Self) -> Ordering {
+                self.sim.cmp(&other.sim)
+                    .reverse()
+                    .then_with(|| {
+                        self.hit.part_of_speech.cmp(&other.hit.part_of_speech)
+                            .then(self.hit.is_plural.cmp(&other.hit.is_plural))
+                            .then(self.hit.id.cmp(&other.hit.id))
+                    })
+            }
+        }
+
         req.query = req.query.to_lowercase().replace("(", "").replace(")", "");
         req.query.truncate(32);
 
@@ -483,20 +523,20 @@ impl Handler<SearchRequest> for SearcherActor {
                 }
             }
 
-            let mut results: Vec<WordHit> = results.into_iter().collect();
+            if req.duplicate {
+                let exact = |hit: &WordHit| hit.english.to_lowercase() == req.query.to_lowercase() ||
+                    hit.xhosa.to_lowercase() == req.query.to_lowercase();
+                Ok::<_, anyhow::Error>(results.into_iter().filter(exact).collect())
+            } else {
+                let mut results: Vec<WordHitWithSim> = results
+                    .into_iter()
+                    .map(|hit| WordHitWithSim::new(hit, &req.query))
+                    .collect();
 
-            results.sort_by_cached_key(|hit| {
-                Reverse(max(
-                    OrderedFloat(strsim::jaro_winkler(
-                        &req.query,
-                        &hit.xhosa.trim_start_matches("(i)"),
-                    )),
-                    OrderedFloat(strsim::jaro_winkler(&req.query, &hit.english)),
-                ))
-            });
+                results.sort();
 
-            results.truncate(RESULTS);
-            Ok::<_, anyhow::Error>(results)
+                Ok(results.into_iter().take(RESULTS).map(|s| s.hit).collect())
+            }
         })
         .await
         .expect("Error executing search task")

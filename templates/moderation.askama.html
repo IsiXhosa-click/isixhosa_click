@@ -6,7 +6,7 @@
     <title>Moderation - IsiXhosa.click</title>
     <meta name="og:title" content="Moderation - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/moderation"/>
-    <link rel="stylesheet" href="/moderation.css?v=2">
+    <link rel="stylesheet" href="/moderation.css?v=3">
     {%- call macros::meta() -%}
 </head>
 
@@ -75,10 +75,43 @@
                 {% when other -%}
             {%- endmatch -%}
 
-            <script>
-                function confirmWithDuplicates(suggestion_type, method, prompt, form, suggestion_id) {
-                    if (suggestion_type === "word" && method === "accept") {
-                        /* TODO */
+            <script type="module">
+                import { formatResult } from "/live_search.js?v=9";
+
+                function confirmWithDuplicates(suggestion_type, method, prompt, form, is_new_word, suggestion_id) {
+                     document.getElementById("confirm_duplicates").innerHTML = "";
+
+                    if (suggestion_type === "word" && method === "accept" && is_new_word) {
+                        fetch(`/search/duplicates?suggestion=${suggestion_id}`)
+                            .then(response => {
+                                let div = document.getElementById("confirm_duplicates");
+                                let list = document.createElement("ol");
+
+                                response.json()
+                                    .then(results => {
+                                        results.forEach(result => {
+                                            let li = document.createElement("li");
+                                            list.appendChild(li);
+
+                                            if (!result.is_suggestion) {
+                                                let a = document.createElement("a");
+                                                a.href = `/word/${result.id}`;
+                                                a.rel = "noopener noreferrer";
+                                                a.target = "_blank";
+                                                li.appendChild(a);
+                                                formatResult(result, a);
+                                            } else {
+                                                formatResult(result, li);
+                                            }
+                                        });
+
+                                        if (results.length > 0) {
+                                            div.appendChild(list);
+                                        }
+                                    })
+                                    .catch(e => console.error(e));
+                            })
+                            .catch(e => console.error(e));
                     }
 
                     document.getElementById("confirm_label").innerText = prompt;
@@ -88,6 +121,8 @@
                     return false;
                 }
 
+                window.confirmWithDuplicates = confirmWithDuplicates;
+
                 window.addEventListener("DOMContentLoaded", function() {
                     document.getElementById("confirm_no").addEventListener("click", function () {
                         document.getElementById("confirm").classList.remove("open");
@@ -96,10 +131,10 @@
                 });
             </script>
 
-            {%- macro action(method, label, suggestion_type, suggestion_id, prompt) -%}
+            {%- macro action(method, label, suggestion_type, suggestion_id, is_new_word, prompt) -%}
                 <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded"
                       {%- if (method != "edit") -%}
-                        onsubmit="return confirmWithDuplicates('{{ suggestion_type }}', '{{ method }}', '{{ prompt }}', this, {{ suggestion_id }})"
+                        onsubmit="return confirmWithDuplicates('{{ suggestion_type }}', '{{ method }}', '{{ prompt }}', this, {{- is_new_word }}, {{ suggestion_id }})"
                       {%- endif -%}
                 >
                     <select name="suggestion_type" hidden><option value="{{ suggestion_type }}"></select>
@@ -115,6 +150,7 @@
                     label,
                     "word",
                     s.suggestion_id,
+                    s.word_id.is_none(),
                     "Are you sure you want to {} this suggestion?"|format(method)
                 ) -%}
             {%- endmacro -%}
@@ -136,6 +172,7 @@
                     label,
                     "word_deletion",
                     s.suggestion_id,
+                    false,
                     prompt
                 ) -%}
             {%- endmacro -%}
@@ -146,6 +183,7 @@
                     label,
                     "example",
                     ex.suggestion_id,
+                    false,
                     "Are you sure you want to {} this suggestion?"|format(method)
                 ) -%}
             {%- endmacro -%}
@@ -167,6 +205,7 @@
                     label,
                     "example_deletion",
                     del.suggestion_id,
+                    false,
                     prompt
                 ) -%}
             {%- endmacro -%}
@@ -177,6 +216,7 @@
                     label,
                     "linked_word",
                     l.suggestion_id,
+                    false,
                     "Are you sure you want to {} this suggestion?"|format(method)
                 ) -%}
             {%- endmacro -%}
@@ -198,6 +238,7 @@
                     label,
                     "linked_word_deletion",
                     del.suggestion_id,
+                    false,
                     prompt
                 ) -%}
             {%- endmacro -%}
@@ -495,8 +536,11 @@
     </div>
 
     <div id="confirm">
-        <div>
+        <div class="column_list spaced_flex_list">
             <div id="confirm_label"></div>
+
+            <div id="confirm_duplicates"></div>
+
             <div id="confirm_buttons">
                 <button id="confirm_yes">Yes</button>
                 <button id="confirm_no">No</button>
