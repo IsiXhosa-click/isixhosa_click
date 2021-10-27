@@ -1,5 +1,10 @@
-// Before launch:
-// - TODO suggest possible duplicates in submit form
+// To instrument:
+// - startup tasks (reindex, db stuff, etc)
+// - stuff inside routes
+// - stuff inside websocket
+// - https://github.com/tokio-rs/tracing/blob/master/examples/examples/opentelemetry-remote-context.rs ?
+// - where to level filter?
+// - special fields https://docs.rs/tracing-opentelemetry/0.16.0/tracing_opentelemetry/
 
 // Soon after launch, perhaps before:
 // - informal/archaic meanings
@@ -29,15 +34,9 @@ use crate::session::{LiveSearchSession, WsMessage};
 use crate::serialization::false_fn;
 use askama::Template;
 use auth::auth;
-use chrono::Local;
 use details::details;
 use edit::edit;
 use futures::StreamExt;
-use log::LevelFilter;
-use log4rs::append::console::ConsoleAppender;
-use log4rs::append::file::FileAppender;
-use log4rs::config::{Appender, Config as LogConfig, Root};
-use log4rs::encode::pattern::PatternEncoder;
 use moderation::accept;
 use percent_encoding::NON_ALPHANUMERIC;
 use r2d2::Pool;
@@ -62,6 +61,9 @@ use warp::reply::Response;
 use warp::{path, Filter, Rejection, Reply, reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
+use tracing::{info, debug, instrument};
+use tracing_subscriber::{Registry, layer::SubscriberExt, filter::LevelFilter};
+use tracing_subscriber::util::SubscriberInitExt;
 use crate::database::suggestion::SuggestedWord;
 
 mod auth;
@@ -77,6 +79,8 @@ mod serialization;
 mod session;
 mod submit;
 
+pub type SpanId = Option<tracing::Id>;
+
 #[derive(Debug)]
 struct TemplateError(askama::Error);
 
@@ -91,7 +95,6 @@ pub struct Config {
     static_site_files: PathBuf,
     other_static_files: PathBuf,
     log_path: PathBuf,
-    log_level: LevelFilter,
     http_port: u16,
     https_port: u16,
     host: String,
@@ -117,7 +120,6 @@ impl Default for Config {
             static_site_files: PathBuf::from("static/"),
             other_static_files: PathBuf::from("dummy_www/"),
             log_path: PathBuf::from("log/"),
-            log_level: LevelFilter::Info,
             http_port: 8080,
             https_port: 8443,
             host: "127.0.0.01".to_string(),
@@ -129,36 +131,18 @@ impl Default for Config {
 }
 
 fn init_logging(cfg: &Config) {
-    const LOG_PATTERN: &str = "[{d(%Y-%m-%d %H:%M:%S)} {h({l})} {M}] {m}{n}";
-
-    let path = cfg
-        .log_path
-        .join(Local::now().to_rfc3339())
-        .with_extension("log");
-
-    let stdout = ConsoleAppender::builder()
-        .encoder(Box::new(PatternEncoder::new(LOG_PATTERN)))
-        .build();
-
-    let file = FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new(LOG_PATTERN)))
-        .build(path)
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("isixhosa.click")
+        .install_simple()
         .unwrap();
 
-    let root = Root::builder()
-        .appender("stdout")
-        .appender("file")
-        .build(cfg.log_level);
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let fmt_layer = tracing_subscriber::fmt::layer().with_target(false);
 
-    let log_config = LogConfig::builder()
-        .appender(Appender::builder().build("stdout", Box::new(stdout)))
-        .appender(Appender::builder().build("file", Box::new(file)))
-        .build(root)
-        .unwrap();
-
-    log4rs::init_config(log_config).unwrap();
+    Registry::default().with(LevelFilter::DEBUG).with(telemetry).with(fmt_layer).init();
 }
 
+#[instrument(name = "Minify outgoing data", skip_all)]
 async fn process_body<F, E>(response: Response, minify: F) -> Result<Response, Rejection>
 where
     F: FnOnce(&str) -> Result<String, E>,
@@ -189,6 +173,7 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     Ok(response)
 }
 
+#[instrument(name = "Authentication error")]
 async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
     if let Some(unauthorized) = err.find::<Unauthorized>() {
         let redirect_to = |to| {
@@ -202,6 +187,7 @@ async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
 
         match unauthorized.reason {
             UnauthorizedReason::NotLoggedIn => {
+                debug!("User was not logged in; redirecting");
                 let login = format!(
                     "/login/oauth2/authorization/oidc?redirect={}",
                     percent_encoding::utf8_percent_encode(
@@ -213,10 +199,11 @@ async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
                 Ok(redirect_to(login))
             }
             UnauthorizedReason::NoPermissions | UnauthorizedReason::Locked => {
-                // TODO(ban)
+                debug!("User has insufficient permissions");
                 Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response())
             }
             UnauthorizedReason::InvalidCookie => {
+                debug!("User has invalid cookie; redirecting");
                 Ok(redirect_to("/login/oauth2/authorization/oidc".to_owned()))
             }
         }
@@ -241,6 +228,8 @@ fn main() {
             flag
         );
     } else {
+        init_logging(&cfg);
+
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -282,8 +271,7 @@ fn set_up_db(conn: &Connection) {
 }
 
 async fn server(cfg: Config) {
-    init_logging(&cfg);
-    log::info!("IsiXhosa server startup");
+    info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();
@@ -351,9 +339,7 @@ async fn server(cfg: Config) {
         .and(warp::path("favicon.ico"))
         .map(|| warp::redirect(Uri::from_static("/icons/favicon.ico")));
 
-    let routes = warp::fs::dir(cfg.static_site_files.clone())
-        .or(warp::fs::dir(cfg.other_static_files.clone()))
-        .or(search)
+    let routes = search
         .or(terms_of_use)
         .or(style_guide)
         .or(submit(db.clone(), tantivy.clone()))
@@ -366,13 +352,15 @@ async fn server(cfg: Config) {
         .or(about)
         .or(auth(db.clone(), &cfg).await)
         .or(favico_redirect)
+        .or(warp::fs::dir(cfg.static_site_files.clone()))
+        .or(warp::fs::dir(cfg.other_static_files.clone()))
         .recover(handle_auth_error)
         .or(auth::with_any_auth(db).map(|auth, _db| {
             warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
         }))
         .boxed();
 
-    log::info!("Visit https://127.0.0.1:{}/", cfg.https_port);
+    info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
     let redirect = warp::path::full().map(move |path: FullPath| {
         let to = Uri::builder()
@@ -390,7 +378,13 @@ async fn server(cfg: Config) {
     // Add post filters such as minification, logging, and gzip
     let serve = routes
         .and_then(minify)
-        .with(warp::log("isixhosa"))
+        .with(warp::trace(|info| {
+            tracing::info_span!(
+                "HTTPS request",
+                method = %info.method(),
+                path = %info.path(),
+            )
+        }))
         .with(gzip());
 
     warp::serve(serve)
@@ -447,6 +441,14 @@ struct Search {
     query: String,
 }
 
+#[instrument(
+    name = "Search with a query string",
+    fields(
+        query = %query.query,
+        raw = %query.raw,
+    ),
+    skip_all,
+)]
 async fn query_search(
     query: SearchQuery,
     auth: Auth,
@@ -471,11 +473,16 @@ async fn query_search(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct DuplicateQuery {
     suggestion: NonZeroU64,
 }
 
+#[instrument(
+    name = "Search for duplicates of a suggestion",
+    fields(suggestion_id = %query.suggestion),
+    skip_all,
+)]
 async fn duplicate_search(
     query: DuplicateQuery,
     _user: User,
@@ -500,6 +507,11 @@ async fn duplicate_search(
     Ok(reply::json(&res))
 }
 
+#[instrument(
+    name = "Begin live search websocket connection",
+    fields(include_own_suggestions = %params.include_own_suggestions.unwrap_or_default()),
+    skip_all,
+)]
 fn live_search(
     auth: Auth,
     _db: impl PublicAccessDb,

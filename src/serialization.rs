@@ -9,6 +9,7 @@ use std::error::Error as StdError;
 use std::fmt::{self, Debug, Display, Formatter};
 use warp::hyper::body::Bytes;
 use warp::{Buf, Filter, Rejection};
+use tracing::warn;
 
 #[derive(Debug, Clone)]
 pub struct DiscrimOutOfRange(pub i64, pub &'static str);
@@ -136,7 +137,7 @@ pub fn qs_form<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Erro
                     #[derive(Debug)]
                     struct DeserErr(serde_qs::Error);
 
-                    log::debug!("Error deserializing query-string: {:?}", err);
+                    warn!("Error deserializing query-string: {:?}", err);
 
                     impl warp::reject::Reject for DeserErr {}
 

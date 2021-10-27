@@ -7,10 +7,9 @@ use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::database::WordOrSuggestionId;
 use crate::format::DisplayHtml;
-
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
-
+use tracing::error;
 use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
 use askama::Template;
 use serde::Deserialize;
@@ -355,7 +354,7 @@ async fn process_one(
     let db_clone = db.clone();
 
     let edit_unsupported = || {
-        log::error!(
+        error!(
             "Got request to edit word or example deletion suggestion, but this makes no sense!"
         );
         false

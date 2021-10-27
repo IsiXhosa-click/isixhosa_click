@@ -2,7 +2,7 @@ use crate::database::existing::ExistingWord;
 use crate::database::suggestion::{MaybeEdited, SuggestedWord};
 use crate::language::Transitivity;
 use crate::language::{NounClassExt, NounClassPrefixes, PartOfSpeech};
-use crate::search::WordHit;
+use crate::search::{WordDocument, WordHit};
 use crate::serialization::SerOnlyDisplay;
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
@@ -355,4 +355,4 @@ macro_rules! impl_display_html {
     };
 }
 
-impl_display_html!(WordHit, ExistingWord);
+impl_display_html!(WordHit, ExistingWord, WordDocument);

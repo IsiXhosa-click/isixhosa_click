@@ -27,18 +27,21 @@ use tantivy::schema::{
     Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
     STORED,
 };
+use tracing::{info, info_span, instrument, Instrument, Span};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
+use crate::format::DisplayHtml;
+use crate::SpanId;
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;
 
 pub struct TantivyClient {
     schema_info: SchemaInfo,
-    english_tokenizer: TextAnalyzer,
+    tokenizer: TextAnalyzer,
     writer: Address<WriterActor>,
     searchers: Address<SearcherActor>,
 }
@@ -75,7 +78,7 @@ impl TantivyClient {
 
         let client = TantivyClient {
             schema_info: schema_info.clone(),
-            english_tokenizer: index.tokenizer_for_field(schema_info.english).unwrap(),
+            tokenizer: index.tokenizer_for_field(schema_info.english).unwrap(),
             writer: WriterActor::new(writer, schema_info)
                 .create(Some(16))
                 .spawn_global(),
@@ -88,10 +91,10 @@ impl TantivyClient {
         }
 
         if reindex {
-            log::info!("Reindexing database");
+            info!("Reindexing database");
             let now = Instant::now();
             client.reindex_database(db).await;
-            log::info!(
+            info!(
                 "Database reindexed in {:.2}ms",
                 now.elapsed().as_secs_f64() * 1_000.0
             );
@@ -135,13 +138,15 @@ impl TantivyClient {
         }
     }
 
+    #[instrument(name = "Search for a word", err)]
     pub async fn search(&self, query: String, include: IncludeResults, duplicate: bool) -> Result<Vec<WordHit>> {
         self.searchers
-            .send(SearchRequest { query, include, duplicate })
+            .send(SearchRequest { query, include, duplicate, caller: Span::current().id() })
             .await
             .map_err(Into::into)
     }
 
+    #[instrument(name = "Reindex the database")]
     pub async fn reindex_database(&self, db: Pool<SqliteConnectionManager>) {
         const SELECT: &str = "
             SELECT
@@ -172,12 +177,22 @@ impl TantivyClient {
             .collect::<Result<Vec<WordDocument>, _>>()
             .unwrap()
         })
+        .instrument(info_span!("Query all existing words"))
         .await
         .unwrap();
 
         self.writer.send(ReindexWords(docs)).await.unwrap();
     }
 
+    #[instrument(
+        name = "Add a word to the search index",
+        fields(
+            id = ?word.id,
+            suggesting_user = word.suggesting_user,
+            hit = %word.to_plaintext().to_string(),
+        )
+        skip(word),
+    )]
     pub async fn add_new_word(&self, word: WordDocument) {
         self.writer.send(IndexWord(word)).await.unwrap()
     }
@@ -371,10 +386,11 @@ pub struct SearchRequest {
     query: String,
     include: IncludeResults,
     duplicate: bool,
+    caller: SpanId,
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum IncludeResults {
     AcceptedOnly,
     AcceptedAndSuggestionsFrom(NonZeroU64),
@@ -393,7 +409,7 @@ impl SearcherActor {
         req: &SearchRequest,
         out: &mut HashSet<WordHit>,
     ) {
-        let mut tokenized = client.english_tokenizer.token_stream(&req.query);
+        let mut tokenized = client.tokenizer.token_stream(&req.query);
         let mut queries: Vec<Box<dyn Query + 'static>> = Vec::with_capacity(3);
         tokenized.process(&mut |token| {
             let distance = match token.text.len() {
@@ -463,18 +479,21 @@ impl SearcherActor {
 
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
+    #[instrument(name = "Search for a word (actor side)", skip_all)]
     async fn handle(
         &mut self,
         mut req: SearchRequest,
         _ctx: &mut xtra::Context<Self>,
     ) -> Vec<WordHit> {
+        Span::current().follows_from(req.caller.clone());
+
         #[derive(PartialEq, Eq)]
         struct WordHitWithSim {
             hit: WordHit,
             sim: OrderedFloat<f64>,
         }
 
-        impl WordHitWithSim {
+    impl WordHitWithSim {
             fn new(hit: WordHit, query: &str) -> WordHitWithSim {
                 WordHitWithSim {
                     sim: max(

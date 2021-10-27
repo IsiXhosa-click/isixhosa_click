@@ -17,12 +17,16 @@
 
         {%- match auth.username() -%}
             {%- when None -%}
-                <a id="login_bar_container" href="/login/oauth2/authorization/oidc">
-                    <div id="login_bar" class="row_list">
-                        <div class="material-icons" id="login_icon">login</div>
-                        <div id="login_bar_text">Log in with Google</div>
+                <div id="login_bar_container">
+                    <div>
+                        <a href="/login/oauth2/authorization/oidc">
+                            <div id="login_bar" class="row_list">
+                                <div class="material-icons" id="login_icon">login</div>
+                                <div id="login_bar_text">Log in with Google</div>
+                            </div>
+                        </a>
                     </div>
-                </a>
+                </div>
             {%- when Some with (username) -%}
                 <div id="login_bar_container">
                     <div>
@@ -77,7 +81,7 @@
     <meta name="og:site_name" content="IsiXhosa.click"/>
     <meta name="og:logo" content="https://isixhosa.click/icons/ms-icon-310x310.png"/>
     <meta name="og:image" content="https://isixhosa.click/icons/ms-icon-310x310.png"/>
-    <link rel="stylesheet" href="/style.css?v=8">
+    <link rel="stylesheet" href="/style.css?v=9">
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800"/>
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 

@@ -27,7 +27,7 @@ use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-
+use tracing::{instrument, error, debug, Span};
 type OpenIDClient = Client<Discovered, StandardClaims>;
 
 lazy_static::lazy_static! {
@@ -60,7 +60,7 @@ impl FromStr for SignInSessionId {
     }
 }
 
-#[derive(Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Deserialize, Clone, Hash, Eq, PartialEq)]
 pub struct StaySignedInToken {
     pub token: String,
     pub token_id: u64,
@@ -455,7 +455,7 @@ async fn reply_login(
         Ok(Some((token, user_info))) => match user_info.sub {
             Some(ref id) => (token, id.clone(), user_info),
             None => {
-                log::error!("Error requesting token: no remote `sub` id found");
+                error!("Error requesting token: no remote `sub` id found");
 
                 return Ok(Response::builder()
                     .status(StatusCode::UNAUTHORIZED)
@@ -465,7 +465,7 @@ async fn reply_login(
             }
         },
         Ok(None) => {
-            log::error!("Error requesting token during login: no id_token found");
+            error!("Error requesting token during login: no id_token found");
 
             return Ok(Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
@@ -474,7 +474,7 @@ async fn reply_login(
                 .into_response());
         }
         Err(err) => {
-            log::error!("Error requesting token during login: {:#?}", err);
+            error!("Error requesting token during login: {:#?}", err);
 
             return Ok(Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
@@ -667,32 +667,47 @@ pub enum UnauthorizedReason {
 
 impl reject::Reject for Unauthorized {}
 
+#[instrument(
+    name = "Try to extract user from a token",
+    fields(fail_reason, success, id, name),
+    skip_all,
+)]
 async fn extract_user(
     db: impl PublicAccessDb,
     redirect: String,
     stay_signed_in: Option<StaySignedInToken>,
 ) -> Result<User, Rejection> {
+    let parent = Span::current();
+
     tokio::task::spawn_blocking(move || {
+        let _g = parent.enter();
         if let Some(stay_signed_in) = stay_signed_in {
             if let Some(user) = stay_signed_in.verify_token(&db) {
                 let user = User::fetch_by_id(&db, user).unwrap();
                 if !user.locked {
+                    debug!(id = user.id, name = %user.username, success = true, "User successfully authenticated");
                     Ok(user)
                 } else {
+                    let reason = UnauthorizedReason::Locked;
+                    debug!(id = user.id, name = %user.username, fail_reason = ?reason, "User locked");
                     Err(warp::reject::custom(Unauthorized {
-                        reason: UnauthorizedReason::Locked,
+                        reason,
                         redirect,
                     }))
                 }
             } else {
+                let reason = UnauthorizedReason::NotLoggedIn;
+                debug!(fail_reason = ?reason, "Invalid token");
                 Err(warp::reject::custom(Unauthorized {
-                    reason: UnauthorizedReason::NotLoggedIn,
+                    reason,
                     redirect,
                 }))
             }
         } else {
+            let reason = UnauthorizedReason::NotLoggedIn;
+            debug!(fail_reason = ?reason, "No token");
             Err(warp::reject::custom(Unauthorized {
-                reason: UnauthorizedReason::NotLoggedIn,
+                reason,
                 redirect,
             }))
         }
