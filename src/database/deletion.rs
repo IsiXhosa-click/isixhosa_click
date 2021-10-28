@@ -3,11 +3,11 @@ use crate::database::existing::{ExistingExample, ExistingLinkedWord};
 use crate::search::WordHit;
 use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
-
 use crate::database::WordOrSuggestionId;
 use rusqlite::{params, Row};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use tracing::{instrument, Span};
 
 #[derive(Debug)]
 pub struct WordDeletionSuggestion {
@@ -18,6 +18,7 @@ pub struct WordDeletionSuggestion {
 }
 
 impl WordDeletionSuggestion {
+    #[instrument(name = "Fetch all word deletion suggestions", fields(results), skip_all)]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<Self> {
         const SELECT: &str =
             "SELECT words.word_id, words.english, words.xhosa, words.part_of_speech, words.is_plural,
@@ -33,7 +34,7 @@ impl WordDeletionSuggestion {
         let conn = db.get().unwrap();
 
         // thanks rustc for forcing this `let x = ...; x` very cool
-        let x = conn
+        let x: Vec<Self> = conn
             .prepare(SELECT)
             .unwrap()
             .query(params![])
@@ -52,9 +53,13 @@ impl WordDeletionSuggestion {
             })
             .collect()
             .unwrap();
+
+        Span::current().record("results", &x.len());
+
         x
     }
 
+    #[instrument(name = "Fetch word id for deletion suggestion", fields(word_id), skip(db))]
     pub fn fetch_word_id_for_suggestion(db: &impl ModeratorAccessDb, suggestion: u64) -> u64 {
         const SELECT: &str =
             "SELECT word_id FROM word_deletion_suggestions WHERE suggestion_id = ?1;";
@@ -65,9 +70,13 @@ impl WordDeletionSuggestion {
             .unwrap()
             .query_row(params![suggestion], |row| row.get("word_id"))
             .unwrap();
+
+        Span::current().record("word_id", &word_id);
+
         word_id
     }
 
+    #[instrument(name = "Reject a deletion suggestion", skip(db))]
     pub fn reject(db: &impl ModeratorAccessDb, suggestion: u64) {
         const DELETE: &str = "DELETE FROM word_deletion_suggestions WHERE suggestion_id = ?1;";
 
@@ -101,6 +110,7 @@ impl TryFrom<&Row<'_>> for ExampleDeletionSuggestion {
 }
 
 impl ExampleDeletionSuggestion {
+    #[instrument(name = "Fetch all example deletions suggestions", fields(results), skip(db))]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT examples.example_id, examples.word_id, examples.xhosa, examples.english,
@@ -132,22 +142,33 @@ impl ExampleDeletionSuggestion {
             })
             .unwrap();
 
+        Span::current().record("results", &map.len());
+
         map.into_iter()
     }
 
+    #[instrument(
+        name = "Fetch example id for example deletion suggestion",
+        fields(example_id),
+        skip(db)
+    )]
     fn fetch_example_id_for_suggestion(db: &impl ModeratorAccessDb, suggestion: u64) -> u64 {
         const SELECT: &str =
             "SELECT example_id FROM example_deletion_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
-        let word_id = conn
+        let example_id = conn
             .prepare(SELECT)
             .unwrap()
             .query_row(params![suggestion], |row| row.get("example_id"))
             .unwrap();
-        word_id
+
+        Span::current().record("example_id", &example_id);
+
+        example_id
     }
 
+    #[instrument(name = "Accept example deletion suggestion", skip(db))]
     pub fn accept(db: &impl ModeratorAccessDb, suggestion: u64) {
         const DELETE_EXAMPLE: &str = "DELETE FROM examples WHERE example_id = ?1;";
 
@@ -160,6 +181,7 @@ impl ExampleDeletionSuggestion {
         Self::delete_suggestion(db, suggestion);
     }
 
+    #[instrument(name = "Delete example deletion suggestion", skip(db))]
     pub fn delete_suggestion(db: &impl ModeratorAccessDb, suggestion: u64) {
         const DELETE: &str = "DELETE FROM example_deletion_suggestions WHERE suggestion_id = ?1;";
 
@@ -180,19 +202,25 @@ pub struct LinkedWordDeletionSuggestion {
 }
 
 impl LinkedWordDeletionSuggestion {
+    #[instrument(name = "Populate linked word deletion suggestion", fields(suggestion_id), skip(row, db))]
     fn try_from_row_populate_other(
         row: &Row<'_>,
         db: &impl ModeratorAccessDb,
         skip_populating: u64,
     ) -> Result<Self, rusqlite::Error> {
+        let suggestion_id = row.get::<&str, i64>("suggestion_id")? as u64;
+
+        Span::current().record("suggestion_id", &suggestion_id);
+
         Ok(LinkedWordDeletionSuggestion {
-            suggestion_id: row.get::<&str, i64>("suggestion_id")? as u64,
+            suggestion_id,
             suggesting_user: PublicUserInfo::try_from(row)?,
             link: ExistingLinkedWord::try_from_row_populate_other(row, db, skip_populating)?,
             reason: row.get("reason")?,
         })
     }
 
+    #[instrument(name = "Fetch all linked word deletion suggestions", fields(results), skip(db))]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT linked_words.link_id, linked_words.link_type, linked_words.first_word_id,
@@ -227,22 +255,33 @@ impl LinkedWordDeletionSuggestion {
             })
             .unwrap();
 
+        Span::current().record("results", &map.len());
+
         map.into_iter()
     }
 
+    #[instrument(
+        name = "Fetch link id for linked word deletion suggestion",
+        fields(link_id),
+        skip(db)
+    )]
     fn fetch_link_id_for_suggestion(db: &impl ModeratorAccessDb, suggestion: u64) -> u64 {
         const SELECT: &str =
             "SELECT linked_word_id FROM linked_word_deletion_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
-        let word_id = conn
+        let link_id = conn
             .prepare(SELECT)
             .unwrap()
             .query_row(params![suggestion], |row| row.get("linked_word_id"))
             .unwrap();
-        word_id
+
+        Span::current().record("link_id", &link_id);
+
+        link_id
     }
 
+    #[instrument(name = "Accept linked word deletion suggestion", skip(db))]
     pub fn accept(db: &impl ModeratorAccessDb, suggestion: u64) {
         const DELETE: &str = "DELETE FROM linked_words WHERE link_id = ?1;";
 
@@ -255,6 +294,7 @@ impl LinkedWordDeletionSuggestion {
         Self::delete_suggestion(db, suggestion);
     }
 
+    #[instrument(name = "Delete linked word deletion suggestion", skip(db))]
     pub fn delete_suggestion(db: &impl ModeratorAccessDb, suggestion: u64) {
         const DELETE: &str =
             "DELETE FROM linked_word_deletion_suggestions WHERE suggestion_id = ?1";

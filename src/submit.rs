@@ -125,8 +125,8 @@ impl<'de> Deserialize<'de> for LinkedWordList {
 #[serde_as]
 #[derive(Deserialize, Clone, Debug)]
 pub struct WordSubmission {
-    suggestion_id: Option<u64>,
-    existing_id: Option<u64>,
+    pub suggestion_id: Option<u64>,
+    pub existing_id: Option<u64>,
 
     pub english: String,
     pub xhosa: String,
@@ -767,7 +767,7 @@ fn process_linked_words(
                     let new = linked_words.remove(i);
                     let old = new
                         .existing_id
-                        .and_then(|id| ExistingLinkedWord::get(db, id, existing_word_id.unwrap()));
+                        .and_then(|id| ExistingLinkedWord::fetch(db, id, existing_word_id.unwrap()));
                     maybe_insert_link(new, old);
                 } else {
                     delete_suggested_link
@@ -892,7 +892,7 @@ fn process_examples(
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
                 {
                     let new = examples.remove(i);
-                    let old = new.existing_id.and_then(|id| ExistingExample::get(db, id));
+                    let old = new.existing_id.and_then(|id| ExistingExample::fetch(db, id));
                     maybe_insert_example(new, old);
                 } else {
                     delete_suggested_example

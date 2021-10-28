@@ -11,6 +11,7 @@ use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use tracing::{instrument, Span};
 
 #[derive(Debug)]
 pub struct ExistingWord {
@@ -35,6 +36,7 @@ pub struct ExistingWord {
 }
 
 impl ExistingWord {
+    #[instrument(name = "Fetch full existing word", fields(found), skip(db))]
     pub fn fetch_full(db: &impl PublicAccessDb, id: u64) -> Option<ExistingWord> {
         let mut word = ExistingWord::fetch_alone(db, id);
         if let Some(word) = word.as_mut() {
@@ -43,9 +45,12 @@ impl ExistingWord {
             word.contributors = PublicUserInfo::fetch_public_contributors_for_word(db, id);
         }
 
+        Span::current().record("found", &word.is_some());
+
         word
     }
 
+    #[instrument(level = "debug", name = "Fetch just existing word", fields(found), skip(db))]
     pub fn fetch_alone(db: &impl PublicAccessDb, id: u64) -> Option<ExistingWord> {
         const SELECT_ORIGINAL: &str = "
             SELECT
@@ -64,17 +69,24 @@ impl ExistingWord {
             .query_row(params![id], |row| ExistingWord::try_from(row))
             .optional()
             .unwrap();
+
+        Span::current().record("found", &opt.is_some());
+
         opt
     }
 
+    #[instrument(name = "Delete existing word", fields(found), skip(db))]
     pub fn delete(db: &impl ModeratorAccessDb, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM words WHERE word_id = ?1;";
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
-        modified_rows == 1
+        let found = modified_rows == 1;
+        Span::current().record("found", &found);
+        found
     }
 
+    #[instrument(name = "Count all existing words", fields(results), skip(db))]
     pub fn count_all(db: &impl PublicAccessDb) -> u64 {
         const COUNT: &str = "SELECT COUNT(1) FROM words;";
 
@@ -84,6 +96,9 @@ impl ExistingWord {
             .unwrap()
             .query_row(params![], |row| row.get(0))
             .unwrap();
+
+        Span::current().record("results", &count);
+
         count
     }
 }
@@ -123,6 +138,7 @@ pub struct ExistingExample {
 }
 
 impl ExistingExample {
+    #[instrument(level = "debug", name = "Fetch all existing examples for word", fields(results), skip(db))]
     pub fn fetch_all_for_word(db: &impl PublicAccessDb, word_id: u64) -> Vec<ExistingExample> {
         const SELECT: &str =
             "SELECT example_id, word_id, english, xhosa FROM examples WHERE word_id = ?1;";
@@ -132,12 +148,17 @@ impl ExistingExample {
         let rows = query.query(params![word_id]).unwrap();
 
         #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-        rows.map(|row| ExistingExample::try_from(row))
+        let examples: Vec<Self> = rows.map(|row| ExistingExample::try_from(row))
             .collect()
-            .unwrap()
+            .unwrap();
+
+        Span::current().record("results", &examples.len());
+
+        examples
     }
 
-    pub fn get(db: &impl PublicAccessDb, example_id: u64) -> Option<ExistingExample> {
+    #[instrument(name = "Fetch existing example", fields(found), skip(db))]
+    pub fn fetch(db: &impl PublicAccessDb, example_id: u64) -> Option<ExistingExample> {
         const SELECT: &str =
             "SELECT example_id, word_id, english, xhosa FROM examples WHERE example_id = ?1;";
 
@@ -149,6 +170,9 @@ impl ExistingExample {
             .query_row(params![example_id], |row| ExistingExample::try_from(row))
             .optional()
             .unwrap();
+
+        Span::current().record("found", &opt.is_some());
+
         opt
     }
 }
@@ -176,6 +200,7 @@ pub struct ExistingLinkedWord {
 }
 
 impl ExistingLinkedWord {
+    #[instrument(level = "debug", name = "Fetch all existing linked word for word", fields(results), skip(db))]
     pub fn fetch_all_for_word(db: &impl PublicAccessDb, word_id: u64) -> Vec<ExistingLinkedWord> {
         const SELECT: &str = "
             SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words
@@ -191,12 +216,14 @@ impl ExistingLinkedWord {
             .collect()
             .unwrap();
 
-        vec.sort_by_key(|l| l.link_type);
+        Span::current().record("results", &vec.len());
 
+        vec.sort_by_key(|l| l.link_type);
         vec
     }
 
-    pub fn get(
+    #[instrument(name = "Fetch existing linked word", fields(found), skip(db))]
+    pub fn fetch(
         db: &impl PublicAccessDb,
         id: u64,
         skip_populating: u64,
@@ -215,9 +242,13 @@ impl ExistingLinkedWord {
             })
             .optional()
             .unwrap();
+
+        Span::current().record("found", &opt.is_some());
+
         opt
     }
 
+    #[instrument(name = "Populate existing linked word", fields(link_id), skip(row, db))]
     pub fn try_from_row_populate_other(
         row: &Row<'_>,
         db: &impl PublicAccessDb,
@@ -231,8 +262,12 @@ impl ExistingLinkedWord {
             second_word_id
         };
 
+        let link_id = row.get("link_id")?;
+
+        Span::current().record("link_id", &link_id);
+
         Ok(ExistingLinkedWord {
-            link_id: row.get("link_id")?,
+            link_id,
             first_word_id,
             second_word_id,
             link_type: row.get("link_type")?,

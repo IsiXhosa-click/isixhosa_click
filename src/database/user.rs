@@ -8,7 +8,7 @@ use r2d2_sqlite::rusqlite::Row;
 use rusqlite::{params, OptionalExtension};
 use std::convert::TryFrom;
 use std::num::NonZeroU64;
-use tracing::{instrument, debug_span};
+use tracing::{instrument, debug_span, Span};
 
 impl TryFrom<&Row<'_>> for User {
     type Error = rusqlite::Error;
@@ -32,7 +32,7 @@ impl TryFrom<&Row<'_>> for User {
 }
 
 impl User {
-    #[instrument(name = "Fetch a user", skip(db))]
+    #[instrument(level = "debug", name = "Fetch user", fields(found), skip(db))]
     pub fn fetch_by_id(db: &impl PublicAccessDb, id: u64) -> Option<User> {
         const SELECT: &str = "
             SELECT
@@ -50,9 +50,13 @@ impl User {
             .query_row(params![id], |row| User::try_from(row))
             .optional()
             .unwrap();
+
+        Span::current().record("found", &user.is_some());
+
         user
     }
 
+    #[instrument(level = "debug", name = "Fetch user", fields(found), skip_all)]
     pub fn fetch_by_oidc_id(
         db: &impl PublicAccessDb,
         _proof: Token, // Make sure this is not called from the wrong context
@@ -74,9 +78,13 @@ impl User {
             .query_row(params![oidc_id], |row| User::try_from(row))
             .optional()
             .unwrap();
+
+        Span::current().record("found", &user.is_some());
+
         user
     }
 
+    #[instrument(name = "Register user", skip(db, userinfo))]
     pub fn register(
         db: &impl PublicAccessDb,
         userinfo: Box<Userinfo>,
@@ -148,6 +156,7 @@ impl StaySignedInToken {
         }
     }
 
+    #[instrument(name = "Delete stay-signed-in token", fields(token_id = self.token_id), skip_all)]
     pub fn delete(self, db: &impl UserAccessDb) {
         const DELETE: &str = "DELETE FROM login_tokens WHERE token_id = ?1;";
 

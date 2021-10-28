@@ -3,7 +3,7 @@ use std::{convert::Infallible, sync::Arc};
 use crate::auth::db_impl::DbImpl;
 use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::Config;
+use crate::{Config, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
@@ -669,7 +669,7 @@ impl reject::Reject for Unauthorized {}
 
 #[instrument(
     name = "Try to extract user from a token",
-    fields(fail_reason, success, id, name),
+    fields(fail_reason, success = false, id, name),
     skip_all,
 )]
 async fn extract_user(
@@ -677,19 +677,26 @@ async fn extract_user(
     redirect: String,
     stay_signed_in: Option<StaySignedInToken>,
 ) -> Result<User, Rejection> {
-    let parent = Span::current();
+    let span = Span::current();
 
     tokio::task::spawn_blocking(move || {
-        let _g = parent.enter();
+        let _g = span.enter();
         if let Some(stay_signed_in) = stay_signed_in {
             if let Some(user) = stay_signed_in.verify_token(&db) {
                 let user = User::fetch_by_id(&db, user).unwrap();
+
+                span.record("id", &user.id);
+                span.record("name", &user.username.as_str());
+
                 if !user.locked {
-                    debug!(id = user.id, name = %user.username, success = true, "User successfully authenticated");
+                    span.record("success", &true);
+                    debug!("User successfully authenticated");
                     Ok(user)
                 } else {
                     let reason = UnauthorizedReason::Locked;
-                    debug!(id = user.id, name = %user.username, fail_reason = ?reason, "User locked");
+                    span.record("fail_reason", &reason.to_debug().as_str());
+                    debug!("User locked");
+
                     Err(warp::reject::custom(Unauthorized {
                         reason,
                         redirect,
@@ -697,7 +704,9 @@ async fn extract_user(
                 }
             } else {
                 let reason = UnauthorizedReason::NotLoggedIn;
-                debug!(fail_reason = ?reason, "Invalid token");
+                span.record("fail_reason", &reason.to_debug().as_str());
+                debug!("Invalid token");
+
                 Err(warp::reject::custom(Unauthorized {
                     reason,
                     redirect,
@@ -705,7 +714,9 @@ async fn extract_user(
             }
         } else {
             let reason = UnauthorizedReason::NotLoggedIn;
-            debug!(fail_reason = ?reason, "No token");
+            span.record("fail_reason", &reason.to_debug().as_str());
+            debug!("No token");
+
             Err(warp::reject::custom(Unauthorized {
                 reason,
                 redirect,

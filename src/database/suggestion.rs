@@ -8,7 +8,6 @@ use crate::serialization::WithDeleteSentinel;
 use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
-
 use num_enum::TryFromPrimitive;
 use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
@@ -17,6 +16,9 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::sync::Arc;
+use tracing::{Span, instrument};
+use crate::DebugExt;
+use crate::format::DisplayHtml;
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -52,6 +54,7 @@ impl SuggestedWord {
         }
     }
 
+    #[instrument(level = "debug", name = "Fetch all suggested words", fields(results), skip(db))]
     pub fn fetch_all_full(db: &impl ModeratorAccessDb) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "
             SELECT
@@ -67,7 +70,7 @@ impl SuggestedWord {
         let mut query = conn.prepare(SELECT_SUGGESTIONS).unwrap();
         let suggestions = query.query(params![]).unwrap();
 
-        suggestions
+        let results: Vec<_> = suggestions
             .map(|row| {
                 let mut w = SuggestedWord::from_row_fetch_original(row, db);
                 w.examples = SuggestedExample::fetch_all_for_suggestion(db, w.suggestion_id);
@@ -76,10 +79,15 @@ impl SuggestedWord {
                 Ok(w)
             })
             .collect()
-            .unwrap()
+            .unwrap();
+
+        Span::current().record("results", &results.len());
+
+        results
     }
 
     /// Returns the suggested word without examples and linked words populated.
+    #[instrument(level = "debug", name = "Fetch just suggested word", fields(found), skip(db))]
     pub fn fetch_alone(db: &impl UserAccessDb, id: u64) -> Option<SuggestedWord> {
         const SELECT_SUGGESTION: &str = "
             SELECT
@@ -93,8 +101,7 @@ impl SuggestedWord {
 
         let conn = db.get().unwrap();
 
-        // WTF rustc?
-        let v = conn
+        let word = conn
             .prepare(SELECT_SUGGESTION)
             .unwrap()
             .query_row(params![id], |row| {
@@ -102,10 +109,14 @@ impl SuggestedWord {
             })
             .optional()
             .unwrap();
-        v
+
+        Span::current().record("found", &word.is_some());
+
+        word
     }
 
     /// Returns the suggested word with examples and linked words populated.
+    #[instrument(name = "Fetch full suggested word", fields(found), skip(db))]
     pub fn fetch_full(db: &impl UserAccessDb, id: u64) -> Option<SuggestedWord> {
         let mut word = SuggestedWord::fetch_alone(db, id);
         if let Some(w) = word.as_mut() {
@@ -113,10 +124,22 @@ impl SuggestedWord {
             w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, id);
         }
 
+        Span::current().record("found", &word.is_some());
+
         word
     }
 
     /// Does not delete suggestion.
+    #[instrument(
+        name = "Accept just suggested word",
+        fields(
+            suggestion_id = self.suggestion_id,
+            existing_id = self.word_id,
+            accepted_id,
+            hit = %self.to_plaintext(),
+        ),
+        skip_all
+    )]
     pub fn accept_just_word_suggestion(&self, db: &impl ModeratorAccessDb) -> u64 {
         const INSERT: &str = "
             INSERT INTO words (
@@ -163,9 +186,12 @@ impl SuggestedWord {
 
         add_attribution(db, &self.suggesting_user, WordId(id));
 
+        Span::current().record("accepted_id", &id);
+
         id
     }
 
+    #[instrument(name = "Accept whole word suggestion", skip_all)]
     pub fn accept_whole_word_suggestion(
         self,
         db: &impl ModeratorAccessDb,
@@ -218,6 +244,7 @@ impl SuggestedWord {
         }
     }
 
+    #[instrument(name = "Delete word suggestion", fields(found), skip(db, tantivy))]
     pub fn delete(db: &impl ModeratorAccessDb, tantivy: Arc<TantivyClient>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1;";
 
@@ -225,7 +252,11 @@ impl SuggestedWord {
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
-        modified_rows == 1
+        let found = modified_rows == 1;
+
+        Span::current().record("found", &found);
+
+        found
     }
 
     fn from_row_fetch_original(row: &Row<'_>, db: &impl UserAccessDb) -> Self {
@@ -279,6 +310,11 @@ impl SuggestedWord {
         }
     }
 
+    #[instrument(
+        name = "Fetch existing id for suggested word",
+        fields(word_id),
+        skip(db)
+    )]
     pub fn fetch_existing_id_for_suggestion(
         db: &impl UserAccessDb,
         suggestion: u64,
@@ -287,11 +323,14 @@ impl SuggestedWord {
             "SELECT existing_word_id FROM word_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
-        let word_id = conn
+        let word_id: Option<u64> = conn
             .prepare(SELECT)
             .unwrap()
             .query_row(params![suggestion], |row| row.get("existing_word_id"))
             .unwrap();
+
+        Span::current().record("word_id", &word_id.to_debug().as_str());
+
         word_id
     }
 }
@@ -310,6 +349,11 @@ pub struct SuggestedExample {
 }
 
 impl SuggestedExample {
+    #[instrument(
+        name = "Fetch all suggested examples for existing words",
+        fields(results),
+        skip(db)
+    )]
     pub fn fetch_all_for_existing_words(
         db: &impl ModeratorAccessDb,
     ) -> impl Iterator<Item = (WordId, Vec<SuggestedExample>)> {
@@ -346,9 +390,17 @@ impl SuggestedExample {
             })
             .unwrap();
 
+        Span::current().record("results", &map.len());
+
         map.into_iter()
     }
 
+    #[instrument(
+        level = "debug",
+        name = "Fetch all suggested examples for suggested word",
+        fields(results),
+        skip(db),
+    )]
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
         suggested_word_id: u64,
@@ -366,12 +418,21 @@ impl SuggestedExample {
         let mut query = conn.prepare(SELECT_SUGGESTION).unwrap();
         let examples = query.query(params![suggested_word_id]).unwrap();
 
-        examples
+        let examples: Vec<_> = examples
             .map(|row| Ok(SuggestedExample::from_row_fetch_original(row, db)))
             .collect()
-            .unwrap()
+            .unwrap();
+
+        Span::current().record("results", &examples.len());
+
+        examples
     }
 
+    #[instrument(
+        name = "Fetch suggested example",
+        fields(found),
+        skip(db),
+    )]
     pub fn fetch(db: &impl UserAccessDb, suggestion_id: u64) -> Option<SuggestedExample> {
         const SELECT: &str = "
             SELECT
@@ -391,9 +452,21 @@ impl SuggestedExample {
             })
             .optional()
             .unwrap();
+
+        Span::current().record("found", &ex.is_some());
+
         ex
     }
 
+    #[instrument(
+        name = "Accept suggested example",
+        fields(
+            suggestion_id = self.suggestion_id,
+            word_id = ?self.word_or_suggested_id,
+            accepted_id,
+        ),
+        skip_all,
+    )]
     pub fn accept(&self, db: &impl ModeratorAccessDb) -> i64 {
         const INSERT: &str = "
             INSERT INTO examples (example_id, word_id, english, xhosa) VALUES (?1, ?2, ?3, ?4)
@@ -424,20 +497,25 @@ impl SuggestedExample {
         add_attribution(db, &self.suggesting_user, WordId(word));
         SuggestedExample::delete(db, self.suggestion_id);
 
+        Span::current().record("accepted_id", &id);
+
         id
     }
 
+    #[instrument(name = "Delete suggested example", fields(found), skip(db))]
     pub fn delete(db: &impl ModeratorAccessDb, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM example_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
-        modified_rows == 1
+        let found = modified_rows == 1;
+        Span::current().record("found", &found);
+        found
     }
 
     fn from_row_fetch_original(row: &Row<'_>, db: &impl UserAccessDb) -> Self {
         let existing_id = row.get::<&str, Option<i64>>("existing_example_id").unwrap();
-        let e = existing_id.and_then(|id| ExistingExample::get(db, id as u64));
+        let e = existing_id.and_then(|id| ExistingExample::fetch(db, id as u64));
         let e = e.as_ref();
 
         SuggestedExample {
@@ -465,6 +543,8 @@ pub struct SuggestedLinkedWord {
 }
 
 impl SuggestedLinkedWord {
+    // TODO have hit here?
+    #[instrument(name = "Fetch suggested linked word", skip(db))]
     pub fn fetch(db: &impl UserAccessDb, suggestion: u64) -> SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "
             SELECT linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
@@ -492,6 +572,12 @@ impl SuggestedLinkedWord {
     }
 
     /// Each link will show up for either suggestion.
+    #[instrument(
+        level = "debug",
+        name = "Fetch all suggested linked words for suggested word",
+        fields(results),
+        skip(db),
+    )]
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
         suggested_word_id: u64,
@@ -514,12 +600,17 @@ impl SuggestedLinkedWord {
             .collect()
             .unwrap();
 
+        Span::current().record("results", &vec.len());
         vec.sort_by_key(|link| *link.link_type.current());
-
         vec
     }
 
     /// Each link shows up once and only once.
+    #[instrument(
+        name = "Fetch all suggested linked words for existing words",
+        fields(results),
+        skip_all,
+    )]
     pub fn fetch_all_for_existing_words(
         db: &impl ModeratorAccessDb,
     ) -> impl Iterator<Item = (WordId, Vec<SuggestedLinkedWord>)> {
@@ -579,10 +670,21 @@ impl SuggestedLinkedWord {
             })
             .unwrap();
 
+        Span::current().record("results", &map.len());
+
         map.into_iter()
     }
 
     // TODO(error handling)
+    #[instrument(
+        name = "Accept suggested linked word",
+        fields(
+            suggestion_id = self.suggestion_id,
+            existing_id = self.existing_linked_word_id,
+            accepted_id,
+        )
+        skip_all,
+    )]
     pub fn accept(&self, db: &impl ModeratorAccessDb) -> i64 {
         const INSERT: &str = "
             INSERT INTO linked_words (link_id, link_type, first_word_id, second_word_id)
@@ -618,9 +720,16 @@ impl SuggestedLinkedWord {
         add_attribution(db, &self.suggesting_user, WordId(second));
         SuggestedLinkedWord::delete(db, self.suggestion_id);
 
+        Span::current().record("accepted_id", &id);
+
         id
     }
 
+    #[instrument(
+        name = "Update suggested linked word first and second",
+        fields(suggestion_id = self.suggestion_id),
+        skip_all
+    )]
     pub fn update_first_and_second(&self, db: &impl ModeratorAccessDb) {
         const UPDATE: &str = "
             UPDATE linked_word_suggestions
@@ -642,14 +751,18 @@ impl SuggestedLinkedWord {
         conn.prepare(UPDATE).unwrap().execute(params).unwrap();
     }
 
+    #[instrument(name = "Delete suggested linked word", fields(found), skip(db))]
     pub fn delete(db: &impl ModeratorAccessDb, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM linked_word_suggestions WHERE suggestion_id = ?1;";
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
-        modified_rows == 1
+        let found = modified_rows == 1;
+        Span::current().record("found", &found);
+        found
     }
 
+    #[instrument(name = "Populate suggested linked word", fields(suggestion_id), skip_all)]
     fn from_row_populate_both(row: &Row<'_>, db: &impl UserAccessDb) -> Self {
         const SELECT: &str =
             "SELECT link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1;";
@@ -726,10 +839,14 @@ impl SuggestedLinkedWord {
 
         let (first, second) = (next(other_first), next(other_second));
 
+        let suggestion_id = row.get("suggestion_id").unwrap();
+
+        Span::current().record("suggestion_id", &suggestion_id);
+
         SuggestedLinkedWord {
             suggesting_user: PublicUserInfo::try_from(row).unwrap(),
             changes_summary: row.get("changes_summary").unwrap(),
-            suggestion_id: row.get("suggestion_id").unwrap(),
+            suggestion_id,
             existing_linked_word_id: row.get("existing_linked_word_id").unwrap(),
             first,
             second,

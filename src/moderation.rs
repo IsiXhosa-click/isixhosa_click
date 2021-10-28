@@ -9,7 +9,7 @@ use crate::database::WordOrSuggestionId;
 use crate::format::DisplayHtml;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
-use tracing::error;
+use tracing::{error, instrument, Span};
 use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
 use askama::Template;
 use serde::Deserialize;
@@ -46,6 +46,7 @@ pub struct WordAssociatedEdits {
 }
 
 impl WordAssociatedEdits {
+    #[instrument(name = "Fetch all word associated edits", fields(relevant_words), skip(db))]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<(WordHit, WordAssociatedEdits)> {
         let example_suggestions = SuggestedExample::fetch_all_for_existing_words(db);
         let example_deletions = ExampleDeletionSuggestion::fetch_all(db);
@@ -82,6 +83,9 @@ impl WordAssociatedEdits {
             .into_iter()
             .map(|(id, assoc)| (WordHit::fetch_from_db(db, id.into()).unwrap(), assoc))
             .collect();
+
+        Span::current().record("relevant_words", &vec.len());
+
         vec.sort_by_key(|(hit, _)| hit.id);
         vec
     }
@@ -138,7 +142,7 @@ pub fn accept(
     let show_all = warp::get()
         .and(with_moderator_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is None
-        .and_then(suggested_words);
+        .and_then(moderation_template);
 
     let process_one = warp::post()
         .and(with_moderator_auth(db.clone()))
@@ -161,7 +165,7 @@ pub fn accept(
                 method: Some(Method::Edit),
             })
         }))
-        .and_then(suggested_words);
+        .and_then(moderation_template);
 
     let other_failed = warp::any()
         .and(with_moderator_auth(db))
@@ -171,7 +175,7 @@ pub fn accept(
                 method: None,
             })
         }))
-        .and_then(suggested_words);
+        .and_then(moderation_template);
 
     let root = warp::path::end().and(show_all.or(process_one).or(other_failed));
     let submit_edit = warp::path("edit")
@@ -181,12 +185,15 @@ pub fn accept(
     warp::path("moderation").and(root.or(submit_edit)).boxed()
 }
 
-async fn suggested_words(
+#[instrument(name = "Display moderation template", skip_all)]
+async fn moderation_template(
     user: User,
     db: impl ModeratorAccessDb,
     previous_success: Option<Success>,
 ) -> Result<impl warp::Reply, Rejection> {
+    let span = Span::current();
     tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
         Ok(ModerationTemplate {
             auth: user.into(),
             previous_success,
@@ -199,6 +206,14 @@ async fn suggested_words(
     .unwrap()
 }
 
+#[instrument(
+    name = "Process edit suggestion form",
+    fields(
+        suggestion_id = submission.suggestion_id,
+        existing_word_id = submission.existing_id,
+    ),
+    skip_all,
+)]
 async fn edit_suggestion_form(
     user: User,
     db: impl ModeratorAccessDb,
@@ -206,7 +221,7 @@ async fn edit_suggestion_form(
     submission: WordSubmission,
 ) -> Result<impl Reply, Rejection> {
     submit_suggestion(submission, tantivy, &user, &db).await;
-    suggested_words(
+    moderation_template(
         user,
         db,
         Some(Success {
@@ -222,8 +237,10 @@ async fn accept_suggested_word(
     tantivy: Arc<TantivyClient>,
     suggestion: u64,
 ) -> bool {
+    let span = Span::current();
     let db = db.clone();
     tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
         SuggestedWord::fetch_full(&db, suggestion)
             .unwrap()
             .accept_whole_word_suggestion(&db, tantivy);
@@ -239,22 +256,34 @@ async fn reject_suggested_word(
     tantivy: Arc<TantivyClient>,
     suggestion_id: u64,
 ) -> bool {
+    let span = Span::current();
     let db = db.clone();
-    tokio::task::spawn_blocking(move || SuggestedWord::delete(&db, tantivy, suggestion_id))
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        SuggestedWord::delete(&db, tantivy, suggestion_id)
+    })
         .await
         .unwrap()
 }
 
+#[instrument(name = "Accept word deletion", fields(word_id), skip(db, tantivy))]
 async fn accept_deletion(
     db: &impl ModeratorAccessDb,
     tantivy: Arc<TantivyClient>,
     suggestion: u64,
 ) -> bool {
+    let span = Span::current();
     let word_id = WordDeletionSuggestion::fetch_word_id_for_suggestion(db, suggestion);
+    span.record("word_id", &word_id);
     let db = db.clone();
-    tokio::task::spawn_blocking(move || ExistingWord::delete(&db, word_id))
+
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        ExistingWord::delete(&db, word_id)
+    })
         .await
         .unwrap();
+
     tantivy
         .delete_word(WordOrSuggestionId::existing(word_id))
         .await;
@@ -263,8 +292,12 @@ async fn accept_deletion(
 }
 
 async fn reject_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+    let span = Span::current();
     let db = db.clone();
-    tokio::task::spawn_blocking(move || WordDeletionSuggestion::reject(&db, suggestion))
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        WordDeletionSuggestion::reject(&db, suggestion)
+    })
         .await
         .unwrap();
 
@@ -273,7 +306,9 @@ async fn reject_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
 
 async fn accept_suggested_example(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
     let db = db.clone();
+    let span = Span::current();
     tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
         SuggestedExample::fetch(&db, suggestion)
             .unwrap()
             .accept(&db)
@@ -285,15 +320,23 @@ async fn accept_suggested_example(db: &impl ModeratorAccessDb, suggestion: u64) 
 }
 
 async fn reject_suggested_example(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+    let span = Span::current();
     let db = db.clone();
-    tokio::task::spawn_blocking(move || SuggestedExample::delete(&db, suggestion))
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        SuggestedExample::delete(&db, suggestion)
+    })
         .await
         .unwrap()
 }
 
 async fn accept_example_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
     let db = db.clone();
-    tokio::task::spawn_blocking(move || ExampleDeletionSuggestion::accept(&db, suggestion))
+    let span = Span::current();
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        ExampleDeletionSuggestion::accept(&db, suggestion)
+    })
         .await
         .unwrap();
 
@@ -301,8 +344,10 @@ async fn accept_example_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -
 }
 
 async fn reject_example_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+    let span = Span::current();
     let db = db.clone();
     tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
         ExampleDeletionSuggestion::delete_suggestion(&db, suggestion)
     })
     .await
@@ -312,32 +357,46 @@ async fn reject_example_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -
 }
 
 async fn accept_linked_word(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+    let span = Span::current();
     let db = db.clone();
-    tokio::task::spawn_blocking(move || SuggestedLinkedWord::fetch(&db, suggestion).accept(&db))
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        SuggestedLinkedWord::fetch(&db, suggestion).accept(&db)
+    })
         .await
         .unwrap();
     true
 }
 
 async fn reject_linked_word(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+    let span = Span::current();
     let db = db.clone();
-    tokio::task::spawn_blocking(move || SuggestedLinkedWord::delete(&db, suggestion))
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        SuggestedLinkedWord::delete(&db, suggestion)
+    })
         .await
         .unwrap();
     true
 }
 
 async fn accept_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+    let span = Span::current();
     let db = db.clone();
-    tokio::task::spawn_blocking(move || LinkedWordDeletionSuggestion::accept(&db, suggestion))
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        LinkedWordDeletionSuggestion::accept(&db, suggestion)
+    })
         .await
         .unwrap();
     true
 }
 
 async fn reject_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+    let span = Span::current();
     let db = db.clone();
     tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
         LinkedWordDeletionSuggestion::delete_suggestion(&db, suggestion)
     })
     .await
@@ -345,6 +404,7 @@ async fn reject_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u6
     true
 }
 
+#[instrument(name = "Process moderation page action", skip(user, db, tantivy))]
 async fn process_one(
     user: User,
     db: impl ModeratorAccessDb,
@@ -397,7 +457,7 @@ async fn process_one(
         },
     };
 
-    suggested_words(
+    moderation_template(
         user,
         db_clone,
         Some(Success {

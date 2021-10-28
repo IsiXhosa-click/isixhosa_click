@@ -27,7 +27,7 @@ use tantivy::schema::{
     Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
     STORED,
 };
-use tracing::{info, info_span, instrument, Instrument, Span};
+use tracing::{info, info_span, debug_span, instrument, Instrument, Span};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
@@ -185,22 +185,32 @@ impl TantivyClient {
     }
 
     #[instrument(
-        name = "Add a word to the search index",
+        name = "Add a word to tantivy",
         fields(
             id = ?word.id,
             suggesting_user = word.suggesting_user,
-            hit = %word.to_plaintext().to_string(),
+            hit = %word.to_plaintext(),
         )
-        skip(word),
+        skip_all,
     )]
     pub async fn add_new_word(&self, word: WordDocument) {
         self.writer.send(IndexWord(word)).await.unwrap()
     }
 
+    #[instrument(
+        name = "Edit a word in tantivy",
+        fields(
+            id = ?word.id,
+            suggesting_user = word.suggesting_user,
+            hit = %word.to_plaintext(),
+        )
+        skip_all,
+    )]
     pub async fn edit_word(&self, word: WordDocument) {
         self.writer.send(EditWord(word)).await.unwrap()
     }
 
+    #[instrument(name = "Delete a word from tantivy", skip(self))]
     pub async fn delete_word(&self, id: WordOrSuggestionId) {
         self.writer.send(DeleteWord(id)).await.unwrap()
     }
@@ -402,6 +412,14 @@ impl Message for SearchRequest {
 }
 
 impl SearcherActor {
+    #[instrument(
+        name = "Search for a query in tantivy",
+        fields(
+            level = search_level,
+            results,
+        )
+        skip_all
+    )]
     fn query_terms(
         searcher: &mut LeasedItem<Searcher>,
         client: &TantivyClient,
@@ -461,6 +479,8 @@ impl SearcherActor {
             IncludeResults::AcceptedOnly => not_suggestion(),
         };
 
+        let mut count = 0;
+
         let iter = searcher
             .search(&query, &TopDocs::with_limit(RESULTS * 5)) // TODO unsure
             .unwrap()
@@ -471,15 +491,26 @@ impl SearcherActor {
                     .map_err(anyhow::Error::from)
                     .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
                     .unwrap()
-            });
+            })
+            .inspect(|_| count += 1);
 
         out.extend(iter);
+
+        Span::current().record("results", &count);
     }
 }
 
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
-    #[instrument(name = "Search for a word (actor side)", skip_all)]
+    #[instrument(
+        name = "Search for a word (actor side)",
+        fields(
+            query = %req.query,
+            include = ?req.include,
+            exact = req.duplicate,
+        )
+        skip_all,
+    )]
     async fn handle(
         &mut self,
         mut req: SearchRequest,
@@ -493,7 +524,7 @@ impl Handler<SearchRequest> for SearcherActor {
             sim: OrderedFloat<f64>,
         }
 
-    impl WordHitWithSim {
+        impl WordHitWithSim {
             fn new(hit: WordHit, query: &str) -> WordHitWithSim {
                 WordHitWithSim {
                     sim: max(
@@ -527,13 +558,16 @@ impl Handler<SearchRequest> for SearcherActor {
         }
 
         req.query = req.query.to_lowercase().replace("(", "").replace(")", "");
-        req.query.truncate(32);
+        req.query.truncate(64);
 
         let mut searcher = self.reader.searcher();
         let client = self.client.clone();
         let mut results = HashSet::with_capacity(10);
 
+        let span = Span::current();
         tokio::task::spawn_blocking(move || {
+            let _g = span.enter();
+
             for level in 0..=2 {
                 SearcherActor::query_terms(&mut searcher, &client, level, &req, &mut results);
 
@@ -543,16 +577,23 @@ impl Handler<SearchRequest> for SearcherActor {
             }
 
             if req.duplicate {
+                let _g = debug_span!("Filtering for exact matches only").entered();
+
                 let exact = |hit: &WordHit| hit.english.to_lowercase() == req.query.to_lowercase() ||
                     hit.xhosa.to_lowercase() == req.query.to_lowercase();
                 Ok::<_, anyhow::Error>(results.into_iter().filter(exact).collect())
             } else {
-                let mut results: Vec<WordHitWithSim> = results
-                    .into_iter()
-                    .map(|hit| WordHitWithSim::new(hit, &req.query))
-                    .collect();
+                let _g = info_span!("Sorting and ordering results", results = results.len()).entered();
 
-                results.sort();
+                let mut results: Vec<WordHitWithSim> = info_span!("Calculating string similarity")
+                    .in_scope(||
+                        results
+                        .into_iter()
+                        .map(|hit| WordHitWithSim::new(hit, &req.query))
+                        .collect()
+                    );
+
+                debug_span!("Sorting list based on string similarity").in_scope(|| results.sort());
 
                 Ok(results.into_iter().take(RESULTS).map(|s| s.hit).collect())
             }

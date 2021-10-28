@@ -12,6 +12,7 @@ use crate::serialization::GetWithSentinelExt;
 use crate::serialization::SerOnlyDisplay;
 use crate::submit::WordId;
 use isixhosa::noun::NounClass;
+use tracing::{Span, instrument};
 
 pub mod deletion;
 pub mod existing;
@@ -38,6 +39,7 @@ impl WordHit {
         })
     }
 
+    #[instrument(name = "Fetch word hit from database", fields(found), skip(db))]
     pub fn fetch_from_db(db: &impl PublicAccessDb, id: WordOrSuggestionId) -> Option<WordHit> {
         const SELECT_EXISTING: &str = "
             SELECT
@@ -71,10 +73,14 @@ impl WordHit {
             })
             .optional()
             .unwrap();
+
+        Span::current().record("found", &v.is_some());
+
         v
     }
 }
 
+#[instrument(name = "Add attribution", skip(db))]
 pub fn add_attribution(db: &impl ModeratorAccessDb, user: &PublicUserInfo, word: WordId) {
     const INSERT: &str =
         "INSERT INTO user_attributions (user_id, word_id) VALUES (?1, ?2) ON CONFLICT DO NOTHING;";

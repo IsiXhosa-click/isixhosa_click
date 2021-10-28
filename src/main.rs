@@ -1,10 +1,11 @@
 // To instrument:
 // - startup tasks (reindex, db stuff, etc)
-// - stuff inside routes
+// - stuff inside routes (DONE: moderation page)
 // - stuff inside websocket
 // - https://github.com/tokio-rs/tracing/blob/master/examples/examples/opentelemetry-remote-context.rs ?
 // - where to level filter?
 // - special fields https://docs.rs/tracing-opentelemetry/0.16.0/tracing_opentelemetry/
+// - add "hit" to fetch methods with `found` field
 
 // Soon after launch, perhaps before:
 // - informal/archaic meanings
@@ -80,6 +81,16 @@ mod session;
 mod submit;
 
 pub type SpanId = Option<tracing::Id>;
+
+pub trait DebugExt {
+    fn to_debug(&self) -> String;
+}
+
+impl<T: Debug> DebugExt for T {
+    fn to_debug(&self) -> String {
+        format!("{:?}", self)
+    }
+}
 
 #[derive(Debug)]
 struct TemplateError(askama::Error);
