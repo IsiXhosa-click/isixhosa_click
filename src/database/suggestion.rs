@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::sync::Arc;
+use futures::executor::block_on;
 use tracing::{Span, instrument};
 use crate::DebugExt;
 use crate::format::DisplayHtml;
@@ -238,9 +239,9 @@ impl SuggestedWord {
         SuggestedWord::delete(db, tantivy_clone, word_suggestion_id);
 
         if self.word_id.is_none() {
-            tokio::spawn(async move { tantivy.add_new_word(document).await });
+            block_on(async move { tantivy.add_new_word(document).await });
         } else {
-            tokio::spawn(async move { tantivy.edit_word(document).await });
+            block_on(async move { tantivy.edit_word(document).await });
         }
     }
 
@@ -248,7 +249,7 @@ impl SuggestedWord {
     pub fn delete(db: &impl ModeratorAccessDb, tantivy: Arc<TantivyClient>, id: u64) -> bool {
         const DELETE: &str = "DELETE FROM word_suggestions WHERE suggestion_id = ?1;";
 
-        tokio::spawn(async move { tantivy.delete_word(WordOrSuggestionId::suggested(id)).await });
+        block_on(async move { tantivy.delete_word(WordOrSuggestionId::suggested(id)).await });
 
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();

@@ -3,9 +3,10 @@ use crate::auth::{with_any_auth, Auth, DbBase};
 use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
 use crate::language::PartOfSpeech;
-use crate::NotFound;
+use crate::{NotFound, spawn_blocking_child};
 use askama::Template;
 use warp::{Filter, Rejection, Reply};
+use tracing::instrument;
 
 pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Reply>+ Clone {
     warp::path!["word" / u64]
@@ -25,6 +26,7 @@ struct WordDetails {
     previous_success: Option<WordChangeMethod>,
 }
 
+#[instrument(name = "Display word details page", skip(auth, db, previous_success))]
 pub async fn word(
     word_id: u64,
     auth: Auth,
@@ -32,7 +34,7 @@ pub async fn word(
     previous_success: Option<WordChangeMethod>,
 ) -> Result<impl warp::Reply, Rejection> {
     let db = db.clone();
-    let word = tokio::task::spawn_blocking(move || ExistingWord::fetch_full(&db, word_id))
+    let word = spawn_blocking_child(move || ExistingWord::fetch_full(&db, word_id))
         .await
         .unwrap();
     Ok(match word {

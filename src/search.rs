@@ -27,14 +27,15 @@ use tantivy::schema::{
     Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
     STORED,
 };
-use tracing::{info, info_span, debug_span, instrument, Instrument, Span};
+use tracing::{info, info_span, debug_span, instrument, Span};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
+use xtra::prelude::InstrumentedExt;
 use crate::format::DisplayHtml;
-use crate::SpanId;
+use crate::spawn_blocking_child;
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;
@@ -138,10 +139,9 @@ impl TantivyClient {
         }
     }
 
-    #[instrument(name = "Search for a word", err)]
     pub async fn search(&self, query: String, include: IncludeResults, duplicate: bool) -> Result<Vec<WordHit>> {
         self.searchers
-            .send(SearchRequest { query, include, duplicate, caller: Span::current().id() })
+            .send(SearchRequest { query, include, duplicate }.instrumented_child())
             .await
             .map_err(Into::into)
     }
@@ -156,7 +156,9 @@ impl TantivyClient {
             ORDER BY word_id;
         ";
 
+        let span = info_span!("Fetch all existing words").or_current();
         let docs = tokio::task::spawn_blocking(move || {
+            let _g = span.enter();
             let conn = db.get().unwrap();
             let mut stmt = conn.prepare(SELECT).unwrap();
 
@@ -177,42 +179,22 @@ impl TantivyClient {
             .collect::<Result<Vec<WordDocument>, _>>()
             .unwrap()
         })
-        .instrument(info_span!("Query all existing words"))
         .await
         .unwrap();
 
-        self.writer.send(ReindexWords(docs)).await.unwrap();
+        self.writer.send(ReindexWords(docs).instrumented_child()).await.unwrap();
     }
 
-    #[instrument(
-        name = "Add a word to tantivy",
-        fields(
-            id = ?word.id,
-            suggesting_user = word.suggesting_user,
-            hit = %word.to_plaintext(),
-        )
-        skip_all,
-    )]
     pub async fn add_new_word(&self, word: WordDocument) {
-        self.writer.send(IndexWord(word)).await.unwrap()
+        self.writer.send(IndexWord(word).instrumented_child()).await.unwrap()
     }
 
-    #[instrument(
-        name = "Edit a word in tantivy",
-        fields(
-            id = ?word.id,
-            suggesting_user = word.suggesting_user,
-            hit = %word.to_plaintext(),
-        )
-        skip_all,
-    )]
     pub async fn edit_word(&self, word: WordDocument) {
-        self.writer.send(EditWord(word)).await.unwrap()
+        self.writer.send(EditWord(word).instrumented_child()).await.unwrap()
     }
 
-    #[instrument(name = "Delete a word from tantivy", skip(self))]
     pub async fn delete_word(&self, id: WordOrSuggestionId) {
-        self.writer.send(DeleteWord(id)).await.unwrap()
+        self.writer.send(DeleteWord(id).instrumented_child()).await.unwrap()
     }
 }
 
@@ -299,7 +281,7 @@ impl Handler<ReindexWords> for WriterActor {
         let writer = self.writer.clone();
         let schema_info = self.schema_info.clone();
 
-        tokio::task::spawn_blocking(move || {
+        spawn_blocking_child(move || {
             let mut writer = writer.lock().unwrap();
             writer.delete_all_documents().unwrap();
 
@@ -316,11 +298,21 @@ impl Handler<ReindexWords> for WriterActor {
 
 #[async_trait::async_trait]
 impl Handler<IndexWord> for WriterActor {
+    #[instrument(
+        name = "Add a word to tantivy",
+        fields(
+            id = ?doc.0.id,
+            is_suggestion = doc.0.suggesting_user.is_some(),
+            suggesting_user = doc.0.suggesting_user,
+            hit = %doc.0.to_plaintext(),
+        )
+        skip_all,
+    )]
     async fn handle(&mut self, doc: IndexWord, _ctx: &mut xtra::Context<Self>) {
         let writer = self.writer.clone();
         let schema_info = self.schema_info.clone();
 
-        tokio::task::spawn_blocking(move || {
+        spawn_blocking_child(move || {
             let mut writer = writer.lock().unwrap();
             Self::add_word(&mut writer, &schema_info, doc.0);
             writer.commit().unwrap();
@@ -332,11 +324,20 @@ impl Handler<IndexWord> for WriterActor {
 
 #[async_trait::async_trait]
 impl Handler<EditWord> for WriterActor {
+    #[instrument(
+        name = "Edit a word in tantivy",
+        fields(
+            id = ?edit.0.id,
+            suggesting_user = edit.0.suggesting_user,
+            hit = %edit.0.to_plaintext(),
+        )
+        skip_all,
+    )]
     async fn handle(&mut self, edit: EditWord, _ctx: &mut xtra::Context<Self>) {
         let writer = self.writer.clone();
         let schema_info = self.schema_info.clone();
 
-        tokio::task::spawn_blocking(move || {
+        spawn_blocking_child(move || {
             let mut writer = writer.lock().unwrap();
             let term = match edit.0.id {
                 WordOrSuggestionId::ExistingWord { existing_id } => {
@@ -357,11 +358,12 @@ impl Handler<EditWord> for WriterActor {
 
 #[async_trait::async_trait]
 impl Handler<DeleteWord> for WriterActor {
+    #[instrument(name = "Delete a word from tantivy", fields(id = ?delete.0), skip_all)]
     async fn handle(&mut self, delete: DeleteWord, _ctx: &mut xtra::Context<Self>) {
         let writer = self.writer.clone();
         let schema_info = self.schema_info.clone();
 
-        tokio::task::spawn_blocking(move || {
+        spawn_blocking_child(move || {
             let mut writer = writer.lock().unwrap();
             let term = match delete.0 {
                 WordOrSuggestionId::ExistingWord { existing_id } => {
@@ -396,7 +398,6 @@ pub struct SearchRequest {
     query: String,
     include: IncludeResults,
     duplicate: bool,
-    caller: SpanId,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -503,7 +504,7 @@ impl SearcherActor {
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
     #[instrument(
-        name = "Search for a word (actor side)",
+        name = "Search for a word",
         fields(
             query = %req.query,
             include = ?req.include,
@@ -516,8 +517,6 @@ impl Handler<SearchRequest> for SearcherActor {
         mut req: SearchRequest,
         _ctx: &mut xtra::Context<Self>,
     ) -> Vec<WordHit> {
-        Span::current().follows_from(req.caller.clone());
-
         #[derive(PartialEq, Eq)]
         struct WordHitWithSim {
             hit: WordHit,
@@ -564,11 +563,9 @@ impl Handler<SearchRequest> for SearcherActor {
         let client = self.client.clone();
         let mut results = HashSet::with_capacity(10);
 
-        let span = Span::current();
-        tokio::task::spawn_blocking(move || {
-            let _g = span.enter();
-
+        spawn_blocking_child(move || {
             for level in 0..=2 {
+                // TODO just check if it has enough don't actually search it necessarily
                 SearcherActor::query_terms(&mut searcher, &client, level, &req, &mut results);
 
                 if results.len() >= RESULTS {

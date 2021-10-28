@@ -22,14 +22,14 @@ rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono",
 tracing = { version = "0.1.29", features = ["attributes"] }
 tracing-subscriber = "0.3.1"
 tracing-opentelemetry = "0.16.0"
-opentelemetry = "0.16.0"
-opentelemetry-jaeger = "0.15"
+opentelemetry = { version = "0.16.0", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.15.0", features = ["rt-tokio"] }
 chrono = "0.4"
 r2d2 = "0.8"
 serde_json = "1"
 r2d2_sqlite = "0.18"
 num_enum = "0.5.4"
-xtra = { version = "0.5", features = ["with-tokio-1"] }
+xtra = { path = "../../xtra", features = ["with-tokio-1", "with-tracing-0_1"] }
 async-trait = "0.1"
 tantivy = "0.15"
 anyhow = "1"

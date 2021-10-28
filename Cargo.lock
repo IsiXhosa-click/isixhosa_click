@@ -815,14 +815,14 @@ dependencies = [
 
 [[package]]
 name = "flume"
-version = "0.10.2"
+version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "531a685ab99b8f60a271b44d5dd1a76e55124a8c9fa0407b7a8e9cd172d5b588"
+checksum = "24c3fd473b3a903a62609e413ed7538f99e10b665ecb502b5e481a95283f8ab4"
 dependencies = [
  "futures-core",
  "futures-sink",
  "pin-project",
- "spinning_top",
+ "spin 0.9.2",
 ]
 
 [[package]]
@@ -1838,6 +1838,8 @@ dependencies = [
  "pin-project",
  "rand 0.8.3",
  "thiserror",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -1852,6 +1854,7 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "thiserror",
  "thrift",
+ "tokio",
 ]
 
 [[package]]
@@ -2623,10 +2626,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13287b4da9d1207a4f4929ac390916d64eacfe236a487e9a9f5b3be392be5162"
 
 [[package]]
-name = "spinning_top"
-version = "0.2.2"
+name = "spin"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e529d73e80d64b5f2631f9035113347c578a1c9c7774b83a2b880788459ab36"
+checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
 dependencies = [
  "lock_api",
 ]
@@ -3408,9 +3411,7 @@ dependencies = [
 
 [[package]]
 name = "xtra"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf0f1e989211af6ea8ef0f3c7c60489917cffd1d1c0e527bd02c292142c437cc"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "barrage",
@@ -3422,6 +3423,7 @@ dependencies = [
  "futures-util",
  "pollster",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

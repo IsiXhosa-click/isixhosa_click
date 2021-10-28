@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
 use xtra::prelude::*;
-use tracing::instrument;
 
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,
@@ -47,7 +46,7 @@ impl Actor for LiveSearchSession {
         );
     }
 
-    async fn stopped(&mut self) {
+    async fn stopped(mut self) {
         let _ = self.sender.close().await;
     }
 }
@@ -75,7 +74,6 @@ impl Message for WsMessage {
 
 #[async_trait::async_trait]
 impl Handler<WsMessage> for LiveSearchSession {
-    #[instrument(name = "Handle live search websocket message", skip_all)]
     async fn handle(&mut self, message: WsMessage, ctx: &mut Context<Self>) {
         let msg = match message.0 {
             Ok(msg) => msg,

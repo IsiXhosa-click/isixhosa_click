@@ -38,7 +38,7 @@ use auth::auth;
 use details::details;
 use edit::edit;
 use futures::StreamExt;
-use moderation::accept;
+use moderation::moderation;
 use percent_encoding::NON_ALPHANUMERIC;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -51,18 +51,18 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use submit::submit;
-use tokio::task;
+use tokio::task::JoinHandle;
 use warp::filters::compression::gzip;
 use warp::http::header::CONTENT_TYPE;
 use warp::http::uri::Authority;
 use warp::http::{uri, StatusCode, Uri};
 use warp::path::FullPath;
-use warp::reject::Reject;
+use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
 use warp::{path, Filter, Rejection, Reply, reply};
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-use tracing::{info, debug, instrument};
+use tracing::{info, debug, instrument, Span};
 use tracing_subscriber::{Registry, layer::SubscriberExt, filter::LevelFilter};
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::database::suggestion::SuggestedWord;
@@ -80,7 +80,17 @@ mod serialization;
 mod session;
 mod submit;
 
-pub type SpanId = Option<tracing::Id>;
+pub fn spawn_blocking_child<F, R>(f: F) -> JoinHandle<R>
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+{
+    let span = Span::current();
+    tokio::task::spawn_blocking(move || {
+        let _g = span.enter();
+        f()
+    })
+}
 
 pub trait DebugExt {
     fn to_debug(&self) -> String;
@@ -141,10 +151,11 @@ impl Default for Config {
     }
 }
 
+// TODO(tracing): log to file too, configure jaeger, etc
 fn init_logging(cfg: &Config) {
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("isixhosa.click")
-        .install_simple()
+        .install_batch(opentelemetry::runtime::Tokio)
         .unwrap();
 
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
@@ -184,8 +195,8 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     Ok(response)
 }
 
-#[instrument(name = "Authentication error")]
-async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
+#[instrument(name = "Handle errors")]
+async fn handle_error(err: Rejection) -> Result<Response, Rejection> {
     if let Some(unauthorized) = err.find::<Unauthorized>() {
         let redirect_to = |to| {
             warp::http::Response::builder()
@@ -218,6 +229,8 @@ async fn handle_auth_error(err: Rejection) -> Result<Response, Rejection> {
                 Ok(redirect_to("/login/oauth2/authorization/oidc".to_owned()))
             }
         }
+    } else if err.find::<MethodNotAllowed>().is_some() {
+        Err(warp::reject::not_found())
     } else {
         Err(err)
     }
@@ -239,8 +252,6 @@ fn main() {
             flag
         );
     } else {
-        init_logging(&cfg);
-
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -249,6 +260,7 @@ fn main() {
     }
 }
 
+#[instrument("Set up database PRAGMAs and tables", skip_all)]
 fn set_up_db(conn: &Connection) {
     const CREATIONS: [&str; 12] = [
         include_str!("sql/users.sql"),
@@ -282,12 +294,13 @@ fn set_up_db(conn: &Connection) {
 }
 
 async fn server(cfg: Config) {
+    init_logging(&cfg);
     info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
     let pool = Pool::new(manager).unwrap();
     let pool_clone = pool.clone();
-    task::spawn_blocking(move || set_up_db(&pool_clone.get().unwrap()))
+    spawn_blocking_child(move || set_up_db(&pool_clone.get().unwrap()))
         .await
         .unwrap();
 
@@ -340,7 +353,7 @@ async fn server(cfg: Config) {
         .and_then(|auth, db| async move {
             Ok::<About, Infallible>(About {
                 auth,
-                word_count: tokio::task::spawn_blocking(move || ExistingWord::count_all(&db))
+                word_count: spawn_blocking_child(move || ExistingWord::count_all(&db))
                     .await
                     .unwrap(),
             })
@@ -354,7 +367,7 @@ async fn server(cfg: Config) {
         .or(terms_of_use)
         .or(style_guide)
         .or(submit(db.clone(), tantivy.clone()))
-        .or(accept(db.clone(), tantivy.clone()))
+        .or(moderation(db.clone(), tantivy.clone()))
         .or(details(db.clone()))
         .or(edit(db.clone(), tantivy))
         .or(warp::get()
@@ -365,7 +378,7 @@ async fn server(cfg: Config) {
         .or(favico_redirect)
         .or(warp::fs::dir(cfg.static_site_files.clone()))
         .or(warp::fs::dir(cfg.other_static_files.clone()))
-        .recover(handle_auth_error)
+        .recover(handle_error)
         .or(auth::with_any_auth(db).map(|auth, _db| {
             warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
         }))

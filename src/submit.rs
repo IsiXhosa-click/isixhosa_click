@@ -22,6 +22,9 @@ use rusqlite::types::{ToSqlOutput, Value};
 use serde_with::{serde_as, NoneAsEmptyString};
 use std::num::NonZeroU64;
 use std::sync::Arc;
+use futures::executor::block_on;
+use tracing::{instrument, Span, debug_span};
+use crate::spawn_blocking_child;
 
 #[derive(Template, Debug)]
 #[template(path = "submit.askama.html")]
@@ -237,13 +240,14 @@ pub fn submit(
         .boxed()
 }
 
+#[instrument(name = "Display edit suggestion page", skip(db, user))]
 pub async fn edit_suggestion_page(
     db: impl UserAccessDb,
     user: User,
     suggestion_id: u64,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
-    let existing_id = tokio::task::spawn_blocking(move || {
+    let existing_id = spawn_blocking_child(move || {
         SuggestedWord::fetch_existing_id_for_suggestion(&db_clone, suggestion_id)
     })
     .await
@@ -261,6 +265,7 @@ pub async fn edit_suggestion_page(
     .await
 }
 
+#[instrument(name = "Display edit word page", skip(user, db, previous_success))]
 pub async fn edit_word_page(
     user: User,
     db: impl UserAccessDb,
@@ -294,6 +299,7 @@ struct WordFormTemplate {
 }
 
 impl WordFormTemplate {
+    #[instrument(name = "Fetch word form template", skip(db))]
     fn fetch_from_db(
         db: &impl UserAccessDb,
         existing: Option<u64>,
@@ -433,6 +439,7 @@ impl From<ExistingLinkedWord> for LinkedWordTemplate {
     }
 }
 
+#[instrument(name = "Display submit word page", skip_all)]
 async fn submit_word_page(
     user: User,
     db: impl UserAccessDb,
@@ -440,7 +447,7 @@ async fn submit_word_page(
     action: SubmitFormAction,
 ) -> Result<impl Reply, Rejection> {
     let db = db.clone();
-    let word = tokio::task::spawn_blocking(move || match action {
+    let word = spawn_blocking_child(move || match action {
         SubmitFormAction::EditSuggestion {
             suggestion_id,
             existing_id,
@@ -462,6 +469,7 @@ async fn submit_word_page(
     })
 }
 
+#[instrument(name = "Submit word form", skip_all)]
 async fn submit_new_word_form(
     user: User,
     db: impl UserAccessDb,
@@ -503,13 +511,14 @@ where
     }
 }
 
+#[instrument(level = "debug", name = "Suggest word deletion", skip(db))]
 pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
     const STATEMENT: &str =
         "INSERT INTO word_deletion_suggestions (word_id, reason) VALUES (?1, ?2);";
 
     let db = db.clone();
 
-    tokio::task::spawn_blocking(move || {
+    spawn_blocking_child(move || {
         let conn = db.get().unwrap();
         conn.prepare(STATEMENT)
             .unwrap()
@@ -521,6 +530,7 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
 }
 
 // TODO move to db module
+#[instrument(name = "Process word submission", fields(suggestion_id, changes), skip_all)]
 pub async fn submit_suggestion(
     word: WordSubmission,
     tantivy: Arc<TantivyClient>,
@@ -559,7 +569,7 @@ pub async fn submit_suggestion(
         w.infinitive = w.infinitive.replacen('U', "u", 1);
     }
 
-    tokio::task::spawn_blocking(move || {
+    spawn_blocking_child(move || {
         let conn = db.get().unwrap();
 
         let orig = WordFormTemplate::fetch_from_db(&db, w.existing_id, None).unwrap_or_default();
@@ -604,18 +614,23 @@ pub async fn submit_suggestion(
             None => w.has_any_changes_in_word(&orig),
         };
 
-        let suggested_word_id_if_new = if any_changes {
+        let suggested_word_id = if any_changes {
+            let _g = debug_span!("Insert word suggestion").entered();
             let suggested_word_id: i64 = conn
                 .prepare(INSERT_SUGGESTION)
                 .unwrap()
                 .query_row(params, |row| row.get("suggestion_id"))
                 .unwrap();
-            Some(suggested_word_id).filter(|_| w.existing_id.is_none())
+            Some(suggested_word_id)
         } else {
-            w.suggestion_id
-                .map(|id| id as i64)
-                .filter(|_| w.existing_id.is_none())
+            w.suggestion_id.map(|id| id as i64)
         };
+
+        let span = Span::current();
+        span.record("changes", &any_changes);
+        span.record("suggestion_id", &suggested_word_id);
+
+        let suggested_word_id_if_new = suggested_word_id.filter(|_| w.existing_id.is_none());
 
         // Don't need to index non-new word suggestions
         if let Some(suggested_word_id) = suggested_word_id_if_new {
@@ -632,9 +647,9 @@ pub async fn submit_suggestion(
             };
 
             if orig_suggestion.is_none() {
-                tokio::spawn(async move { tantivy.add_new_word(doc).await });
+                block_on(async move { tantivy.add_new_word(doc).await });
             } else if matches!(orig_suggestion, Some(o) if w.has_any_changes_in_word(&o)) {
-                tokio::spawn(async move { tantivy.edit_word(doc).await });
+                block_on(async move { tantivy.edit_word(doc).await });
             }
         }
 
@@ -657,6 +672,18 @@ pub async fn submit_suggestion(
     .unwrap();
 }
 
+#[instrument(
+    name = "Process linked words submissions",
+    fields(
+        suggested_word_id = suggested_word_id_if_new,
+        existing_word_id = w.existing_id,
+        added,
+        edited,
+        deleted,
+        skipped,
+    ),
+    skip_all
+)]
 fn process_linked_words(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
@@ -697,9 +724,14 @@ fn process_linked_words(
     let existing_word_id = w.existing_id;
     let suggestion_id = w.suggestion_id;
 
+    let [mut deleted, mut edited, mut skipped] = [0u32; 3];
+
     let mut maybe_insert_link = |new: LinkedWordSubmission, old: Option<ExistingLinkedWord>| {
         if !new.has_any_changes(&old) {
+            skipped += 1;
             return;
+        } else {
+            edited += 1;
         }
 
         let (first, second) = match &old {
@@ -756,6 +788,7 @@ fn process_linked_words(
     };
 
     let linked_words = &mut w.linked_words.0;
+
     match (w.suggestion_id, w.existing_id) {
         // Editing a new suggested word
         (Some(suggested), None) => {
@@ -770,6 +803,7 @@ fn process_linked_words(
                         .and_then(|id| ExistingLinkedWord::fetch(db, id, existing_word_id.unwrap()));
                     maybe_insert_link(new, old);
                 } else {
+                    deleted += 1;
                     delete_suggested_link
                         .execute(params![prev.suggestion_id])
                         .unwrap();
@@ -786,6 +820,7 @@ fn process_linked_words(
                     let new = linked_words.remove(i);
                     maybe_insert_link(new, Some(prev));
                 } else {
+                    deleted += 1;
                     suggest_link_deletion
                         .execute(params![
                             prev.link_id,
@@ -819,8 +854,26 @@ fn process_linked_words(
             ])
             .unwrap();
     }
+
+    let span = Span::current();
+    span.record("added",&w.linked_words.0.len());
+    span.record("edited", &edited);
+    span.record("deleted", &deleted);
+    span.record("skipped", &skipped);
 }
 
+#[instrument(
+    name = "Process example submissions",
+    fields(
+        suggested_word_id = suggested_word_id_if_new,
+        existing_word_id = w.existing_id,
+        added,
+        edited,
+        deleted,
+        skipped,
+    ),
+    skip_all
+)]
 fn process_examples(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
@@ -857,9 +910,15 @@ fn process_examples(
     let use_submitted = w.existing_id.is_none() && w.suggestion_id.is_none();
     let existing_id = w.existing_id;
     let examples = &mut w.examples;
+
+    let [mut deleted, mut edited, mut skipped] = [0u32; 3];
+
     let mut maybe_insert_example = |new: ExampleSubmission, old: Option<ExistingExample>| {
         if !new.has_any_changes(&old) {
+            skipped += 1;
             return;
+        } else {
+            edited += 1;
         }
 
         upsert_example
@@ -895,6 +954,7 @@ fn process_examples(
                     let old = new.existing_id.and_then(|id| ExistingExample::fetch(db, id));
                     maybe_insert_example(new, old);
                 } else {
+                    deleted += 1;
                     delete_suggested_example
                         .execute(params![prev.suggestion_id])
                         .unwrap();
@@ -912,6 +972,7 @@ fn process_examples(
                 match new {
                     Some(new) => maybe_insert_example(new, Some(prev)),
                     None => {
+                        deleted += 1;
                         suggest_example_deletion
                             .execute(params![
                                 prev.example_id,
@@ -957,4 +1018,10 @@ fn process_examples(
             ])
             .unwrap();
     }
+
+    let span = Span::current();
+    span.record("added", &w.examples.len());
+    span.record("edited", &edited);
+    span.record("deleted", &deleted);
+    span.record("skipped", &skipped);
 }

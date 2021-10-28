@@ -3,7 +3,7 @@ use std::{convert::Infallible, sync::Arc};
 use crate::auth::db_impl::DbImpl;
 use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{Config, DebugExt};
+use crate::{Config, DebugExt, spawn_blocking_child};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
@@ -528,7 +528,7 @@ async fn reply_insert_session(
             .to_string()
     });
 
-    let token = tokio::task::spawn_blocking(move || StaySignedInToken::new(&db, user.id.get()))
+    let token = spawn_blocking_child(move || StaySignedInToken::new(&db, user.id.get()))
         .await
         .unwrap();
     let authorization_cookie = Cookie::build(
@@ -605,7 +605,7 @@ async fn signup_form_submit(
     let redirect_url = state.redirect.clone();
 
     let db_clone = db.clone();
-    let user = tokio::task::spawn_blocking(move || {
+    let user = spawn_blocking_child(move || {
         User::register(
             &db,
             userinfo,
@@ -639,7 +639,7 @@ async fn reply_logout(
         .finish()
         .to_string();
 
-    tokio::task::spawn_blocking(move || token.delete(&db));
+    spawn_blocking_child(move || token.delete(&db));
 
     Ok(Response::builder()
         .status(StatusCode::FOUND)
@@ -677,10 +677,9 @@ async fn extract_user(
     redirect: String,
     stay_signed_in: Option<StaySignedInToken>,
 ) -> Result<User, Rejection> {
-    let span = Span::current();
+    spawn_blocking_child(move || {
+        let span = Span::current();
 
-    tokio::task::spawn_blocking(move || {
-        let _g = span.enter();
         if let Some(stay_signed_in) = stay_signed_in {
             if let Some(user) = stay_signed_in.verify_token(&db) {
                 let user = User::fetch_by_id(&db, user).unwrap();

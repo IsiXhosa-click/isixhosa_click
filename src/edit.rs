@@ -8,6 +8,7 @@ use crate::submit::{
 use crate::search::TantivyClient;
 use std::sync::Arc;
 use warp::{body, Filter, Rejection, Reply};
+use tracing::instrument;
 
 pub fn edit(
     db: DbBase,
@@ -52,6 +53,7 @@ pub fn edit(
         .boxed()
 }
 
+#[instrument(name = "Submit word edit form", fields(word_id = id), skip_all)]
 async fn submit_suggestion_reply(
     id: u64,
     tantivy: Arc<TantivyClient>,
@@ -63,6 +65,7 @@ async fn submit_suggestion_reply(
     word(id, user.into(), db, Some(WordChangeMethod::Edit)).await
 }
 
+#[instrument(name = "Suggest to delete word", skip(user, db))]
 async fn delete_word_reply(
     id: u64,
     user: User,
