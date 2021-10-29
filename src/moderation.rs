@@ -141,41 +141,41 @@ pub fn moderation(
     let with_tantivy = warp::any().map(move || tantivy.clone());
 
     let show_all = warp::get()
-        .and(with_moderator_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is None
+        .and(with_moderator_auth(db.clone()))
         .and_then(moderation_template);
 
     let process_one = warp::post()
-        .and(with_moderator_auth(db.clone()))
         .and(with_tantivy.clone())
         .and(warp::body::form::<Action>())
+        .and(with_moderator_auth(db.clone()))
         .and_then(process_one);
 
     let submit_edit = warp::post()
         .and(body::content_length_limit(64 * 1024))
-        .and(with_moderator_auth(db.clone()))
         .and(with_tantivy)
         .and(qs_form())
+        .and(with_moderator_auth(db.clone()))
         .and_then(edit_suggestion_form);
 
     let edit_failed = warp::any()
-        .and(with_moderator_auth(db.clone()))
         .and(warp::any().map(|| {
             Some(Success {
                 success: false,
                 method: Some(Method::Edit),
             })
         }))
+        .and(with_moderator_auth(db.clone()))
         .and_then(moderation_template);
 
     let other_failed = warp::any()
-        .and(with_moderator_auth(db))
         .and(warp::any().map(|| {
             Some(Success {
                 success: false,
                 method: None,
             })
         }))
+        .and(with_moderator_auth(db))
         .and_then(moderation_template);
 
     let root = warp::path::end().and(show_all.or(process_one).or(other_failed));
@@ -188,9 +188,9 @@ pub fn moderation(
 
 #[instrument(name = "Display moderation template", skip_all)]
 async fn moderation_template(
+    previous_success: Option<Success>,
     user: User,
     db: impl ModeratorAccessDb,
-    previous_success: Option<Success>,
 ) -> Result<impl warp::Reply, Rejection> {
     spawn_blocking_child(move || {
         Ok(ModerationTemplate {
@@ -214,19 +214,19 @@ async fn moderation_template(
     skip_all,
 )]
 async fn edit_suggestion_form(
-    user: User,
-    db: impl ModeratorAccessDb,
     tantivy: Arc<TantivyClient>,
     submission: WordSubmission,
+    user: User,
+    db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     submit_suggestion(submission, tantivy, &user, &db).await;
     moderation_template(
-        user,
-        db,
         Some(Success {
             success: true,
             method: Some(Method::Edit),
         }),
+        user,
+        db,
     )
     .await
 }
@@ -369,10 +369,10 @@ async fn reject_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u6
 
 #[instrument(name = "Process moderation page action", skip(user, db, tantivy))]
 async fn process_one(
-    user: User,
-    db: impl ModeratorAccessDb,
     tantivy: Arc<TantivyClient>,
     params: Action,
+    user: User,
+    db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
 
@@ -421,12 +421,12 @@ async fn process_one(
     };
 
     moderation_template(
-        user,
-        db_clone,
         Some(Success {
             success,
             method: Some(params.method),
         }),
+        user,
+        db_clone,
     )
     .await
     .map(Reply::into_response)

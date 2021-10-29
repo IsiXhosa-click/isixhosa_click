@@ -215,21 +215,21 @@ pub fn submit(
     tantivy: Arc<TantivyClient>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let submit_page = warp::get()
-        .and(with_user_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is none
         .and(warp::any().map(SubmitFormAction::default))
+        .and(with_user_auth(db.clone()))
         .and_then(submit_word_page);
 
     let submit_form = body::content_length_limit(64 * 1024)
-        .and(with_user_auth(db.clone()))
         .and(warp::any().map(move || tantivy.clone()))
         .and(qs_form())
+        .and(with_user_auth(db.clone()))
         .and_then(submit_new_word_form);
 
     let failed_to_submit = warp::any()
-        .and(with_user_auth(db))
         .and(warp::any().map(|| Some(false))) // previous_success is Some(false)
         .and(warp::any().map(SubmitFormAction::default))
+        .and(with_user_auth(db))
         .and_then(submit_word_page);
 
     let submit_routes = submit_page.or(submit_form).or(failed_to_submit);
@@ -254,29 +254,29 @@ pub async fn edit_suggestion_page(
     .unwrap();
 
     submit_word_page(
-        user,
-        db,
         None,
         SubmitFormAction::EditSuggestion {
             suggestion_id,
             existing_id,
         },
+        user,
+        db,
     )
     .await
 }
 
 #[instrument(name = "Display edit word page", skip(user, db, previous_success))]
 pub async fn edit_word_page(
-    user: User,
-    db: impl UserAccessDb,
     previous_success: Option<bool>,
     id: u64,
+    user: User,
+    db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
     submit_word_page(
-        user,
-        db,
         previous_success,
         SubmitFormAction::EditExisting(id),
+        user,
+        db,
     )
     .await
 }
@@ -441,10 +441,10 @@ impl From<ExistingLinkedWord> for LinkedWordTemplate {
 
 #[instrument(name = "Display submit word page", skip_all)]
 async fn submit_word_page(
-    user: User,
-    db: impl UserAccessDb,
     previous_success: Option<bool>,
     action: SubmitFormAction,
+    user: User,
+    db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let db = db.clone();
     let word = spawn_blocking_child(move || match action {
@@ -471,13 +471,13 @@ async fn submit_word_page(
 
 #[instrument(name = "Submit word form", skip_all)]
 async fn submit_new_word_form(
-    user: User,
-    db: impl UserAccessDb,
     tantivy: Arc<TantivyClient>,
     word: WordSubmission,
+    user: User,
+    db: impl UserAccessDb,
 ) -> Result<impl warp::Reply, Rejection> {
     submit_suggestion(word, tantivy, &user, &db).await;
-    submit_word_page(user, db, Some(true), SubmitFormAction::SubmitNewWord).await
+    submit_word_page(Some(true), SubmitFormAction::SubmitNewWord, user, db,).await
 }
 
 fn diff<T: PartialEq + Eq>(value: T, template: &T, override_use_value: bool) -> Option<T> {
@@ -511,7 +511,7 @@ where
     }
 }
 
-#[instrument(level = "debug", name = "Suggest word deletion", skip(db))]
+#[instrument(level = "trace", name = "Suggest word deletion", skip(db))]
 pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
     const STATEMENT: &str =
         "INSERT INTO word_deletion_suggestions (word_id, reason) VALUES (?1, ?2);";

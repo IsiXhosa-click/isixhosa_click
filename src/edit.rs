@@ -15,26 +15,26 @@ pub fn edit(
     tantivy: Arc<TantivyClient>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let submit_page = warp::get()
-        .and(with_user_auth(db.clone()))
         .and(warp::any().map(|| None)) // previous_success is none
         .and(warp::path![u64 / "edit"])
         .and(warp::path::end())
+        .and(with_user_auth(db.clone()))
         .and_then(edit_word_page);
 
     let submit_form = warp::post()
         .and(warp::path![u64])
         .and(warp::path::end())
         .and(body::content_length_limit(64 * 1024))
+        .and(qs_form())
         .and(warp::any().map(move || tantivy.clone()))
         .and(with_user_auth(db.clone()))
-        .and(qs_form())
         .and_then(submit_suggestion_reply);
 
     let failed_to_submit = warp::any()
-        .and(with_user_auth(db.clone()))
         .and(warp::any().map(|| Some(false))) // previous_success is Some(false)
         .and(warp::path![u64])
         .and(warp::path::end())
+        .and(with_user_auth(db.clone()))
         .and_then(edit_word_page);
 
     let delete_redirect = warp::post()
@@ -56,13 +56,13 @@ pub fn edit(
 #[instrument(name = "Submit word edit form", fields(word_id = id), skip_all)]
 async fn submit_suggestion_reply(
     id: u64,
+    w: WordSubmission,
     tantivy: Arc<TantivyClient>,
     user: User,
     db: impl UserAccessDb,
-    w: WordSubmission,
 ) -> Result<impl Reply, Rejection> {
     submit_suggestion(w, tantivy, &user, &db).await;
-    word(id, user.into(), db, Some(WordChangeMethod::Edit)).await
+    word(id, Some(WordChangeMethod::Edit), user.into(), db).await
 }
 
 #[instrument(name = "Suggest to delete word", skip(user, db))]
@@ -72,5 +72,5 @@ async fn delete_word_reply(
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
     suggest_word_deletion(WordId(id), &db).await;
-    word(id, user.into(), db, Some(WordChangeMethod::Delete)).await
+    word(id, Some(WordChangeMethod::Delete), user.into(), db).await
 }

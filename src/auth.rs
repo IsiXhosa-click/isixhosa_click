@@ -291,10 +291,10 @@ pub async fn auth(
 
     let oidc_code = warp::path!("login" / "oauth2" / "code" / "oidc")
         .and(warp::get())
-        .and(with_any_auth(db.clone()))
+        .and(warp::query::<OpenIdLoginQuery>())
         .and(with_session())
         .and(with_client_host.clone())
-        .and(warp::query::<OpenIdLoginQuery>())
+        .and(with_public_db(db.clone()))
         .and_then(reply_login);
 
     let logout = warp::get()
@@ -308,10 +308,10 @@ pub async fn auth(
         .and(warp::path("signup"))
         .and(warp::path::end())
         .and(warp::body::content_length_limit(64 * 1024))
-        .and(with_any_auth(db))
+        .and(qs_form())
         .and(with_session())
         .and(with_client_host)
-        .and(qs_form())
+        .and(with_public_db(db.clone()))
         .and_then(signup_form_submit);
 
     login.or(oidc_code).or(sign_up).or(logout).boxed()
@@ -442,12 +442,11 @@ async fn request_token(
 }
 
 async fn reply_login(
-    _auth: Auth,
-    db: impl PublicAccessDb,
+    openid_query: OpenIdLoginQuery,
     session_id: SignInSessionId,
     oidc_client: Arc<OpenIDClient>,
     host_builder: uri::Builder,
-    openid_query: OpenIdLoginQuery,
+    db: impl PublicAccessDb,
 ) -> Result<impl warp::Reply, Infallible> {
     let request_token = request_token(oidc_client, &session_id, &openid_query).await;
 
@@ -553,12 +552,11 @@ async fn reply_insert_session(
 }
 
 async fn signup_form_submit(
-    _auth: Auth,
-    db: impl PublicAccessDb,
+    form: SignupForm,
     session_id: SignInSessionId,
     _oidc_client: Arc<OpenIDClient>,
     host_uri_builder: uri::Builder,
-    form: SignupForm,
+    db: impl PublicAccessDb,
 ) -> Result<impl warp::Reply, Infallible> {
     let userinfo = match IN_PROGRESS_SIGN_INS.get(&session_id).as_deref() {
         Some(SignInState::WaitingForSignUp { userinfo, .. }) => userinfo.clone(),
@@ -626,7 +624,7 @@ async fn signup_form_submit(
 }
 
 async fn reply_logout(
-    _user: User,
+    _user: User, // This _user is important as it implicitly validates the given token
     db: impl UserAccessDb,
     token: StaySignedInToken,
 ) -> Result<impl warp::Reply, Infallible> {
@@ -759,6 +757,12 @@ pub trait PublicAccessDb: Clone + Send + Sync + 'static {
 
 pub trait UserAccessDb: PublicAccessDb {}
 pub trait ModeratorAccessDb: UserAccessDb {}
+
+fn with_public_db(
+    db: DbBase
+) -> impl Filter<Extract = (impl PublicAccessDb,), Error = Infallible> + Clone {
+    warp::any().map(move || DbImpl(db.0.clone()))
+}
 
 pub fn with_any_auth(
     db: DbBase,

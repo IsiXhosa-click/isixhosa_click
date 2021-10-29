@@ -33,7 +33,7 @@ impl TryFrom<&Row<'_>> for User {
 }
 
 impl User {
-    #[instrument(level = "debug", name = "Fetch user", fields(found), skip(db))]
+    #[instrument(level = "trace", name = "Fetch user", fields(found), skip(db))]
     pub fn fetch_by_id(db: &impl PublicAccessDb, id: u64) -> Option<User> {
         const SELECT: &str = "
             SELECT
@@ -57,7 +57,7 @@ impl User {
         user
     }
 
-    #[instrument(level = "debug", name = "Fetch user", fields(found), skip_all)]
+    #[instrument(level = "trace", name = "Fetch user", fields(found), skip_all)]
     pub fn fetch_by_oidc_id(
         db: &impl PublicAccessDb,
         _proof: Token, // Make sure this is not called from the wrong context

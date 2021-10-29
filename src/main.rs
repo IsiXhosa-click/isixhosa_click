@@ -1,3 +1,7 @@
+// TODO - put .and(with_user_auth(db))/etc after or right before all routes
+// TODO - with_any_auth for just DB have new filter
+// TODO - with_*_auth filters just upgrade from with_any_auth i think
+
 // Soon after launch, perhaps before:
 // - informal/archaic meanings
 // - standalone example & linked word suggestion editing
@@ -158,16 +162,29 @@ fn init_tracing() {
     Registry::default().with(LevelFilter::DEBUG).with(telemetry).with(fmt_layer).init();
 }
 
-#[instrument(name = "Minify outgoing data", skip_all)]
+#[instrument(name = "Minify outgoing data", fields(unminified, minified, saving), skip_all)]
 async fn process_body<F, E>(response: Response, minify: F) -> Result<Response, Rejection>
 where
     F: FnOnce(&str) -> Result<String, E>,
     E: Debug,
 {
+    let span = Span::current();
     let (parts, body) = response.into_parts();
     let bytes = warp::hyper::body::to_bytes(body).await.unwrap();
-    let body_str = std::str::from_utf8(&bytes).unwrap();
-    let minified = minify(body_str).unwrap();
+    let unminified = std::str::from_utf8(&bytes).unwrap();
+    let minified = minify(unminified).unwrap();
+
+    span.record("unminified", &unminified.len());
+    span.record("minified", &minified.len());
+
+    let saving = if unminified.len() != 0 {
+        1.0 - (minified.len() as f64) / (unminified.len() as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    span.record("saving", &saving);
+
     Ok(Response::from_parts(parts, minified.into()))
 }
 
@@ -322,56 +339,72 @@ async fn server(cfg: Config) {
     let with_tantivy = warp::any().map(move || tantivy_cloned.clone());
     let db = DbBase::new(pool);
 
-    let search_page = with_any_auth(db.clone()).map(|auth, _db| Search {
-        auth,
-        hits: Default::default(),
-        query: Default::default(),
-    });
-
-    let query_search = warp::path::end()
-        .and(warp::query())
-        .and(with_any_auth(db.clone()))
-        .and(with_tantivy.clone())
-        .and_then(query_search);
-    let live_search = warp::path::end()
-        .and(with_any_auth(db.clone()))
-        .and(warp::ws())
-        .and(with_tantivy.clone())
-        .and(warp::query())
-        .map(live_search);
-    let duplicate_search = warp::path("duplicates")
-        .and(warp::path::end())
-        .and(warp::query())
-        .and(with_moderator_auth(db.clone()))
-        .and(with_tantivy)
-        .and_then(duplicate_search);
-    let search = warp::path("search")
-        .and(duplicate_search.or(live_search).or(query_search).or(search_page));
-    let terms_of_use = warp::path("terms_of_use")
-        .and(path::end())
-        .and(with_any_auth(db.clone()))
-        .map(|auth, _| TermsOfUse { auth });
-    let style_guide = warp::path("style_guide")
-        .and(path::end())
-        .and(with_any_auth(db.clone()))
-        .map(|auth, _| StyleGuide { auth });
-
-    let about = warp::get()
-        .and(warp::path("about"))
-        .and(path::end())
-        .and(with_any_auth(db.clone()))
-        .and_then(|auth, db| async move {
-            Ok::<About, Infallible>(About {
-                auth,
-                word_count: spawn_blocking_child(move || ExistingWord::count_all(&db))
-                    .await
-                    .unwrap(),
-            })
+    let search = {
+        let search_page = with_any_auth(db.clone()).map(|auth, _db| Search {
+            auth,
+            hits: Default::default(),
+            query: Default::default(),
         });
 
-    let favico_redirect = warp::get()
-        .and(warp::path("favicon.ico"))
-        .map(|| warp::redirect(Uri::from_static("/icons/favicon.ico")));
+        let query_search = warp::path::end()
+            .and(warp::query())
+            .and(with_tantivy.clone())
+            .and(with_any_auth(db.clone()))
+            .and_then(query_search);
+        let live_search = warp::path::end()
+            .and(warp::ws())
+            .and(with_tantivy.clone())
+            .and(warp::query())
+            .and(with_any_auth(db.clone()))
+            .map(live_search);
+        let duplicate_search = warp::path("duplicates")
+            .and(warp::path::end())
+            .and(warp::query())
+            .and(with_tantivy)
+            .and(with_moderator_auth(db.clone()))
+            .and_then(duplicate_search);
+
+        warp::path("search")
+            .and(duplicate_search.or(live_search).or(query_search).or(search_page))
+    };
+
+    let simple_templates = {
+        let terms_of_use = warp::path("terms_of_use")
+            .and(path::end())
+            .and(with_any_auth(db.clone()))
+            .map(|auth, _| TermsOfUse { auth });
+        let style_guide = warp::path("style_guide")
+            .and(path::end())
+            .and(with_any_auth(db.clone()))
+            .map(|auth, _| StyleGuide { auth });
+
+        let about = warp::get()
+            .and(warp::path("about"))
+            .and(path::end())
+            .and(with_any_auth(db.clone()))
+            .and_then(|auth, db| async move {
+                Ok::<About, Infallible>(About {
+                    auth,
+                    word_count: spawn_blocking_child(move || ExistingWord::count_all(&db))
+                        .await
+                        .unwrap(),
+                })
+            });
+
+        terms_of_use.or(about).or(style_guide)
+    };
+
+    let redirects = {
+        let favico_redirect = warp::get()
+            .and(warp::path("favicon.ico"))
+            .map(|| warp::redirect(Uri::from_static("/icons/favicon.ico")));
+
+        let index_redirect = warp::get()
+            .and(path::end())
+            .map(|| warp::redirect(Uri::from_static("/search")));
+
+        favico_redirect.or(index_redirect)
+    };
 
     let jaeger_proxy = {
         let base = warp::path!("admin" / "jaeger" / ..);
@@ -392,21 +425,18 @@ async fn server(cfg: Config) {
         base.and(proxy)
     };
 
+    let static_files = warp::fs::dir(cfg.static_site_files.clone())
+        .or(warp::fs::dir(cfg.other_static_files.clone()));
+
     let routes = search
-        .or(terms_of_use)
-        .or(style_guide)
+        .or(simple_templates)
+        .or(redirects)
         .or(submit(db.clone(), tantivy.clone()))
         .or(moderation(db.clone(), tantivy.clone()))
         .or(details(db.clone()))
         .or(edit(db.clone(), tantivy))
-        .or(warp::get()
-            .and(path::end())
-            .map(|| warp::redirect(Uri::from_static("/search"))))
-        .or(about)
         .or(auth(db.clone(), &cfg).await)
-        .or(favico_redirect)
-        .or(warp::fs::dir(cfg.static_site_files.clone()))
-        .or(warp::fs::dir(cfg.other_static_files.clone()))
+        .or(static_files)
         .recover(handle_error)
         .boxed();
 
@@ -505,9 +535,9 @@ struct Search {
 )]
 async fn query_search(
     query: SearchQuery,
+    tantivy: Arc<TantivyClient>,
     auth: Auth,
     _db: impl PublicAccessDb,
-    tantivy: Arc<TantivyClient>,
 ) -> Result<impl warp::Reply, Rejection> {
     let results = tantivy
         .search(query.query.clone(), IncludeResults::AcceptedOnly, false)
@@ -539,9 +569,9 @@ struct DuplicateQuery {
 )]
 async fn duplicate_search(
     query: DuplicateQuery,
+    tantivy: Arc<TantivyClient>,
     _user: User,
     db: impl ModeratorAccessDb,
-    tantivy: Arc<TantivyClient>
 ) -> Result<impl warp::Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
 
@@ -567,11 +597,11 @@ async fn duplicate_search(
     skip_all,
 )]
 fn live_search(
-    auth: Auth,
-    _db: impl PublicAccessDb,
     ws: warp::ws::Ws,
     tantivy: Arc<TantivyClient>,
     params: LiveSearchParams,
+    auth: Auth,
+    _db: impl PublicAccessDb,
 ) -> impl warp::Reply {
     ws.on_upgrade(move |websocket| {
         let (sender, stream) = websocket.split();

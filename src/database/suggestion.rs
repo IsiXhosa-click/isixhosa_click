@@ -55,7 +55,7 @@ impl SuggestedWord {
         }
     }
 
-    #[instrument(level = "debug", name = "Fetch all suggested words", fields(results), skip(db))]
+    #[instrument(level = "info", name = "Fetch all suggested words", fields(results), skip(db))]
     pub fn fetch_all_full(db: &impl ModeratorAccessDb) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "
             SELECT
@@ -88,7 +88,7 @@ impl SuggestedWord {
     }
 
     /// Returns the suggested word without examples and linked words populated.
-    #[instrument(level = "debug", name = "Fetch just suggested word", fields(found), skip(db))]
+    #[instrument(level = "trace", name = "Fetch just suggested word", fields(found), skip(db))]
     pub fn fetch_alone(db: &impl UserAccessDb, id: u64) -> Option<SuggestedWord> {
         const SELECT_SUGGESTION: &str = "
             SELECT
@@ -397,7 +397,7 @@ impl SuggestedExample {
     }
 
     #[instrument(
-        level = "debug",
+        level = "trace",
         name = "Fetch all suggested examples for suggested word",
         fields(results),
         skip(db),
@@ -574,7 +574,7 @@ impl SuggestedLinkedWord {
 
     /// Each link will show up for either suggestion.
     #[instrument(
-        level = "debug",
+        level = "trace",
         name = "Fetch all suggested linked words for suggested word",
         fields(results),
         skip(db),

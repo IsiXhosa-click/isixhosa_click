@@ -12,8 +12,8 @@ pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Repl
     warp::path!["word" / u64]
         .and(warp::path::end())
         .and(warp::get())
-        .and(with_any_auth(db))
         .and(warp::any().map(|| None)) // previous_success is None
+        .and(with_any_auth(db))
         .and_then(word)
         .boxed()
 }
@@ -29,9 +29,9 @@ struct WordDetails {
 #[instrument(name = "Display word details page", skip(auth, db, previous_success))]
 pub async fn word(
     word_id: u64,
+    previous_success: Option<WordChangeMethod>,
     auth: Auth,
     db: impl PublicAccessDb,
-    previous_success: Option<WordChangeMethod>,
 ) -> Result<impl warp::Reply, Rejection> {
     let db = db.clone();
     let word = spawn_blocking_child(move || ExistingWord::fetch_full(&db, word_id))
