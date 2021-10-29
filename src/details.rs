@@ -3,12 +3,12 @@ use crate::auth::{with_any_auth, Auth, DbBase};
 use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
 use crate::language::PartOfSpeech;
-use crate::{NotFound, spawn_blocking_child};
+use crate::{spawn_blocking_child, NotFound};
 use askama::Template;
-use warp::{Filter, Rejection, Reply};
 use tracing::instrument;
+use warp::{Filter, Rejection, Reply};
 
-pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Reply>+ Clone {
+pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     warp::path!["word" / u64]
         .and(warp::path::end())
         .and(warp::get())

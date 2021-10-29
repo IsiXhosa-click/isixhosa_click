@@ -8,7 +8,7 @@ use r2d2_sqlite::rusqlite::Row;
 use rusqlite::{params, OptionalExtension};
 use std::convert::TryFrom;
 use std::num::NonZeroU64;
-use tracing::{instrument, debug_span, Span};
+use tracing::{debug_span, instrument, Span};
 
 impl TryFrom<&Row<'_>> for User {
     type Error = rusqlite::Error;
@@ -109,7 +109,7 @@ impl User {
             email,
             permissions.contains(Permissions::Moderator), // is_moderator
             permissions.contains(Permissions::Administrator), // is_administrator,
-            false, // locked
+            false,                                        // locked
         ];
 
         let id: i64 = stmt.query_row(params, |row| row.get("user_id")).unwrap();
@@ -173,30 +173,34 @@ impl StaySignedInToken {
         const UPDATE: &str = "UPDATE login_tokens SET last_used = ?1 WHERE token_id = ?2;";
 
         let conn = db.get().unwrap();
-        let (token_hash, user_id): (String, i64) = debug_span!("Fetch token hash").in_scope(|| {
-            conn
-                .prepare(SELECT)
-                .unwrap()
-                .query_row(params![self.token_id], |row| {
-                    Ok((row.get("token_hash")?, row.get("user_id")?))
-                })
-                .optional()
-                .unwrap()
-        })?;
+        let (token_hash, user_id): (String, i64) =
+            debug_span!("Fetch token hash").in_scope(|| {
+                conn.prepare(SELECT)
+                    .unwrap()
+                    .query_row(params![self.token_id], |row| {
+                        Ok((row.get("token_hash")?, row.get("user_id")?))
+                    })
+                    .optional()
+                    .unwrap()
+            })?;
 
         let verified = debug_span!("Verify hash").in_scope(|| {
             let password_hash = &PasswordHash::new(&token_hash).ok()?;
             let argon2 = Argon2::default();
 
-            argon2.verify_password(self.token.as_bytes(), password_hash).ok()
+            argon2
+                .verify_password(self.token.as_bytes(), password_hash)
+                .ok()
         });
 
-        verified.map(|_| debug_span!("Update last used time of token").in_scope(|| {
-            conn.prepare(UPDATE)
-                .unwrap()
-                .execute(params![self.token_id, Utc::now()])
-                .unwrap();
-            user_id as u64
-        }))
+        verified.map(|_| {
+            debug_span!("Update last used time of token").in_scope(|| {
+                conn.prepare(UPDATE)
+                    .unwrap()
+                    .execute(params![self.token_id, Utc::now()])
+                    .unwrap();
+                user_id as u64
+            })
+        })
     }
 }

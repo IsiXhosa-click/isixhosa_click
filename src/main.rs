@@ -1,7 +1,3 @@
-// TODO - put .and(with_user_auth(db))/etc after or right before all routes
-// TODO - with_any_auth for just DB have new filter
-// TODO - with_*_auth filters just upgrade from with_any_auth i think
-
 // Soon after launch, perhaps before:
 // - informal/archaic meanings
 // - standalone example & linked word suggestion editing
@@ -24,16 +20,19 @@
 
 use crate::auth::*;
 use crate::database::existing::ExistingWord;
+use crate::database::suggestion::SuggestedWord;
 use crate::format::DisplayHtml;
 use crate::search::{IncludeResults, TantivyClient, WordHit};
-use crate::session::{LiveSearchSession, WsMessage};
 use crate::serialization::false_fn;
+use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
 use auth::auth;
 use details::details;
 use edit::edit;
 use futures::StreamExt;
 use moderation::moderation;
+use opentelemetry::global;
+use opentelemetry::sdk::propagation::TraceContextPropagator;
 use percent_encoding::NON_ALPHANUMERIC;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -45,10 +44,11 @@ use std::num::NonZeroU64;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use opentelemetry::global;
-use opentelemetry::sdk::propagation::TraceContextPropagator;
 use submit::submit;
 use tokio::task::JoinHandle;
+use tracing::{debug, info, instrument, Span};
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
 use warp::http::header::CONTENT_TYPE;
 use warp::http::uri::Authority;
@@ -56,14 +56,10 @@ use warp::http::{uri, StatusCode, Uri};
 use warp::path::FullPath;
 use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
-use warp::{path, Filter, Rejection, Reply, reply};
+use warp::{path, reply, Filter, Rejection, Reply};
+use warp_reverse_proxy as proxy;
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-use tracing::{info, debug, instrument, Span};
-use tracing_subscriber::{Registry, layer::SubscriberExt, filter::LevelFilter};
-use tracing_subscriber::util::SubscriberInitExt;
-use warp_reverse_proxy as proxy;
-use crate::database::suggestion::SuggestedWord;
 
 mod auth;
 mod database;
@@ -79,9 +75,9 @@ mod session;
 mod submit;
 
 pub fn spawn_blocking_child<F, R>(f: F) -> JoinHandle<R>
-    where
-        F: FnOnce() -> R + Send + 'static,
-        R: Send + 'static,
+where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
 {
     let span = Span::current();
     tokio::task::spawn_blocking(move || {
@@ -159,10 +155,18 @@ fn init_tracing() {
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
     let fmt_layer = tracing_subscriber::fmt::layer().with_target(false);
 
-    Registry::default().with(LevelFilter::DEBUG).with(telemetry).with(fmt_layer).init();
+    Registry::default()
+        .with(LevelFilter::DEBUG)
+        .with(telemetry)
+        .with(fmt_layer)
+        .init();
 }
 
-#[instrument(name = "Minify outgoing data", fields(unminified, minified, saving), skip_all)]
+#[instrument(
+    name = "Minify outgoing data",
+    fields(unminified, minified, saving),
+    skip_all
+)]
 async fn process_body<F, E>(response: Response, minify: F) -> Result<Response, Rejection>
 where
     F: FnOnce(&str) -> Result<String, E>,
@@ -177,7 +181,7 @@ where
     span.record("unminified", &unminified.len());
     span.record("minified", &minified.len());
 
-    let saving = if unminified.len() != 0 {
+    let saving = if !unminified.is_empty() {
         1.0 - (minified.len() as f64) / (unminified.len() as f64) * 100.0
     } else {
         0.0
@@ -196,7 +200,8 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
         if mime.starts_with("text/html") {
             #[allow(clippy::redundant_closure)] // lifetime issue
             return process_body(response, |s| html_minifier::minify(s)).await;
-        } else if mime.starts_with("text/javascript") || mime.starts_with("application/javascript") {
+        } else if mime.starts_with("text/javascript") || mime.starts_with("application/javascript")
+        {
             return process_body(response, |s| Ok::<String, ()>(minifier::js::minify(s))).await;
         } else if mime.starts_with("text/css") {
             return process_body(response, minifier::css::minify).await;
@@ -364,8 +369,12 @@ async fn server(cfg: Config) {
             .and(with_moderator_auth(db.clone()))
             .and_then(duplicate_search);
 
-        warp::path("search")
-            .and(duplicate_search.or(live_search).or(query_search).or(search_page))
+        warp::path("search").and(
+            duplicate_search
+                .or(live_search)
+                .or(query_search)
+                .or(search_page),
+        )
     };
 
     let simple_templates = {
@@ -409,8 +418,10 @@ async fn server(cfg: Config) {
     let jaeger_proxy = {
         let base = warp::path!("admin" / "jaeger" / ..);
         let forward_url = "http://127.0.0.1:16686".to_owned();
-        let forward = proxy::reverse_proxy_filter(String::new(), forward_url)
-            .with(warp::trace(|_info| tracing::info_span!("Forward jaeger request")));
+        let forward =
+            proxy::reverse_proxy_filter(String::new(), forward_url).with(warp::trace(|_info| {
+                tracing::info_span!("Forward jaeger request")
+            }));
         let proxy = with_administrator_auth(db.clone())
             .and(forward)
             .recover(handle_error)
@@ -578,8 +589,14 @@ async fn duplicate_search(
     let include = IncludeResults::AcceptedAndAllSuggestions;
     let res = match suggestion.filter(|w| w.word_id.is_none()) {
         Some(w) => {
-            let mut results = tantivy.search(w.english.current().clone(), include, true).await.unwrap();
-            let xhosa = tantivy.search(w.xhosa.current().clone(), include, true).await.unwrap();
+            let mut results = tantivy
+                .search(w.english.current().clone(), include, true)
+                .await
+                .unwrap();
+            let xhosa = tantivy
+                .search(w.xhosa.current().clone(), include, true)
+                .await
+                .unwrap();
 
             results.extend(xhosa);
             results.retain(|res| !(res.id == query.suggestion.get() && res.is_suggestion));

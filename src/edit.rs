@@ -7,8 +7,8 @@ use crate::submit::{
 
 use crate::search::TantivyClient;
 use std::sync::Arc;
-use warp::{body, Filter, Rejection, Reply};
 use tracing::instrument;
+use warp::{body, Filter, Rejection, Reply};
 
 pub fn edit(
     db: DbBase,

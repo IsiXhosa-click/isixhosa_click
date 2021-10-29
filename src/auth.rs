@@ -3,7 +3,7 @@ use std::{convert::Infallible, sync::Arc};
 use crate::auth::db_impl::DbImpl;
 use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{Config, DebugExt, spawn_blocking_child};
+use crate::{spawn_blocking_child, Config, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
@@ -21,13 +21,13 @@ use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
+use tracing::{debug, error, instrument, Span};
 use warp::http::uri;
 use warp::path::FullPath;
 use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-use tracing::{instrument, error, debug, Span};
 type OpenIDClient = Client<Discovered, StandardClaims>;
 
 lazy_static::lazy_static! {
@@ -667,7 +667,7 @@ impl reject::Reject for Unauthorized {}
 #[instrument(
     name = "Try to extract user from a token",
     fields(fail_reason, success, id, name),
-    skip_all,
+    skip_all
 )]
 async fn extract_user(
     db: impl PublicAccessDb,
@@ -694,10 +694,7 @@ async fn extract_user(
                     span.record("fail_reason", &reason.to_debug().as_str());
                     debug!("User locked");
 
-                    Err(warp::reject::custom(Unauthorized {
-                        reason,
-                        redirect,
-                    }))
+                    Err(warp::reject::custom(Unauthorized { reason, redirect }))
                 }
             } else {
                 let reason = UnauthorizedReason::NotLoggedIn;
@@ -705,10 +702,7 @@ async fn extract_user(
                 span.record("fail_reason", &reason.to_debug().as_str());
                 debug!("Invalid token");
 
-                Err(warp::reject::custom(Unauthorized {
-                    reason,
-                    redirect,
-                }))
+                Err(warp::reject::custom(Unauthorized { reason, redirect }))
             }
         } else {
             let reason = UnauthorizedReason::NotLoggedIn;
@@ -716,10 +710,7 @@ async fn extract_user(
             span.record("fail_reason", &reason.to_debug().as_str());
             debug!("No token");
 
-            Err(warp::reject::custom(Unauthorized {
-                reason,
-                redirect,
-            }))
+            Err(warp::reject::custom(Unauthorized { reason, redirect }))
         }
     })
     .await
@@ -759,7 +750,7 @@ pub trait UserAccessDb: PublicAccessDb {}
 pub trait ModeratorAccessDb: UserAccessDb {}
 
 fn with_public_db(
-    db: DbBase
+    db: DbBase,
 ) -> impl Filter<Extract = (impl PublicAccessDb,), Error = Infallible> + Clone {
     warp::any().map(move || DbImpl(db.0.clone()))
 }
@@ -810,7 +801,7 @@ pub fn with_moderator_auth(
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
 }
 
-pub fn with_administrator_auth(db: DbBase,) -> impl Filter<Extract = (), Error = Rejection> + Clone {
+pub fn with_administrator_auth(db: DbBase) -> impl Filter<Extract = (), Error = Rejection> + Clone {
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
         .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))

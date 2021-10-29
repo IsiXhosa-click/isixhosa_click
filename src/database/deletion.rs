@@ -1,9 +1,9 @@
 use crate::auth::{ModeratorAccessDb, PublicUserInfo};
 use crate::database::existing::{ExistingExample, ExistingLinkedWord};
+use crate::database::WordOrSuggestionId;
 use crate::search::WordHit;
 use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
-use crate::database::WordOrSuggestionId;
 use rusqlite::{params, Row};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -18,7 +18,11 @@ pub struct WordDeletionSuggestion {
 }
 
 impl WordDeletionSuggestion {
-    #[instrument(name = "Fetch all word deletion suggestions", fields(results), skip_all)]
+    #[instrument(
+        name = "Fetch all word deletion suggestions",
+        fields(results),
+        skip_all
+    )]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<Self> {
         const SELECT: &str =
             "SELECT words.word_id, words.english, words.xhosa, words.part_of_speech, words.is_plural,
@@ -59,7 +63,11 @@ impl WordDeletionSuggestion {
         x
     }
 
-    #[instrument(name = "Fetch word id for deletion suggestion", fields(word_id), skip(db))]
+    #[instrument(
+        name = "Fetch word id for deletion suggestion",
+        fields(word_id),
+        skip(db)
+    )]
     pub fn fetch_word_id_for_suggestion(db: &impl ModeratorAccessDb, suggestion: u64) -> u64 {
         const SELECT: &str =
             "SELECT word_id FROM word_deletion_suggestions WHERE suggestion_id = ?1;";
@@ -110,7 +118,11 @@ impl TryFrom<&Row<'_>> for ExampleDeletionSuggestion {
 }
 
 impl ExampleDeletionSuggestion {
-    #[instrument(name = "Fetch all example deletions suggestions", fields(results), skip(db))]
+    #[instrument(
+        name = "Fetch all example deletions suggestions",
+        fields(results),
+        skip(db)
+    )]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT examples.example_id, examples.word_id, examples.xhosa, examples.english,
@@ -202,7 +214,11 @@ pub struct LinkedWordDeletionSuggestion {
 }
 
 impl LinkedWordDeletionSuggestion {
-    #[instrument(name = "Populate linked word deletion suggestion", fields(suggestion_id), skip(row, db))]
+    #[instrument(
+        name = "Populate linked word deletion suggestion",
+        fields(suggestion_id),
+        skip(row, db)
+    )]
     fn try_from_row_populate_other(
         row: &Row<'_>,
         db: &impl ModeratorAccessDb,
@@ -220,7 +236,11 @@ impl LinkedWordDeletionSuggestion {
         })
     }
 
-    #[instrument(name = "Fetch all linked word deletion suggestions", fields(results), skip(db))]
+    #[instrument(
+        name = "Fetch all linked word deletion suggestions",
+        fields(results),
+        skip(db)
+    )]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT linked_words.link_id, linked_words.link_type, linked_words.first_word_id,

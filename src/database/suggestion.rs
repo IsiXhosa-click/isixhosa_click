@@ -2,11 +2,14 @@ use crate::auth::{ModeratorAccessDb, PublicUserInfo, UserAccessDb};
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
 use crate::database::{add_attribution, WordOrSuggestionId};
+use crate::format::DisplayHtml;
 use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::{TantivyClient, WordDocument, WordHit};
 use crate::serialization::WithDeleteSentinel;
 use crate::submit::WordId;
+use crate::DebugExt;
 use fallible_iterator::FallibleIterator;
+use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
 use rusqlite::types::FromSql;
@@ -16,10 +19,7 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::sync::Arc;
-use futures::executor::block_on;
-use tracing::{Span, instrument};
-use crate::DebugExt;
-use crate::format::DisplayHtml;
+use tracing::{instrument, Span};
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -55,7 +55,12 @@ impl SuggestedWord {
         }
     }
 
-    #[instrument(level = "info", name = "Fetch all suggested words", fields(results), skip(db))]
+    #[instrument(
+        level = "info",
+        name = "Fetch all suggested words",
+        fields(results),
+        skip(db)
+    )]
     pub fn fetch_all_full(db: &impl ModeratorAccessDb) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "
             SELECT
@@ -88,7 +93,12 @@ impl SuggestedWord {
     }
 
     /// Returns the suggested word without examples and linked words populated.
-    #[instrument(level = "trace", name = "Fetch just suggested word", fields(found), skip(db))]
+    #[instrument(
+        level = "trace",
+        name = "Fetch just suggested word",
+        fields(found),
+        skip(db)
+    )]
     pub fn fetch_alone(db: &impl UserAccessDb, id: u64) -> Option<SuggestedWord> {
         const SELECT_SUGGESTION: &str = "
             SELECT
@@ -312,6 +322,7 @@ impl SuggestedWord {
     }
 
     #[instrument(
+        level = "trace",
         name = "Fetch existing id for suggested word",
         fields(word_id),
         skip(db)
@@ -400,7 +411,7 @@ impl SuggestedExample {
         level = "trace",
         name = "Fetch all suggested examples for suggested word",
         fields(results),
-        skip(db),
+        skip(db)
     )]
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
@@ -429,11 +440,7 @@ impl SuggestedExample {
         examples
     }
 
-    #[instrument(
-        name = "Fetch suggested example",
-        fields(found),
-        skip(db),
-    )]
+    #[instrument(name = "Fetch suggested example", fields(found), skip(db))]
     pub fn fetch(db: &impl UserAccessDb, suggestion_id: u64) -> Option<SuggestedExample> {
         const SELECT: &str = "
             SELECT
@@ -577,7 +584,7 @@ impl SuggestedLinkedWord {
         level = "trace",
         name = "Fetch all suggested linked words for suggested word",
         fields(results),
-        skip(db),
+        skip(db)
     )]
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
@@ -610,7 +617,7 @@ impl SuggestedLinkedWord {
     #[instrument(
         name = "Fetch all suggested linked words for existing words",
         fields(results),
-        skip_all,
+        skip_all
     )]
     pub fn fetch_all_for_existing_words(
         db: &impl ModeratorAccessDb,
@@ -727,6 +734,7 @@ impl SuggestedLinkedWord {
     }
 
     #[instrument(
+        level = "trace",
         name = "Update suggested linked word first and second",
         fields(suggestion_id = self.suggestion_id),
         skip_all
@@ -763,7 +771,12 @@ impl SuggestedLinkedWord {
         found
     }
 
-    #[instrument(name = "Populate suggested linked word", fields(suggestion_id), skip_all)]
+    #[instrument(
+        level = "trace",
+        name = "Populate suggested linked word",
+        fields(suggestion_id),
+        skip_all
+    )]
     fn from_row_populate_both(row: &Row<'_>, db: &impl UserAccessDb) -> Self {
         const SELECT: &str =
             "SELECT link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1;";

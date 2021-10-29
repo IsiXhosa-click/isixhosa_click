@@ -17,14 +17,14 @@ use crate::database::WordOrSuggestionId;
 use crate::format::DisplayHtml;
 use crate::language::NounClassExt;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
+use crate::spawn_blocking_child;
+use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
 use serde_with::{serde_as, NoneAsEmptyString};
 use std::num::NonZeroU64;
 use std::sync::Arc;
-use futures::executor::block_on;
-use tracing::{instrument, Span, debug_span};
-use crate::spawn_blocking_child;
+use tracing::{debug_span, instrument, Span};
 
 #[derive(Template, Debug)]
 #[template(path = "submit.askama.html")]
@@ -477,7 +477,7 @@ async fn submit_new_word_form(
     db: impl UserAccessDb,
 ) -> Result<impl warp::Reply, Rejection> {
     submit_suggestion(word, tantivy, &user, &db).await;
-    submit_word_page(Some(true), SubmitFormAction::SubmitNewWord, user, db,).await
+    submit_word_page(Some(true), SubmitFormAction::SubmitNewWord, user, db).await
 }
 
 fn diff<T: PartialEq + Eq>(value: T, template: &T, override_use_value: bool) -> Option<T> {
@@ -530,7 +530,11 @@ pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
 }
 
 // TODO move to db module
-#[instrument(name = "Process word submission", fields(suggestion_id, changes), skip_all)]
+#[instrument(
+    name = "Process word submission",
+    fields(suggestion_id, changes),
+    skip_all
+)]
 pub async fn submit_suggestion(
     word: WordSubmission,
     tantivy: Arc<TantivyClient>,
@@ -798,9 +802,9 @@ fn process_linked_words(
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
                 {
                     let new = linked_words.remove(i);
-                    let old = new
-                        .existing_id
-                        .and_then(|id| ExistingLinkedWord::fetch(db, id, existing_word_id.unwrap()));
+                    let old = new.existing_id.and_then(|id| {
+                        ExistingLinkedWord::fetch(db, id, existing_word_id.unwrap())
+                    });
                     maybe_insert_link(new, old);
                 } else {
                     deleted += 1;
@@ -856,7 +860,7 @@ fn process_linked_words(
     }
 
     let span = Span::current();
-    span.record("added",&w.linked_words.0.len());
+    span.record("added", &w.linked_words.0.len());
     span.record("edited", &edited);
     span.record("deleted", &deleted);
     span.record("skipped", &skipped);
@@ -951,7 +955,9 @@ fn process_examples(
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
                 {
                     let new = examples.remove(i);
-                    let old = new.existing_id.and_then(|id| ExistingExample::fetch(db, id));
+                    let old = new
+                        .existing_id
+                        .and_then(|id| ExistingExample::fetch(db, id));
                     maybe_insert_example(new, old);
                 } else {
                     deleted += 1;

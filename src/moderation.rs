@@ -9,15 +9,15 @@ use crate::database::WordOrSuggestionId;
 use crate::format::DisplayHtml;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
-use tracing::{error, instrument, Span};
+use crate::spawn_blocking_child;
 use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
 use askama::Template;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tracing::{error, instrument, Span};
 use warp::{body, Filter, Rejection, Reply};
-use crate::spawn_blocking_child;
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]
@@ -47,7 +47,11 @@ pub struct WordAssociatedEdits {
 }
 
 impl WordAssociatedEdits {
-    #[instrument(name = "Fetch all word associated edits", fields(relevant_words), skip(db))]
+    #[instrument(
+        name = "Fetch all word associated edits",
+        fields(relevant_words),
+        skip(db)
+    )]
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<(WordHit, WordAssociatedEdits)> {
         let example_suggestions = SuggestedExample::fetch_all_for_existing_words(db);
         let example_deletions = ExampleDeletionSuggestion::fetch_all(db);
@@ -254,9 +258,7 @@ async fn reject_suggested_word(
     suggestion_id: u64,
 ) -> bool {
     let db = db.clone();
-    spawn_blocking_child(move || {
-        SuggestedWord::delete(&db, tantivy, suggestion_id)
-    })
+    spawn_blocking_child(move || SuggestedWord::delete(&db, tantivy, suggestion_id))
         .await
         .unwrap()
 }
@@ -266,12 +268,11 @@ async fn accept_deletion(
     tantivy: Arc<TantivyClient>,
     suggestion: u64,
 ) -> bool {
-
     let word_id = WordDeletionSuggestion::fetch_word_id_for_suggestion(db, suggestion);
     Span::current().record("word_id", &word_id);
     let db = db.clone();
 
-    spawn_blocking_child(move || { ExistingWord::delete(&db, word_id) })
+    spawn_blocking_child(move || ExistingWord::delete(&db, word_id))
         .await
         .unwrap();
 
@@ -323,17 +324,15 @@ async fn accept_example_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -
 async fn reject_example_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
     let db = db.clone();
     spawn_blocking_child(move || ExampleDeletionSuggestion::delete_suggestion(&db, suggestion))
-    .await
-    .unwrap();
+        .await
+        .unwrap();
 
     true
 }
 
 async fn accept_linked_word(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
     let db = db.clone();
-    spawn_blocking_child(move || {
-        SuggestedLinkedWord::fetch(&db, suggestion).accept(&db)
-    })
+    spawn_blocking_child(move || SuggestedLinkedWord::fetch(&db, suggestion).accept(&db))
         .await
         .unwrap();
     true
@@ -341,9 +340,7 @@ async fn accept_linked_word(db: &impl ModeratorAccessDb, suggestion: u64) -> boo
 
 async fn reject_linked_word(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
     let db = db.clone();
-    spawn_blocking_child(move || {
-        SuggestedLinkedWord::delete(&db, suggestion)
-    })
+    spawn_blocking_child(move || SuggestedLinkedWord::delete(&db, suggestion))
         .await
         .unwrap();
     true
@@ -359,11 +356,9 @@ async fn accept_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u6
 
 async fn reject_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
     let db = db.clone();
-    spawn_blocking_child(move || {
-        LinkedWordDeletionSuggestion::delete_suggestion(&db, suggestion)
-    })
-    .await
-    .unwrap();
+    spawn_blocking_child(move || LinkedWordDeletionSuggestion::delete_suggestion(&db, suggestion))
+        .await
+        .unwrap();
     true
 }
 
@@ -377,9 +372,7 @@ async fn process_one(
     let db_clone = db.clone();
 
     let edit_unsupported = || {
-        error!(
-            "Got request to edit word or example deletion suggestion, but this makes no sense!"
-        );
+        error!("Got request to edit word or example deletion suggestion, but this makes no sense!");
         false
     };
 

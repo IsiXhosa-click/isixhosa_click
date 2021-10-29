@@ -12,7 +12,7 @@ use crate::serialization::GetWithSentinelExt;
 use crate::serialization::SerOnlyDisplay;
 use crate::submit::WordId;
 use isixhosa::noun::NounClass;
-use tracing::{Span, instrument};
+use tracing::{instrument, Span};
 
 pub mod deletion;
 pub mod existing;
@@ -39,7 +39,12 @@ impl WordHit {
         })
     }
 
-    #[instrument(name = "Fetch word hit from database", fields(found), skip(db))]
+    #[instrument(
+        level = "trace",
+        name = "Fetch word hit from database",
+        fields(found),
+        skip(db)
+    )]
     pub fn fetch_from_db(db: &impl PublicAccessDb, id: WordOrSuggestionId) -> Option<WordHit> {
         const SELECT_EXISTING: &str = "
             SELECT

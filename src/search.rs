@@ -1,8 +1,10 @@
 use crate::database::WordOrSuggestionId;
 
+use crate::format::DisplayHtml;
 use crate::language::{NounClassExt, NounClassPrefixes, PartOfSpeech, Transitivity};
 use crate::serialization::GetWithSentinelExt;
 use crate::serialization::SerOnlyDisplay;
+use crate::spawn_blocking_child;
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
@@ -21,21 +23,19 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
-use tantivy::{doc, LeasedItem, Searcher};
 use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{
     Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
     STORED,
 };
-use tracing::{info, info_span, debug_span, instrument, Span};
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
+use tantivy::{doc, LeasedItem, Searcher};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
+use tracing::{debug_span, info, info_span, instrument, Span};
+use xtra::prelude::InstrumentedExt;
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::{Actor, Address, Handler, Message};
-use xtra::prelude::InstrumentedExt;
-use crate::format::DisplayHtml;
-use crate::spawn_blocking_child;
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;
@@ -139,9 +139,21 @@ impl TantivyClient {
         }
     }
 
-    pub async fn search(&self, query: String, include: IncludeResults, duplicate: bool) -> Result<Vec<WordHit>> {
+    pub async fn search(
+        &self,
+        query: String,
+        include: IncludeResults,
+        duplicate: bool,
+    ) -> Result<Vec<WordHit>> {
         self.searchers
-            .send(SearchRequest { query, include, duplicate }.instrumented_child())
+            .send(
+                SearchRequest {
+                    query,
+                    include,
+                    duplicate,
+                }
+                .instrumented_child(),
+            )
             .await
             .map_err(Into::into)
     }
@@ -182,19 +194,31 @@ impl TantivyClient {
         .await
         .unwrap();
 
-        self.writer.send(ReindexWords(docs).instrumented_child()).await.unwrap();
+        self.writer
+            .send(ReindexWords(docs).instrumented_child())
+            .await
+            .unwrap();
     }
 
     pub async fn add_new_word(&self, word: WordDocument) {
-        self.writer.send(IndexWord(word).instrumented_child()).await.unwrap()
+        self.writer
+            .send(IndexWord(word).instrumented_child())
+            .await
+            .unwrap()
     }
 
     pub async fn edit_word(&self, word: WordDocument) {
-        self.writer.send(EditWord(word).instrumented_child()).await.unwrap()
+        self.writer
+            .send(EditWord(word).instrumented_child())
+            .await
+            .unwrap()
     }
 
     pub async fn delete_word(&self, id: WordOrSuggestionId) {
-        self.writer.send(DeleteWord(id).instrumented_child()).await.unwrap()
+        self.writer
+            .send(DeleteWord(id).instrumented_child())
+            .await
+            .unwrap()
     }
 }
 
@@ -451,7 +475,7 @@ impl SearcherActor {
             let this_term: Vec<Box<dyn Query + 'static>> = vec![
                 Box::new(query_english),
                 Box::new(query_xhosa),
-                Box::new(query_xhosa_stemmed)
+                Box::new(query_xhosa_stemmed),
             ];
 
             queries.push(Box::new(BooleanQuery::union(this_term)));
@@ -546,13 +570,13 @@ impl Handler<SearchRequest> for SearcherActor {
 
         impl Ord for WordHitWithSim {
             fn cmp(&self, other: &Self) -> Ordering {
-                self.sim.cmp(&other.sim)
-                    .reverse()
-                    .then_with(|| {
-                        self.hit.part_of_speech.cmp(&other.hit.part_of_speech)
-                            .then(self.hit.is_plural.cmp(&other.hit.is_plural))
-                            .then(self.hit.id.cmp(&other.hit.id))
-                    })
+                self.sim.cmp(&other.sim).reverse().then_with(|| {
+                    self.hit
+                        .part_of_speech
+                        .cmp(&other.hit.part_of_speech)
+                        .then(self.hit.is_plural.cmp(&other.hit.is_plural))
+                        .then(self.hit.id.cmp(&other.hit.id))
+                })
             }
         }
 
@@ -576,19 +600,22 @@ impl Handler<SearchRequest> for SearcherActor {
             if req.duplicate {
                 let _g = debug_span!("Filtering for exact matches only").entered();
 
-                let exact = |hit: &WordHit| hit.english.to_lowercase() == req.query.to_lowercase() ||
-                    hit.xhosa.to_lowercase() == req.query.to_lowercase();
+                let exact = |hit: &WordHit| {
+                    hit.english.to_lowercase() == req.query.to_lowercase()
+                        || hit.xhosa.to_lowercase() == req.query.to_lowercase()
+                };
                 Ok::<_, anyhow::Error>(results.into_iter().filter(exact).collect())
             } else {
-                let _g = info_span!("Sorting and ordering results", results = results.len()).entered();
+                let _g =
+                    info_span!("Sorting and ordering results", results = results.len()).entered();
 
                 let mut results: Vec<WordHitWithSim> = info_span!("Calculating string similarity")
-                    .in_scope(||
+                    .in_scope(|| {
                         results
-                        .into_iter()
-                        .map(|hit| WordHitWithSim::new(hit, &req.query))
-                        .collect()
-                    );
+                            .into_iter()
+                            .map(|hit| WordHitWithSim::new(hit, &req.query))
+                            .collect()
+                    });
 
                 debug_span!("Sorting list based on string similarity").in_scope(|| results.sort());
 
