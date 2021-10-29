@@ -182,7 +182,7 @@ where
     span.record("minified", &minified.len());
 
     let saving = if !unminified.is_empty() {
-        1.0 - (minified.len() as f64) / (unminified.len() as f64) * 100.0
+        (1.0 - (minified.len() as f64) / (unminified.len() as f64)) * 100.0
     } else {
         0.0
     };
