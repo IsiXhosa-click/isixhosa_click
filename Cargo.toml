@@ -16,6 +16,7 @@ warp = { version = "0.3", features = ["tls", "compression"] }
 # Pinned to rev to stop need for random .clone()s in templates - waiting for askama 0.11
 askama = { git = "https://github.com/djc/askama", rev = "ed2e640", features = ["serde-json"] }
 askama_warp = { git = "https://github.com/djc/askama", rev = "ed2e640" }
+warp-reverse-proxy = "0.4.0"
 html-minifier = "3.0.14"
 minifier = "0.0.41"
 rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly

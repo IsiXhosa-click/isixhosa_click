@@ -1,12 +1,3 @@
-// To instrument:
-// - startup tasks (reindex, db stuff, etc)
-// - stuff inside routes (DONE: moderation page)
-// - stuff inside websocket
-// - https://github.com/tokio-rs/tracing/blob/master/examples/examples/opentelemetry-remote-context.rs ?
-// - where to level filter?
-// - special fields https://docs.rs/tracing-opentelemetry/0.16.0/tracing_opentelemetry/
-// - add "hit" to fetch methods with `found` field
-
 // Soon after launch, perhaps before:
 // - informal/archaic meanings
 // - standalone example & linked word suggestion editing
@@ -27,7 +18,7 @@
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
 
-use crate::auth::{with_any_auth, Auth, DbBase, Permissions, PublicAccessDb, Unauthorized, UnauthorizedReason, ModeratorAccessDb, with_moderator_auth, User};
+use crate::auth::*;
 use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
 use crate::search::{IncludeResults, TantivyClient, WordHit};
@@ -50,6 +41,8 @@ use std::num::NonZeroU64;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use opentelemetry::global;
+use opentelemetry::sdk::propagation::TraceContextPropagator;
 use submit::submit;
 use tokio::task::JoinHandle;
 use warp::filters::compression::gzip;
@@ -65,6 +58,7 @@ use xtra::Actor;
 use tracing::{info, debug, instrument, Span};
 use tracing_subscriber::{Registry, layer::SubscriberExt, filter::LevelFilter};
 use tracing_subscriber::util::SubscriberInitExt;
+use warp_reverse_proxy as proxy;
 use crate::database::suggestion::SuggestedWord;
 
 mod auth;
@@ -151,8 +145,8 @@ impl Default for Config {
     }
 }
 
-// TODO(tracing): log to file too, configure jaeger, etc
-fn init_logging(cfg: &Config) {
+fn init_tracing() {
+    global::set_text_map_propagator(TraceContextPropagator::new());
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("isixhosa.click")
         .install_batch(opentelemetry::runtime::Tokio)
@@ -293,8 +287,24 @@ fn set_up_db(conn: &Connection) {
     }
 }
 
+// I cannot be bothered trying to find the right type
+macro_rules! wrap_filter {
+    ($f:expr) => {
+        $f
+            .and_then(minify)
+            .with(warp::trace(|info| {
+                tracing::info_span!(
+                    "HTTPS request",
+                    method = %info.method(),
+                    path = %info.path(),
+                )
+            }))
+            .with(gzip())
+    }
+}
+
 async fn server(cfg: Config) {
-    init_logging(&cfg);
+    init_tracing();
     info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
@@ -363,6 +373,25 @@ async fn server(cfg: Config) {
         .and(warp::path("favicon.ico"))
         .map(|| warp::redirect(Uri::from_static("/icons/favicon.ico")));
 
+    let jaeger_proxy = {
+        let base = warp::path!("admin" / "jaeger" / ..);
+        let forward_url = "http://127.0.0.1:16686".to_owned();
+        let forward = proxy::reverse_proxy_filter(String::new(), forward_url)
+            .with(warp::trace(|_info| tracing::info_span!("Forward jaeger request")));
+        let proxy = with_administrator_auth(db.clone())
+            .and(forward)
+            .recover(handle_error)
+            .with(warp::trace(|info| {
+                tracing::info_span!(
+                    "Jaeger reverse proxy request",
+                    method = %info.method(),
+                    path = %info.path(),
+                )
+            }));
+
+        base.and(proxy)
+    };
+
     let routes = search
         .or(terms_of_use)
         .or(style_guide)
@@ -379,37 +408,38 @@ async fn server(cfg: Config) {
         .or(warp::fs::dir(cfg.static_site_files.clone()))
         .or(warp::fs::dir(cfg.other_static_files.clone()))
         .recover(handle_error)
-        .or(auth::with_any_auth(db).map(|auth, _db| {
-            warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
-        }))
         .boxed();
 
     info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
-    let redirect = warp::path::full().map(move |path: FullPath| {
-        let to = Uri::builder()
-            .scheme("https")
-            .authority("isixhosa.click")
-            .path_and_query(path.as_str())
-            .build()
-            .unwrap();
-        warp::redirect(to)
-    });
-    let http_redirect = warp::serve(redirect);
+    let http_redirect = warp::path::full()
+        .map(move |path: FullPath| {
+            let to = Uri::builder()
+                .scheme("https")
+                .authority("isixhosa.click")
+                .path_and_query(path.as_str())
+                .build()
+                .unwrap();
+            warp::redirect(to)
+        })
+        .with(warp::trace(|info| {
+            tracing::info_span!(
+                    "HTTP redirect",
+                    method = %info.method(),
+                    path = %info.path(),
+            )
+        }));
+
+    let http_redirect = warp::serve(http_redirect);
 
     tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
 
     // Add post filters such as minification, logging, and gzip
-    let serve = routes
-        .and_then(minify)
-        .with(warp::trace(|info| {
-            tracing::info_span!(
-                "HTTPS request",
-                method = %info.method(),
-                path = %info.path(),
-            )
-        }))
-        .with(gzip());
+    let serve = jaeger_proxy
+        .or(wrap_filter!(routes))
+        .or(wrap_filter!(auth::with_any_auth(db).map(|auth, _db| {
+            warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
+        })));
 
     warp::serve(serve)
         .tls()

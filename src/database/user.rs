@@ -19,9 +19,10 @@ impl TryFrom<&Row<'_>> for User {
             id: NonZeroU64::new(row.get::<&str, i64>("user_id")? as u64).unwrap(),
             username: row.get("username")?,
             display_name: row.get("display_name")?,
-            advanced_submit_form: row.get("advanced_submit_form")?,
             email: row.get("email")?,
-            permissions: if row.get("is_moderator")? {
+            permissions: if row.get("is_administrator")? {
+                Permissions::Administrator
+            } else if row.get("is_moderator")? {
                 Permissions::Moderator
             } else {
                 Permissions::User
@@ -36,7 +37,7 @@ impl User {
     pub fn fetch_by_id(db: &impl PublicAccessDb, id: u64) -> Option<User> {
         const SELECT: &str = "
             SELECT
-                user_id, username, display_name, email, is_moderator, advanced_submit_form, locked
+                user_id, username, display_name, email, is_moderator, is_administrator, locked
             FROM users
             WHERE user_id = ?1;
         ";
@@ -64,7 +65,7 @@ impl User {
     ) -> Option<User> {
         const SELECT: &str = "
             SELECT
-                user_id, username, display_name, email, is_moderator, advanced_submit_form, locked
+                user_id, username, display_name, email, is_moderator, is_administrator, locked
             FROM users
             WHERE oidc_id = ?1;
         ";
@@ -90,13 +91,12 @@ impl User {
         userinfo: Box<Userinfo>,
         username: String,
         display_name: bool,
-        advanced_submit_form: bool,
         email: String,
         permissions: Permissions,
     ) -> User {
         const INSERT: &str = "
             INSERT INTO users
-                (oidc_id, username, display_name, email, is_moderator, advanced_submit_form, locked)
+                (oidc_id, username, display_name, email, is_moderator, is_administrator, locked)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) RETURNING user_id;
         ";
 
@@ -108,7 +108,7 @@ impl User {
             display_name,
             email,
             permissions.contains(Permissions::Moderator), // is_moderator
-            advanced_submit_form,
+            permissions.contains(Permissions::Administrator), // is_administrator,
             false, // locked
         ];
 
@@ -118,7 +118,6 @@ impl User {
             id: NonZeroU64::new(id as u64).unwrap(), // AUTOINCREMENT starts at 1
             username,
             display_name,
-            advanced_submit_form,
             email,
             permissions,
             locked: false,

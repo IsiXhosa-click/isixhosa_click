@@ -75,7 +75,7 @@ impl TantivyClient {
 
         let (searchers, mut ctx) = xtra::Context::new(Some(32));
 
-        let writer = index.writer(TANTIVY_WRITER_HEAP)?;
+        let writer = index.writer_with_num_threads(1, TANTIVY_WRITER_HEAP)?;
 
         let client = TantivyClient {
             schema_info: schema_info.clone(),

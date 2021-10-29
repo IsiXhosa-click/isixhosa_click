@@ -5,6 +5,6 @@ CREATE TABLE IF NOT EXISTS users (
     display_name          BOOLEAN NOT NULL,
     email                 TEXT NOT NULL,
     is_moderator          BOOLEAN NOT NULL,
-    advanced_submit_form  BOOLEAN NOT NULL,
+    is_administrator      BOOLEAN NOT NULL,
     locked                BOOLEAN NOT NULL
 );

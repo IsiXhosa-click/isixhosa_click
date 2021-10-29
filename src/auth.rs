@@ -102,15 +102,16 @@ impl Auth {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Ord, PartialOrd, Clone, Copy, Debug)]
 pub enum Permissions {
     User,
     Moderator,
+    Administrator,
 }
 
 impl Permissions {
     pub fn contains(&self, other: Permissions) -> bool {
-        *self == Permissions::Moderator || other == Permissions::User
+        *self >= other
     }
 }
 
@@ -174,7 +175,6 @@ pub struct User {
     pub id: NonZeroU64,
     pub username: String,
     pub display_name: bool,
-    pub advanced_submit_form: bool,
     pub email: String,
     pub permissions: Permissions,
     pub locked: bool,
@@ -611,7 +611,6 @@ async fn signup_form_submit(
             userinfo,
             form.username,
             !form.dont_display_name,
-            false,
             email,
             Permissions::User,
         )
@@ -669,7 +668,7 @@ impl reject::Reject for Unauthorized {}
 
 #[instrument(
     name = "Try to extract user from a token",
-    fields(fail_reason, success = false, id, name),
+    fields(fail_reason, success, id, name),
     skip_all,
 )]
 async fn extract_user(
@@ -693,6 +692,7 @@ async fn extract_user(
                     Ok(user)
                 } else {
                     let reason = UnauthorizedReason::Locked;
+                    span.record("success", &false);
                     span.record("fail_reason", &reason.to_debug().as_str());
                     debug!("User locked");
 
@@ -703,6 +703,7 @@ async fn extract_user(
                 }
             } else {
                 let reason = UnauthorizedReason::NotLoggedIn;
+                span.record("success", &false);
                 span.record("fail_reason", &reason.to_debug().as_str());
                 debug!("Invalid token");
 
@@ -713,6 +714,7 @@ async fn extract_user(
             }
         } else {
             let reason = UnauthorizedReason::NotLoggedIn;
+            span.record("success", &false);
             span.record("fail_reason", &reason.to_debug().as_str());
             debug!("No token");
 
@@ -802,4 +804,22 @@ pub fn with_moderator_auth(
             }
         })
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
+}
+
+pub fn with_administrator_auth(db: DbBase,) -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    warp::path::full()
+        .map(|path: FullPath| path.as_str().to_owned())
+        .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))
+        .and(warp::any().map(move || db.clone()))
+        .and_then(|redirect: String, token, db: DbBase| async move {
+            match extract_user(DbImpl(db.0.clone()), redirect.clone(), token).await {
+                Ok(user) if user.permissions.contains(Permissions::Administrator) => Ok(()),
+                Ok(_unauthorized) => Err(warp::reject::custom(Unauthorized {
+                    reason: UnauthorizedReason::NoPermissions,
+                    redirect,
+                })),
+                Err(e) => Err(e),
+            }
+        })
+        .untuple_one()
 }
