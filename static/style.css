@@ -176,11 +176,14 @@ caption, .caption {
     min-width: 7rem;
 }
 
+#login_bar_container a {
+    text-decoration: none;
+}
+
 #login_bar {
     border: none;
     border-radius: 0;
     font-size: initial;
-    padding: 0 0 0 0.25rem;
     height: 100%;
     width: 100%;
 }

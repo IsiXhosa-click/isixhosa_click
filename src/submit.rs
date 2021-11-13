@@ -17,7 +17,7 @@ use crate::database::WordOrSuggestionId;
 use crate::format::DisplayHtml;
 use crate::language::NounClassExt;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::spawn_blocking_child;
+use crate::{DebugBoxedExt, spawn_blocking_child};
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
@@ -237,7 +237,7 @@ pub fn submit(
     warp::path("submit")
         .and(path::end())
         .and(submit_routes)
-        .boxed()
+        .debug_boxed()
 }
 
 #[instrument(name = "Display edit suggestion page", skip(db, user))]

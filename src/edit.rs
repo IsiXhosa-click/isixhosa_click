@@ -9,6 +9,7 @@ use crate::search::TantivyClient;
 use std::sync::Arc;
 use tracing::instrument;
 use warp::{body, Filter, Rejection, Reply};
+use crate::DebugBoxedExt;
 
 pub fn edit(
     db: DbBase,
@@ -50,7 +51,7 @@ pub fn edit(
                 .or(delete_redirect)
                 .or(failed_to_submit),
         )
-        .boxed()
+        .debug_boxed()
 }
 
 #[instrument(name = "Submit word edit form", fields(word_id = id), skip_all)]

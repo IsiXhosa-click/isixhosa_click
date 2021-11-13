@@ -57,6 +57,7 @@ use warp::path::FullPath;
 use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
 use warp::{path, reply, Filter, Rejection, Reply};
+use warp::filters::BoxedFilter;
 use warp_reverse_proxy as proxy;
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
@@ -84,6 +85,30 @@ where
         let _g = span.enter();
         f()
     })
+}
+
+pub trait DebugBoxedExt: Filter {
+    #[cfg(debug_assertions)]
+    fn debug_boxed(self) -> BoxedFilter<Self::Extract>;
+
+    #[cfg(not(debug_assertions))]
+    fn debug_boxed(self) -> Self;
+}
+
+impl<F> DebugBoxedExt for F
+    where F: Filter + Send + Sync + 'static,
+          F::Extract: Send,
+          F::Error: Into<Rejection>,
+{
+    #[cfg(debug_assertions)]
+    fn debug_boxed(self) -> BoxedFilter<Self::Extract> {
+        self.boxed()
+    }
+
+    #[cfg(not(debug_assertions))]
+    fn debug_boxed(self) -> Self {
+        self
+    }
 }
 
 pub trait DebugExt {
@@ -149,7 +174,7 @@ fn init_tracing() {
     global::set_text_map_propagator(TraceContextPropagator::new());
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("isixhosa.click")
-        .install_simple() // Waiting for release to install_batch
+        .install_batch(opentelemetry::runtime::Tokio)
         .unwrap();
 
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
@@ -182,12 +207,12 @@ where
     span.record("minified", &minified.len());
 
     let saving = if !unminified.is_empty() {
-        (1.0 - (minified.len() as f64) / (unminified.len() as f64)) * 100.0
+        (1.0 - (minified.len() as f64 / unminified.len() as f64)) * 100.0
     } else {
         0.0
     };
 
-    span.record("saving", &saving);
+    span.record("saving", &format!("{:.2}%", saving).as_str());
 
     Ok(Response::from_parts(parts, minified.into()))
 }
@@ -374,7 +399,7 @@ async fn server(cfg: Config) {
                 .or(live_search)
                 .or(query_search)
                 .or(search_page),
-        )
+        ).debug_boxed()
     };
 
     let simple_templates = {
@@ -400,7 +425,7 @@ async fn server(cfg: Config) {
                 })
             });
 
-        terms_of_use.or(about).or(style_guide)
+        terms_of_use.or(about).or(style_guide).debug_boxed()
     };
 
     let redirects = {
@@ -412,7 +437,7 @@ async fn server(cfg: Config) {
             .and(path::end())
             .map(|| warp::redirect(Uri::from_static("/search")));
 
-        favico_redirect.or(index_redirect)
+        favico_redirect.or(index_redirect).debug_boxed()
     };
 
     let jaeger_proxy = {
@@ -433,7 +458,7 @@ async fn server(cfg: Config) {
                 )
             }));
 
-        base.and(proxy)
+        base.and(proxy).debug_boxed()
     };
 
     let static_files = warp::fs::dir(cfg.static_site_files.clone())
@@ -449,7 +474,7 @@ async fn server(cfg: Config) {
         .or(auth(db.clone(), &cfg).await)
         .or(static_files)
         .recover(handle_error)
-        .boxed();
+        .debug_boxed();
 
     info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
@@ -636,6 +661,7 @@ fn live_search(
         )
         .create(Some(4))
         .spawn_global();
+
         tokio::spawn(addr.attach_stream(stream.map(WsMessage)));
         futures::future::ready(())
     })

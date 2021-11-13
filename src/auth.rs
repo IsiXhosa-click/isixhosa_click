@@ -3,7 +3,7 @@ use std::{convert::Infallible, sync::Arc};
 use crate::auth::db_impl::DbImpl;
 use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{spawn_blocking_child, Config, DebugExt};
+use crate::{spawn_blocking_child, Config, DebugExt, DebugBoxedExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
@@ -263,7 +263,7 @@ pub async fn auth(
         .unwrap()
         .to_string();
 
-    let issuer = reqwest::Url::parse("https://accounts.google.com").unwrap();
+    let issuer = url::Url::parse("https://accounts.google.com").unwrap();
 
     let client = Arc::new(
         DiscoveredClient::discover(
@@ -314,7 +314,7 @@ pub async fn auth(
         .and(with_public_db(db.clone()))
         .and_then(signup_form_submit);
 
-    login.or(oidc_code).or(sign_up).or(logout).boxed()
+    login.or(oidc_code).or(sign_up).or(logout).debug_boxed()
 }
 
 fn with_session() -> impl Filter<Extract = (SignInSessionId,), Error = Rejection> + Clone {
@@ -449,37 +449,31 @@ async fn reply_login(
     db: impl PublicAccessDb,
 ) -> Result<impl warp::Reply, Infallible> {
     let request_token = request_token(oidc_client, &session_id, &openid_query).await;
+    let mk_err = || {
+        IN_PROGRESS_SIGN_INS.remove(&session_id);
+
+        Ok(Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body("")
+            .unwrap()
+            .into_response())
+    };
 
     let (token, oidc_id, userinfo) = match request_token {
         Ok(Some((token, user_info))) => match user_info.sub {
             Some(ref id) => (token, id.clone(), user_info),
             None => {
                 error!("Error requesting token: no remote `sub` id found");
-
-                return Ok(Response::builder()
-                    .status(StatusCode::UNAUTHORIZED)
-                    .body("")
-                    .unwrap()
-                    .into_response());
+                return mk_err();
             }
         },
         Ok(None) => {
             error!("Error requesting token during login: no id_token found");
-
-            return Ok(Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .body("")
-                .unwrap()
-                .into_response());
+            return mk_err();
         }
         Err(err) => {
             error!("Error requesting token during login: {:#?}", err);
-
-            return Ok(Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .body("")
-                .unwrap()
-                .into_response());
+            return mk_err();
         }
     };
 

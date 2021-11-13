@@ -3,7 +3,7 @@ use crate::auth::{with_any_auth, Auth, DbBase};
 use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
 use crate::language::PartOfSpeech;
-use crate::{spawn_blocking_child, NotFound};
+use crate::{spawn_blocking_child, NotFound, DebugBoxedExt};
 use askama::Template;
 use tracing::instrument;
 use warp::{Filter, Rejection, Reply};
@@ -15,7 +15,7 @@ pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Repl
         .and(warp::any().map(|| None)) // previous_success is None
         .and(with_any_auth(db))
         .and_then(word)
-        .boxed()
+        .debug_boxed()
 }
 
 #[derive(Template)]
