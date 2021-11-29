@@ -48,7 +48,7 @@
             {%- let route -%}
 
             {%- match action -%}
-                {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _ } -%}
+                {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _, suggestion_anchor_ord: _ } -%}
                     {%- let route = "/moderation/edit".to_string() -%}
                 {%- when SubmitFormAction::SubmitNewWord -%}
                     {%- let route = "/submit".to_string() -%}
@@ -62,8 +62,9 @@
                 {%- let existing_id -%}
 
                 {%- match action -%}
-                    {%- when SubmitFormAction::EditSuggestion with { suggestion_id, existing_id: exist } -%}
+                    {%- when SubmitFormAction::EditSuggestion with { suggestion_id, existing_id: exist, suggestion_anchor_ord } -%}
                         <select name="suggestion_id" hidden><option value="{{ suggestion_id }}"></select>
+                        <select name="suggestion_anchor_ord" hidden><option value="{{ suggestion_anchor_ord }}"></select>
                         {%- let existing_id = exist.clone() -%}
                     {%- when SubmitFormAction::EditExisting with (id) -%}
                          {%- let existing_id = Some(id.clone()) -%}
@@ -325,7 +326,7 @@
                         {%- match action -%}
                             {%- when SubmitFormAction::SubmitNewWord -%}
                                 Suggest word
-                            {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _ } -%}
+                            {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _, suggestion_anchor_ord: _ } -%}
                                 Submit edit to suggestion
                             {%- when SubmitFormAction::EditExisting with (_) -%}
                                 Suggest edit to word

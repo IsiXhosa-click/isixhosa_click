@@ -72,6 +72,6 @@ async fn delete_word_reply(
     user: User,
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
-    suggest_word_deletion(WordId(id), &db).await;
+    suggest_word_deletion(&user, WordId(id), &db).await;
     word(id, Some(WordChangeMethod::Delete), user.into(), db).await
 }

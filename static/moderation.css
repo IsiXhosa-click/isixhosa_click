@@ -2,6 +2,12 @@
     margin: 0;
 }
 
+li:target {
+    background-color: #ffffcc;
+    box-shadow: 0 0 0 5px #ffffcc;
+    border-radius: 5px;
+}
+
 h3.suggested_word_text strong.noun_class_prefix {
     font-weight: bolder;
 }

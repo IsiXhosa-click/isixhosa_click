@@ -108,6 +108,7 @@ impl WordAssociatedEdits {
 struct Success {
     success: bool,
     method: Option<Method>,
+    next_suggestion: Option<u32>,
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]
@@ -123,6 +124,7 @@ struct Action {
     #[serde(flatten)]
     suggestion: ActionTarget,
     method: Method,
+    suggestion_anchor_ord: u32,
 }
 
 #[serde_as]
@@ -167,6 +169,7 @@ pub fn moderation(
             Some(Success {
                 success: false,
                 method: Some(Method::Edit),
+                next_suggestion: None,
             })
         }))
         .and(with_moderator_auth(db.clone()))
@@ -177,6 +180,7 @@ pub fn moderation(
             Some(Success {
                 success: false,
                 method: None,
+                next_suggestion: None,
             })
         }))
         .and(with_moderator_auth(db))
@@ -223,11 +227,13 @@ async fn edit_suggestion_form(
     user: User,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
+    let next_suggestion = submission.suggestion_anchor_ord;
     submit_suggestion(submission, tantivy, &user, &db).await;
     moderation_template(
         Some(Success {
             success: true,
             method: Some(Method::Edit),
+            next_suggestion,
         }),
         user,
         db,
@@ -384,7 +390,7 @@ async fn process_one(
         },
         ActionTarget::Word(suggestion) => match params.method {
             Method::Edit => {
-                return edit_suggestion_page(db, user, suggestion)
+                return edit_suggestion_page(db, user, suggestion, params.suggestion_anchor_ord)
                     .await
                     .map(Reply::into_response)
             }
@@ -417,6 +423,7 @@ async fn process_one(
         Some(Success {
             success,
             method: Some(params.method),
+            next_suggestion: params.suggestion_anchor_ord.checked_sub(1),
         }),
         user,
         db_clone,

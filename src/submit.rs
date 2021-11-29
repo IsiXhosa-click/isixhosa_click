@@ -50,6 +50,7 @@ enum SubmitFormAction {
     EditSuggestion {
         suggestion_id: u64,
         existing_id: Option<u64>,
+        suggestion_anchor_ord: u32,
     },
     SubmitNewWord,
     EditExisting(u64),
@@ -130,6 +131,10 @@ impl<'de> Deserialize<'de> for LinkedWordList {
 pub struct WordSubmission {
     pub suggestion_id: Option<u64>,
     pub existing_id: Option<u64>,
+
+    // Used only in moderation page
+    #[serde(default)]
+    pub suggestion_anchor_ord: Option<u32>,
 
     pub english: String,
     pub xhosa: String,
@@ -245,6 +250,7 @@ pub async fn edit_suggestion_page(
     db: impl UserAccessDb,
     user: User,
     suggestion_id: u64,
+    suggestion_anchor_ord: u32,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
     let existing_id = spawn_blocking_child(move || {
@@ -258,6 +264,7 @@ pub async fn edit_suggestion_page(
         SubmitFormAction::EditSuggestion {
             suggestion_id,
             existing_id,
+            suggestion_anchor_ord,
         },
         user,
         db,
@@ -450,7 +457,7 @@ async fn submit_word_page(
     let word = spawn_blocking_child(move || match action {
         SubmitFormAction::EditSuggestion {
             suggestion_id,
-            existing_id,
+            existing_id, ..
         } => WordFormTemplate::fetch_from_db(&db, existing_id, Some(suggestion_id))
             .unwrap_or_default(),
         SubmitFormAction::EditExisting(id) => {
@@ -512,17 +519,22 @@ where
 }
 
 #[instrument(level = "trace", name = "Suggest word deletion", skip(db))]
-pub async fn suggest_word_deletion(word_id: WordId, db: &impl UserAccessDb) {
+pub async fn suggest_word_deletion(
+    suggesting_user: &User,
+    word_id: WordId,
+    db: &impl UserAccessDb
+) {
     const STATEMENT: &str =
-        "INSERT INTO word_deletion_suggestions (word_id, reason) VALUES (?1, ?2);";
+        "INSERT INTO word_deletion_suggestions (word_id, reason, suggesting_user) VALUES (?1, ?2, ?3);";
 
     let db = db.clone();
+    let user_id = suggesting_user.id.get();
 
     spawn_blocking_child(move || {
         let conn = db.get().unwrap();
         conn.prepare(STATEMENT)
             .unwrap()
-            .execute(params![word_id.0, "No reason given"])
+            .execute(params![word_id.0, "No reason given", user_id])
             .unwrap();
     })
     .await

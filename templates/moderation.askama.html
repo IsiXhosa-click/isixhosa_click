@@ -6,7 +6,7 @@
     <title>Moderation - IsiXhosa.click</title>
     <meta name="og:title" content="Moderation - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/moderation"/>
-    <link rel="stylesheet" href="/moderation.css?v=3">
+    <link rel="stylesheet" href="/moderation.css?v=4">
     {%- call macros::meta() -%}
 </head>
 
@@ -21,7 +21,7 @@
         <main>
             {%- match previous_success -%}
                 {%- when Some with (prev) -%}
-                    <p>
+                    <p id="previous_success">
                         {%- if prev.success -%}
                             Success
 
@@ -61,8 +61,8 @@
 
             {%- match previous_success -%}
                 {%- when Some with (prev) -%}
-                    {%- if prev.success -%}
-                        <script>
+                    <script>
+                        {%- if prev.success -%}
                             /* HACK(restioson): stop F5 from resubmitting form */
                             if (window.history.replaceState) {
                                 window.history.replaceState(null, null, window.location.href);
@@ -70,8 +70,19 @@
 
                             /* HACK(restioson): move user back to /moderation */
                             history.replaceState(null, null, window.location.origin + "/moderation");
-                        </script>
-                    {%- endif -%}
+
+                            {%- match prev.next_suggestion -%}
+                                {%- when Some with (next) -%}
+                                    window.addEventListener("DOMContentLoaded", function() {
+                                        location.replace("#suggestion_{{ next }}");
+                                    });
+                                {%- when None -%}
+                            {%- endmatch -%}
+                        {%- else -%}
+                            /* Show the error */
+                            location.replace("#previous_success");
+                        {%- endif -%}
+                    </script>
                 {% when other -%}
             {%- endmatch -%}
 
@@ -139,6 +150,7 @@
                 >
                     <select name="suggestion_type" hidden><option value="{{ suggestion_type }}"></select>
                     <select name="suggestion" hidden><option value="{{ suggestion_id }}"></select>
+                    <select name="suggestion_anchor_ord" hidden><option value="{{ i + offset }}"></select>
                     <select name="method" hidden><option value="{{ method }}"></select>
                     <button type="submit">{{ label }}</button>
                 </form>
@@ -243,13 +255,14 @@
                 ) -%}
             {%- endmacro -%}
 
+            {%- let offset = 0 -%}
             <div id="suggestions">
                 {%- if !word_suggestions.is_empty() -%}
                     <h2>Suggested words</h2>
                 {%- endif -%}
                 <ul>
-                    {%- for s in word_suggestions -%}
-                        <li>
+                    {%- for (i, s) in word_suggestions.iter().enumerate() -%}
+                        <li id="suggestion_{{ offset + i }}">
                             <article class="column_list spaced_flex_list">
                                 <header>
                                    <h3 class="suggested_word_text">
@@ -381,12 +394,14 @@
                     {%- endfor -%}
                 </ul>
 
+                {%- let offset = offset + word_suggestions.len() -%}
+
                 {%- if !word_deletions.is_empty() -%}
                     <h2>Deletion suggestions</h2>
                 {%- endif -%}
                 <ul>
-                    {%- for s in word_deletions -%}
-                        <li>
+                    {%- for (i, s) in word_deletions.iter().enumerate() -%}
+                        <li id="suggestion_{{ offset + i }}">
                             <article class="column_list spaced_flex_list">
                                 <header>
                                     <del>
@@ -427,12 +442,14 @@
                     {%- endfor -%}
                 </ul>
 
+                {%- let offset = offset + word_deletions.len() -%}
+
                 {%- if !word_associated_edits.is_empty() -%}
                     <h2>Edited examples and linked words</h2>
                 {%- endif -%}
                 <ul>
-                    {%- for (word, assoc) in word_associated_edits -%}
-                        <li>
+                    {%- for (i, (word, assoc)) in word_associated_edits.iter().enumerate() -%}
+                        <li id="suggestion_{{ offset + i }}">
                             <article class="column_list">
                                 <header>
                                     <h3 class="suggested_word_text">
