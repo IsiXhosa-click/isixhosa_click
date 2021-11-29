@@ -9,8 +9,8 @@ use crate::database::WordOrSuggestionId;
 use crate::format::DisplayHtml;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
-use crate::{DebugBoxedExt, spawn_blocking_child};
 use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
+use crate::{spawn_blocking_child, DebugBoxedExt};
 use askama::Template;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
@@ -191,7 +191,9 @@ pub fn moderation(
         .and(warp::path::end())
         .and(submit_edit.or(edit_failed));
 
-    warp::path("moderation").and(root.or(submit_edit)).debug_boxed()
+    warp::path("moderation")
+        .and(root.or(submit_edit))
+        .debug_boxed()
 }
 
 #[instrument(name = "Display moderation template", skip_all)]

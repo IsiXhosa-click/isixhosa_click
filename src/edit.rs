@@ -6,10 +6,10 @@ use crate::submit::{
 };
 
 use crate::search::TantivyClient;
+use crate::DebugBoxedExt;
 use std::sync::Arc;
 use tracing::instrument;
 use warp::{body, Filter, Rejection, Reply};
-use crate::DebugBoxedExt;
 
 pub fn edit(
     db: DbBase,

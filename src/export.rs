@@ -261,6 +261,9 @@ impl WordRecord {
             Self::join_if_non_empty(&pos_info, " "),
             self.infinitive,
             class,
+            self.followed_by
+                .map(|s| format!("followed by {}", s.as_ref()))
+                .unwrap_or_default(),
         ];
 
         let xh_extra = Self::join_if_non_empty(&xh_extra, " - ");

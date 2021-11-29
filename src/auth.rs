@@ -3,7 +3,7 @@ use std::{convert::Infallible, sync::Arc};
 use crate::auth::db_impl::DbImpl;
 use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{spawn_blocking_child, Config, DebugExt, DebugBoxedExt};
+use crate::{spawn_blocking_child, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
@@ -429,8 +429,8 @@ async fn request_token(
 
     let mut token: Token = oidc_client.request_token(&openid_query.code).await?.into();
 
-    if let Some(mut id_token) = token.id_token.as_mut() {
-        oidc_client.decode_token(&mut id_token)?;
+    if let Some(id_token) = token.id_token.as_mut() {
+        oidc_client.decode_token(id_token)?;
         oidc_client.validate_token(id_token, Some(&nonce), None)?;
     } else {
         return Ok(None);

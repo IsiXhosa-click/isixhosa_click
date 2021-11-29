@@ -3,7 +3,7 @@ use crate::auth::{with_any_auth, Auth, DbBase};
 use crate::database::existing::ExistingWord;
 use crate::format::DisplayHtml;
 use crate::language::PartOfSpeech;
-use crate::{spawn_blocking_child, NotFound, DebugBoxedExt};
+use crate::{spawn_blocking_child, DebugBoxedExt, NotFound};
 use askama::Template;
 use tracing::instrument;
 use warp::{Filter, Rejection, Reply};

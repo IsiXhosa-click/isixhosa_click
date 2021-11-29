@@ -50,6 +50,7 @@ use tracing::{debug, info, instrument, Span};
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
+use warp::filters::BoxedFilter;
 use warp::http::header::CONTENT_TYPE;
 use warp::http::uri::Authority;
 use warp::http::{uri, StatusCode, Uri};
@@ -57,7 +58,6 @@ use warp::path::FullPath;
 use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
 use warp::{path, reply, Filter, Rejection, Reply};
-use warp::filters::BoxedFilter;
 use warp_reverse_proxy as proxy;
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
@@ -96,9 +96,10 @@ pub trait DebugBoxedExt: Filter {
 }
 
 impl<F> DebugBoxedExt for F
-    where F: Filter + Send + Sync + 'static,
-          F::Extract: Send,
-          F::Error: Into<Rejection>,
+where
+    F: Filter + Send + Sync + 'static,
+    F::Extract: Send,
+    F::Error: Into<Rejection>,
 {
     #[cfg(debug_assertions)]
     fn debug_boxed(self) -> BoxedFilter<Self::Extract> {
@@ -394,12 +395,14 @@ async fn server(cfg: Config) {
             .and(with_moderator_auth(db.clone()))
             .and_then(duplicate_search);
 
-        warp::path("search").and(
-            duplicate_search
-                .or(live_search)
-                .or(query_search)
-                .or(search_page),
-        ).debug_boxed()
+        warp::path("search")
+            .and(
+                duplicate_search
+                    .or(live_search)
+                    .or(query_search)
+                    .or(search_page),
+            )
+            .debug_boxed()
     };
 
     let simple_templates = {

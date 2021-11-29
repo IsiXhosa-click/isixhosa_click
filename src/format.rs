@@ -306,7 +306,7 @@ impl WordHit {
 
 impl MaybeEdited<WordHit> {
     pub fn hyperlinked(&self) -> MaybeEdited<HyperlinkWrapper<'_>> {
-        self.map(|x| HyperlinkWrapper(x))
+        self.map(HyperlinkWrapper)
     }
 }
 

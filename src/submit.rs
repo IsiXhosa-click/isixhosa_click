@@ -17,7 +17,7 @@ use crate::database::WordOrSuggestionId;
 use crate::format::DisplayHtml;
 use crate::language::NounClassExt;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{DebugBoxedExt, spawn_blocking_child};
+use crate::{spawn_blocking_child, DebugBoxedExt};
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use rusqlite::types::{ToSqlOutput, Value};
@@ -457,7 +457,8 @@ async fn submit_word_page(
     let word = spawn_blocking_child(move || match action {
         SubmitFormAction::EditSuggestion {
             suggestion_id,
-            existing_id, ..
+            existing_id,
+            ..
         } => WordFormTemplate::fetch_from_db(&db, existing_id, Some(suggestion_id))
             .unwrap_or_default(),
         SubmitFormAction::EditExisting(id) => {
@@ -522,7 +523,7 @@ where
 pub async fn suggest_word_deletion(
     suggesting_user: &User,
     word_id: WordId,
-    db: &impl UserAccessDb
+    db: &impl UserAccessDb,
 ) {
     const STATEMENT: &str =
         "INSERT INTO word_deletion_suggestions (word_id, reason, suggesting_user) VALUES (?1, ?2, ?3);";
