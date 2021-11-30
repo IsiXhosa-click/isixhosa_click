@@ -67,7 +67,10 @@ fn export(cfg: &Config, src: &Connection) {
             "commit",
             "-a",
             "-m",
-            &format!("Daily backup for {}", Utc::now().date()),
+            &format!(
+                "Daily backup for {}\n>\n>\non-behalf-of: @IsiXhosa-click <restiosondev@gmail.com>",
+                Utc::now().date()
+            ),
         ])
         .output()
         .unwrap();
