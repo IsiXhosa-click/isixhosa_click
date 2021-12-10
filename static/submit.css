@@ -20,13 +20,18 @@ table {
 .select_popover {
     position: absolute;
     box-sizing: border-box;
-    border: solid 1px lightgray;
-    border-radius: 0 0 3px 3px;
     background: white;
 
     list-style-type: none;
     padding: 0;
     margin: 0;
+}
+
+.select_popover > p {
+    border: solid 1px lightgray;
+    border-radius: 0 0 3px 3px;
+    max-width: 100%;
+    display: flex;
 }
 
 .select_popover:empty {
@@ -37,7 +42,7 @@ table {
     margin: 0;
 }
 
-.select_popover:last-child {
+li.select_list_option:last-child {
     border-radius: 0 0 3px 3px;
 }
 
@@ -110,7 +115,7 @@ ul.spaced_list:last-child {
 }
 
 .word_select_search:focus {
-    border-radius: 3px 3px 0 0;
+    border-radius: 3px
 }
 
 li.select_list_option {
@@ -131,11 +136,12 @@ button.select_list_option:active {
 button.select_list_option {
     background: white;
     border: solid 1px lightgray;
-    font-size: medium;
+    font-size: 0.9rem;
     border-radius: 0;
     box-sizing: border-box;
     width: 100%;
-    padding: 0;
+    padding: 5px;
+    text-align: left;
     margin: 0;
 }
 
