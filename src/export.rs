@@ -87,6 +87,7 @@ fn export(cfg: &Config, src: &Connection) {
     io::stdout().write_all(&output.stdout).unwrap();
     io::stderr().write_all(&output.stderr).unwrap();
 }
+
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct WordRecord {

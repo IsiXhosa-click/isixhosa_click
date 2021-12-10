@@ -18,6 +18,7 @@
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
 
+use std::collections::HashSet;
 use crate::auth::*;
 use crate::database::existing::ExistingWord;
 use crate::database::suggestion::SuggestedWord;
@@ -617,7 +618,7 @@ async fn duplicate_search(
     let include = IncludeResults::AcceptedAndAllSuggestions;
     let res = match suggestion.filter(|w| w.word_id.is_none()) {
         Some(w) => {
-            let mut results = tantivy
+            let english = tantivy
                 .search(w.english.current().clone(), include, true)
                 .await
                 .unwrap();
@@ -626,11 +627,13 @@ async fn duplicate_search(
                 .await
                 .unwrap();
 
+            let mut results = HashSet::with_capacity(english.len() + xhosa.len());
+            results.extend(english);
             results.extend(xhosa);
             results.retain(|res| !(res.id == query.suggestion.get() && res.is_suggestion));
             results
         }
-        None => vec![],
+        None => HashSet::new(),
     };
 
     Ok(reply::json(&res))
