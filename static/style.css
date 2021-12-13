@@ -337,7 +337,7 @@ ul.examples > li > p {
 }
 
 /* Show on screenreader only */
-.search_submit_button {
+.screenreader_only {
     position: absolute;
     width: 1px;
     height: 1px;

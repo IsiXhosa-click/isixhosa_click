@@ -14,7 +14,6 @@ use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
 use rusqlite::types::FromSql;
 use rusqlite::{params, OptionalExtension, Row};
-use std::array;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
@@ -832,7 +831,7 @@ impl SuggestedLinkedWord {
             existing("second_word_id"),
         ];
 
-        let mut iter = array::IntoIter::new(word_ids).flatten().take(2);
+        let mut iter = word_ids.into_iter().flatten().take(2);
 
         let mut next = |other_id| {
             let this_id = iter.next().unwrap();

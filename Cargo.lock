@@ -92,8 +92,8 @@ checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
 name = "askama"
-version = "0.11.0-beta.1"
-source = "git+https://github.com/djc/askama?rev=ed2e640#ed2e640dbdff88fe118d943fa0ea9ae00eb11555"
+version = "0.11.0"
+source = "git+https://github.com/djc/askama?rev=9531747#95317478ccb9baab3d1797d693e4c33008434b50"
 dependencies = [
  "askama_derive",
  "askama_escape",
@@ -104,8 +104,8 @@ dependencies = [
 
 [[package]]
 name = "askama_derive"
-version = "0.11.0-beta.1"
-source = "git+https://github.com/djc/askama?rev=ed2e640#ed2e640dbdff88fe118d943fa0ea9ae00eb11555"
+version = "0.11.0"
+source = "git+https://github.com/djc/askama?rev=9531747#95317478ccb9baab3d1797d693e4c33008434b50"
 dependencies = [
  "askama_shared",
  "proc-macro2",
@@ -115,12 +115,12 @@ dependencies = [
 [[package]]
 name = "askama_escape"
 version = "0.10.2"
-source = "git+https://github.com/djc/askama?rev=ed2e640#ed2e640dbdff88fe118d943fa0ea9ae00eb11555"
+source = "git+https://github.com/djc/askama?rev=9531747#95317478ccb9baab3d1797d693e4c33008434b50"
 
 [[package]]
 name = "askama_shared"
-version = "0.12.0-beta.1"
-source = "git+https://github.com/djc/askama?rev=ed2e640#ed2e640dbdff88fe118d943fa0ea9ae00eb11555"
+version = "0.12.0"
+source = "git+https://github.com/djc/askama?rev=9531747#95317478ccb9baab3d1797d693e4c33008434b50"
 dependencies = [
  "askama_escape",
  "humansize",
@@ -137,8 +137,8 @@ dependencies = [
 
 [[package]]
 name = "askama_warp"
-version = "0.11.0"
-source = "git+https://github.com/djc/askama?rev=ed2e640#ed2e640dbdff88fe118d943fa0ea9ae00eb11555"
+version = "0.12.0"
+source = "git+https://github.com/djc/askama?rev=9531747#95317478ccb9baab3d1797d693e4c33008434b50"
 dependencies = [
  "askama",
  "warp",

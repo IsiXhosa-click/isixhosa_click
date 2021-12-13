@@ -55,10 +55,11 @@
 
     <noscript>
         <form id="search" action="/search" method="GET" role="search">
-            <label for="query">Search for a word</label>
+            <label for="query" class="screenreader_only">Search for a word</label>
 
-            <input type="search" id="query" name="query" value="{{ start_query }}" autofocus class="searchbox_input" aria-labelledby="main_header" spellcheck="false">
-            <button type="submit" class="search_submit_button">Search</button>
+            <input type="search" id="query" name="query" value="{{ start_query }}" {#--#}
+                placeholder="Type an English or Xhosa word" autofocus class="searchbox_input" spellcheck="false">
+            <button type="submit" class="screenreader_only">Search</button>
         </form>
     </noscript>
 {%- endmacro -%}
