@@ -7,7 +7,7 @@
     <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/submit"/>
     {%- call macros::description("Submit a word to the free, open, online IsiXhosa.click dictionary for Xhosa and English.") -%}
-    <link rel="stylesheet" href="/submit.css?v=8">
+    <link rel="stylesheet" href="/submit.css">
     {%- call macros::meta() -%}
 </head>
 
@@ -339,10 +339,10 @@
             </form>
 
             <script type="module">
-                import { addExample, addExamples } from "/submit/example.js?v=2";
-                import { partOfSpeechChange } from "/submit/part_of_speech_specific.js?v=1";
-                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js?v=7";
-                import { addDuplicateSearchFor } from "/submit/duplicate.js?v=1";
+                import { addExample, addExamples } from "/submit/example.js";
+                import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
+                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
+                import { addDuplicateSearchFor } from "/submit/duplicate.js";
 
                 window.addEventListener("DOMContentLoaded", function() {
                     for (let input of document.getElementsByTagName("input")) {

@@ -6,7 +6,7 @@
     <title>Moderation - IsiXhosa.click</title>
     <meta name="og:title" content="Moderation - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/moderation"/>
-    <link rel="stylesheet" href="/moderation.css?v=4">
+    <link rel="stylesheet" href="/moderation.css">
     {%- call macros::meta() -%}
 </head>
 
@@ -87,7 +87,7 @@
             {%- endmatch -%}
 
             <script type="module">
-                import { formatResult } from "/live_search.js?v=9";
+                import { formatResult } from "/live_search.js";
 
                 function confirmWithDuplicates(suggestion_type, method, prompt, form, is_new_word, suggestion_id) {
                      document.getElementById("confirm_duplicates").innerHTML = "";

@@ -85,7 +85,7 @@
     <meta name="og:site_name" content="IsiXhosa.click"/>
     <meta name="og:logo" content="https://isixhosa.click/icons/icon-192.png"/>
     <meta name="og:image" content="https://isixhosa.click/icons/icon-192.png"/>
-    <link rel="stylesheet" href="/style.css?v=12">
+    <link rel="stylesheet" href="/style.css">
 
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
@@ -95,13 +95,13 @@
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="msapplication-config" content="/icons/browserconfig.xml">
     <meta name="theme-color" content="#484848">
-    <link rel="manifest" href="/manifest.webmanifest?v=2">
+    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="preload" type="image/png" as="image" href="/icons/icon-192.png">
 
     <script type="module">
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/service_worker.js?v=0').then(function(r) {}, function(err) {
+                navigator.serviceWorker.register('/service_worker.js').then(function(r) {}, function(err) {
                     console.log('ServiceWorker registration failed: ', err);
                 });
             });

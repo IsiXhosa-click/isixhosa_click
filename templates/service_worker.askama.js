@@ -1,7 +1,6 @@
 const OFFLINE_URL = "/offline";
-const CACHE_NAME = "isixhosa_click_cache_v1";
+const CACHE_NAME = "isixhosa_click_site_files_{{ COMMIT_HASH }}";
 
-// noinspection UnterminatedStatementJS
 const SITE_FILES = {{ static_files|json }};
 
 self.addEventListener("install", (event) => {
@@ -22,7 +21,7 @@ self.addEventListener('activate', function(event) {
         caches.keys().then(function(cacheNames) {
             return Promise.all(
                 cacheNames.filter(function(cacheName) {
-                    cacheName.endsWith("js") || cacheName.endsWith("css") || cacheName.endsWith("webmanifest")
+                    return cacheName !== CACHE_NAME;
                 }).map(function(cacheName) {
                     console.log("Deleting " + cacheName);
                     return caches.delete(cacheName);
@@ -66,9 +65,8 @@ self.addEventListener("fetch", (event) => {
         );
     } else {
         event.respondWith(
-            fetch(event.request).catch(async function() {
-                let cache = await caches.open(CACHE_NAME);
-                return await cache.match(event.request);
+            caches.match(event.request).then(function(response) {
+                return response || fetch(event.request);
             })
         );
     }

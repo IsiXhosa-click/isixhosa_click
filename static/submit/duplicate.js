@@ -1,4 +1,4 @@
-import { LiveSearch } from "/live_search.js?v=9";
+import { LiveSearch } from "/live_search.js";
 
 function createContainer() {
     let list = document.createElement("ol");
