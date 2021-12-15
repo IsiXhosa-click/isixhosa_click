@@ -1,31 +1,35 @@
 const OFFLINE_URL = "/offline";
 const CACHE_NAME = "isixhosa_click_cache_v1";
 
-const SITE_FILES = [
-    '/style.css?v=11',
-    '/icons/icon-192.png',
-    '/icons/icon-32.png',
-    '/icons/icon-16.png',
-    '/icons/favicon.ico',
-    'manifest.webmanifest?v=2',
-];
-
-const EXTERNAL_FILES = [
-    "https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,800&display=swap",
-    "https://fonts.googleapis.com/css?family=Roboto&display=swap",
-    "https://fonts.googleapis.com/icon?family=Material+Icons",
-];
+// noinspection UnterminatedStatementJS
+const SITE_FILES = {{ static_files|json }};
 
 self.addEventListener("install", (event) => {
+    console.log("Install!");
     event.waitUntil(
         (async () => {
             const cache = await caches.open(CACHE_NAME);
             await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
-            await cache.addAll(EXTERNAL_FILES);
             await cache.addAll(SITE_FILES);
         })()
     );
     self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+    console.log("Activate!");
+    event.waitUntil(
+        caches.keys().then(function(cacheNames) {
+            return Promise.all(
+                cacheNames.filter(function(cacheName) {
+                    cacheName.endsWith("js") || cacheName.endsWith("css") || cacheName.endsWith("webmanifest")
+                }).map(function(cacheName) {
+                    console.log("Deleting " + cacheName);
+                    return caches.delete(cacheName);
+                })
+            );
+        })
+    );
 });
 
 self.addEventListener('fetch', function(event) {});
@@ -41,7 +45,6 @@ self.addEventListener("activate", (event) => {
 
     self.clients.claim();
 });
-
 
 self.addEventListener("fetch", (event) => {
     if (event.request.mode === "navigate") {

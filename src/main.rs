@@ -26,6 +26,7 @@ use crate::search::{IncludeResults, TantivyClient, WordHit};
 use crate::serialization::false_fn;
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
+use chrono::{DateTime, Utc};
 use auth::auth;
 use details::details;
 use edit::edit;
@@ -53,7 +54,7 @@ use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
-use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE};
+use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE, LAST_MODIFIED};
 use warp::http::uri::Authority;
 use warp::http::{uri, HeaderValue, StatusCode, Uri};
 use warp::path::FullPath;
@@ -459,10 +460,44 @@ async fn server(cfg: Config) {
                 })
             });
 
+        let walk = || walkdir::WalkDir::new(&cfg.static_site_files)
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_type().is_file());
+
+        let static_files = walk()
+            .map(|entry| entry.path().strip_prefix(&cfg.static_site_files).unwrap().to_str().unwrap().to_owned())
+            .collect::<Vec<_>>();
+
+        let last_modified_static = walk()
+            .filter_map(|entry| entry.metadata().ok())
+            .filter_map(|meta| meta.modified().or(meta.created()).ok())
+            .max()
+            .unwrap();
+        let last_modified_static = DateTime::<Utc>::from(last_modified_static);
+        let last_modified_js = Utc::now(); // server boot time
+        let last_modified = std::cmp::max(last_modified_static, last_modified_js);
+        let last_modified = last_modified.format("%a, %d %m %Y %H:%M:%S GMT");
+        let last_modified = HeaderValue::from_str(&last_modified.to_string()).unwrap();
+
+        tracing::debug!("{:#?}", static_files);
+
+        let service_worker = warp::get()
+            .and(warp::path("service_worker.js"))
+            .and(warp::path::end())
+            .map(move || {
+                let template = ServiceWorker { static_files: static_files.clone() };
+                warp::http::Response::builder()
+                    .header(CONTENT_TYPE, HeaderValue::from_static("text/javascript"))
+                    .header(LAST_MODIFIED, last_modified.clone())
+                    .body(template.render().unwrap())
+                    .unwrap()
+            });
         terms_of_use
             .or(about)
             .or(style_guide)
             .or(offline)
+            .or(service_worker)
             .debug_boxed()
     };
 
@@ -589,6 +624,12 @@ struct TermsOfUse {
 #[template(path = "style_guide.askama.html")]
 struct StyleGuide {
     auth: Auth,
+}
+
+#[derive(Template, Clone, Debug)]
+#[template(path = "service_worker.askama.js", escape = "none")]
+struct ServiceWorker {
+    static_files: Vec<String>,
 }
 
 #[derive(Template, Clone, Debug)]

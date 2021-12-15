@@ -52,5 +52,6 @@ ordered-float = "2.8.0"
 csv = "1.1.6"
 tempdir = "0.3.7"
 genanki-rs = "0.1.2"
+walkdir = "2.3.2"
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability

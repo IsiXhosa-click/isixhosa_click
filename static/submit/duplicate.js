@@ -33,7 +33,7 @@ function createItemContainer(id, is_suggestion) {
 
 export function addDuplicateSearchFor(input_id, this_word_id) {
     let input = document.getElementById(input_id);
-    // noinspection EqualityComparisonWithCoercionJS -- this is done intentionally for string to number eq
+    /* noinspection EqualityComparisonWithCoercionJS -- this is done intentionally for string to number eq */
     new LiveSearch(
         input,
         document.querySelector(`#${input_id} + .duplicates_container > .duplicates_popover > .duplicates`),
