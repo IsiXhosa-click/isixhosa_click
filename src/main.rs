@@ -54,7 +54,7 @@ use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
-use warp::http::header::{CONTENT_TYPE, LAST_MODIFIED};
+use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE, LAST_MODIFIED};
 use warp::http::uri::Authority;
 use warp::http::{uri, HeaderValue, StatusCode, Uri};
 use warp::path::FullPath;
@@ -223,7 +223,7 @@ where
     Ok(Response::from_parts(parts, minified.into()))
 }
 
-async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
+async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     let response = reply.into_response();
 
     fn starts_with(mime: &str, pats: &[&str]) -> bool {
@@ -233,7 +233,7 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
         let mime = &content_type.to_str().unwrap().to_owned();
 
-        let response = if mime.starts_with("text/html") {
+        let mut response = if mime.starts_with("text/html") {
             #[allow(clippy::redundant_closure)] // lifetime issue
             process_body(response, |s| html_minifier::minify(s)).await?
         } else if starts_with(mime, &["text/javascript", "application/javascript"]) {
@@ -243,6 +243,13 @@ async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
         } else {
             response
         };
+
+        if mime.starts_with("font/woff2") {
+            response.headers_mut().insert(
+                CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=31536000"),
+            );
+        }
 
         Ok(response)
     } else {
@@ -352,7 +359,7 @@ fn set_up_db(conn: &Connection) {
 macro_rules! wrap_filter {
     ($f:expr) => {
         $f
-            .and_then(minify)
+            .and_then(minify_and_cache)
             .with(warp::trace(|info| {
                 tracing::info_span!(
                     "HTTPS request",
