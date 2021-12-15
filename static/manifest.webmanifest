@@ -1,7 +1,7 @@
 {
     "background_color": "white",
     "description": "The free, open IsiXhosa.click dictionary for Xhosa and English.",
-    "display": "minimal-ui",
+    "display": "standalone",
     "name": "IsiXhosa.click Live Dictionary",
     "short_name": "IsiXhosa.click",
     "start_url": "/",
