@@ -70,6 +70,7 @@ self.addEventListener("fetch", (event) => {
     }
 });
 
+/* TODO finish this
 const baseRegex = new RegExp(`${ window.location.hostname}`);
 
 if (window.matchMedia("(display-mode: standalone)").matches) {
@@ -82,3 +83,4 @@ if (window.matchMedia("(display-mode: standalone)").matches) {
         }
     } );
 }
+*/
