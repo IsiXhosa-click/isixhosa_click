@@ -7,7 +7,7 @@ const SITE_FILES = [
     '/icons/icon-32.png',
     '/icons/icon-16.png',
     '/icons/favicon.ico',
-    'manifest.webmanifest',
+    'manifest.webmanifest?v=2',
 ];
 
 const EXTERNAL_FILES = [

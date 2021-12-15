@@ -5,7 +5,7 @@
     "name": "IsiXhosa.click Live Dictionary",
     "short_name": "IsiXhosa.click",
     "start_url": "/",
-    "theme_color": "#ffffff",
+    "theme_color": "#484848",
     "icons": [
             {
                 "src": "icons/icon-16.png",
