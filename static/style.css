@@ -391,28 +391,40 @@ button.disabled {
     color: #6d6d6d
 }
 
-[data-descr] {
+[data-descr], [data-tooltip] {
     position: relative;
-    text-decoration: underline;
-    text-decoration-style: dotted;
-    cursor: help;
 }
 
-[data-descr]:hover::after, [data-descr]:focus::after {
-    content: attr(data-descr);
+[data-descr]:hover::after, [data-descr]:focus::after, [data-tooltip]:focus::after {
     position: absolute;
     left: 0;
     top: 2em;
-    min-width: 20em;
     border: 1px #aaaaaa solid;
     border-radius: 10px;
     background-color: #ffffcc;
     padding: 12px;
     color: #080808;
-    font-size: 1em;
+    font-size: 1rem;
     font-weight: normal;
     z-index: 1;
 }
+
+[data-descr] {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+[data-descr]:hover::after, [data-descr]:focus::after {
+    min-width: 20em;
+    content: attr(data-descr);
+}
+
+[data-tooltip]:focus::after {
+    content: attr(data-tooltip);
+    right: 3rem;
+    min-width: 6rem;
+ }
 
 :target {
     background-color: #ffffcc;

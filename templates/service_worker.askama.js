@@ -15,7 +15,7 @@ self.addEventListener("install", (event) => {
     self.skipWaiting();
 });
 
-self.addEventListener('activate', function(event) {
+self.addEventListener("activate", function(event) {
     console.log("Activate!");
     event.waitUntil(
         caches.keys().then(function(cacheNames) {
@@ -69,3 +69,16 @@ self.addEventListener("fetch", (event) => {
         );
     }
 });
+
+const baseRegex = new RegExp(`${ window.location.hostname}`);
+
+if (window.matchMedia("(display-mode: standalone)").matches) {
+    window.addEventListener("click", function(event) {
+        if (event.target.tagName === "a" && !baseRegex.test(event.target.href)) {
+            window.open( event.target.href );
+            event.preventDefault();
+        } else {
+            document.getElementById("loading_indicator").classList.add("active");
+        }
+    } );
+}

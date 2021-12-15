@@ -21,6 +21,11 @@
                 <div>
                     <header id="word_header" class="row_list">
                         <h1>{{ word.english }} - <span lang="xh">{{ word.xhosa }}</span></h1>
+
+                        <button id="share_word" hidden>
+                            <span class="material-icons">share</span>
+                        </button>
+
                         <a id="edit_word" title="Suggest edit" href="/word/{{ word.word_id }}/edit">
                             <span class="material-icons">edit</span>
                         </a>
@@ -221,6 +226,31 @@
             </article>
         </main>
     </div>
+
+    <script>
+        window.addEventListener("DOMContentLoaded", function() {
+            let share = document.getElementById("share_word");
+            if (navigator.share || navigator.clipboard.writeText) {
+                share.hidden = false;
+            }
+
+            document.getElementById("share_word").addEventListener("click", function() {
+                let url = "https://isixhosa.click/word/{{ word.word_id }}";
+                if (navigator.share) {
+                    navigator.share({
+                        title: "{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click",
+                        text: "{{ word.to_plaintext() }}",
+                        url,
+                    })
+                    .then(() => console.log("Successful share"))
+                    .catch((error) => console.log("Error sharing", error));
+                } else if (navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url);
+                    share.setAttribute("data-tooltip", "Link copied!");
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

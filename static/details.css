@@ -8,11 +8,11 @@ td:first-child, th:first-child {
     align-self: center;
 }
 
-#word_header > form > button {
+#word_header button {
     padding: 0;
 }
 
-#word_header > a, #word_header > form > button {
+#word_header > a, #word_header button {
     align-self: center;
     border: solid 1px lightgray;
     background: white;
