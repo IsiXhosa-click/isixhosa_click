@@ -10,12 +10,18 @@ const SITE_FILES = [
     'manifest.webmanifest',
 ];
 
+const EXTERNAL_FILES = [
+    "https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,800&display=swap",
+    "https://fonts.googleapis.com/css?family=Roboto&display=swap",
+    "https://fonts.googleapis.com/icon?family=Material+Icons",
+];
+
 self.addEventListener("install", (event) => {
     event.waitUntil(
         (async () => {
             const cache = await caches.open(CACHE_NAME);
             await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
-            await cache.add(new Request("https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,800", {}));
+            await cache.addAll(EXTERNAL_FILES);
             await cache.addAll(SITE_FILES);
         })()
     );

@@ -51,6 +51,7 @@ use tracing::{debug, info, instrument, Span};
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
+#[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
 use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE};
 use warp::http::uri::Authority;
