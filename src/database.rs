@@ -2,20 +2,20 @@
 
 use std::convert::TryFrom;
 
+use isixhosa::noun::NounClass;
 use rusqlite::{params, OptionalExtension, Row};
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, Span};
 
 use crate::auth::{ModeratorAccessDb, PublicAccessDb, PublicUserInfo};
 use crate::language::NounClassExt;
 use crate::search::WordHit;
 use crate::serialization::GetWithSentinelExt;
 use crate::serialization::SerOnlyDisplay;
-use crate::submit::WordId;
-use isixhosa::noun::NounClass;
-use tracing::{instrument, Span};
 
 pub mod deletion;
 pub mod existing;
+pub mod submit;
 pub mod suggestion;
 pub mod user;
 
@@ -182,3 +182,6 @@ impl TryFrom<&Row<'_>> for WordOrSuggestionId {
         WordOrSuggestionId::try_from_row(row, "existing_word_id", "suggested_word_id")
     }
 }
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct WordId(pub u64);

@@ -1,23 +1,26 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use askama::Template;
+use serde::Deserialize;
+use serde_with::{serde_as, DisplayFromStr};
+use tracing::{error, instrument, Span};
+use warp::{body, Filter, Rejection, Reply};
+
 use crate::auth::ModeratorAccessDb;
 use crate::auth::{with_moderator_auth, Auth, DbBase, User};
 use crate::database::deletion::{
     ExampleDeletionSuggestion, LinkedWordDeletionSuggestion, WordDeletionSuggestion,
 };
 use crate::database::existing::ExistingWord;
+use crate::database::submit::{submit_suggestion, WordSubmission};
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
-use crate::database::WordOrSuggestionId;
+use crate::database::{WordId, WordOrSuggestionId};
 use crate::format::DisplayHtml;
 use crate::search::{TantivyClient, WordHit};
 use crate::serialization::qs_form;
-use crate::submit::{edit_suggestion_page, submit_suggestion, WordId, WordSubmission};
+use crate::submit::edit_suggestion_page;
 use crate::{spawn_blocking_child, DebugBoxedExt};
-use askama::Template;
-use serde::Deserialize;
-use serde_with::{serde_as, DisplayFromStr};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tracing::{error, instrument, Span};
-use warp::{body, Filter, Rejection, Reply};
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]

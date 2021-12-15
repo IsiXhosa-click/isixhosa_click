@@ -18,7 +18,6 @@
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
 
-use std::collections::HashSet;
 use crate::auth::*;
 use crate::database::existing::ExistingWord;
 use crate::database::suggestion::SuggestedWord;
@@ -39,6 +38,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::num::NonZeroU64;
@@ -52,9 +52,9 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
 use warp::filters::BoxedFilter;
-use warp::http::header::CONTENT_TYPE;
+use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE};
 use warp::http::uri::Authority;
-use warp::http::{uri, StatusCode, Uri};
+use warp::http::{uri, StatusCode, Uri, HeaderValue};
 use warp::path::FullPath;
 use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
@@ -219,23 +219,35 @@ where
     Ok(Response::from_parts(parts, minified.into()))
 }
 
-async fn minify<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
+async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     let response = reply.into_response();
-    if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
-        let mime = content_type.to_str().unwrap();
 
-        if mime.starts_with("text/html") {
-            #[allow(clippy::redundant_closure)] // lifetime issue
-            return process_body(response, |s| html_minifier::minify(s)).await;
-        } else if mime.starts_with("text/javascript") || mime.starts_with("application/javascript")
-        {
-            return process_body(response, |s| Ok::<String, ()>(minifier::js::minify(s))).await;
-        } else if mime.starts_with("text/css") {
-            return process_body(response, minifier::css::minify).await;
-        }
+    fn starts_with(mime: &str, pats: &[&str]) -> bool {
+        pats.iter().any(|pat| mime.starts_with(pat))
     }
 
-    Ok(response)
+    if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
+        let mime = &content_type.to_str().unwrap().to_owned();
+
+        let mut response = if mime.starts_with("text/html") {
+            #[allow(clippy::redundant_closure)] // lifetime issue
+            process_body(response, |s| html_minifier::minify(s)).await?
+        } else if starts_with(mime, &["text/javascript", "application/javascript"]) {
+            process_body(response, |s| Ok::<String, ()>(minifier::js::minify(s))).await?
+        } else if mime.starts_with("text/css") {
+            process_body(response, minifier::css::minify).await?
+        } else {
+            response
+        };
+
+        if starts_with(mime, &["text/javascript", "application/javascript", "text/css", "image/png", "font/woff", "font/woff2"]) {
+            response.headers_mut().insert(CACHE_CONTROL, HeaderValue::from_static("public, max-age=31536000"));
+        }
+
+        Ok(response)
+    } else {
+        Ok(response)
+    }
 }
 
 #[instrument(name = "Handle errors")]
@@ -340,7 +352,7 @@ fn set_up_db(conn: &Connection) {
 macro_rules! wrap_filter {
     ($f:expr) => {
         $f
-            .and_then(minify)
+            .and_then(minify_and_cache)
             .with(warp::trace(|info| {
                 tracing::info_span!(
                     "HTTPS request",
@@ -415,6 +427,10 @@ async fn server(cfg: Config) {
             .and(path::end())
             .and(with_any_auth(db.clone()))
             .map(|auth, _| StyleGuide { auth });
+        let offline = warp::get()
+            .and(warp::path("offline"))
+            .and(path::end())
+            .map(|| Offline);
 
         let about = warp::get()
             .and(warp::path("about"))
@@ -429,7 +445,8 @@ async fn server(cfg: Config) {
                 })
             });
 
-        terms_of_use.or(about).or(style_guide).debug_boxed()
+
+        terms_of_use.or(about).or(style_guide).or(offline).debug_boxed()
     };
 
     let redirects = {
@@ -557,6 +574,10 @@ struct StyleGuide {
     auth: Auth,
 }
 
+#[derive(Template, Clone, Debug)]
+#[template(path = "offline.askama.html")]
+struct Offline;
+
 #[derive(Template)]
 #[template(path = "search.askama.html")]
 struct Search {
@@ -630,7 +651,13 @@ async fn duplicate_search(
             let mut results = HashSet::with_capacity(english.len() + xhosa.len());
             results.extend(english);
             results.extend(xhosa);
-            results.retain(|res| !(res.id == query.suggestion.get() && res.is_suggestion));
+            // Exclude this suggestion and the original of this suggestion (the word being edited)
+            results.retain(|res| {
+                let is_this_suggestion = res.id == query.suggestion.get() && res.is_suggestion;
+                let is_original = Some(res.id) == w.word_id && !res.is_suggestion;
+                dbg!(res, is_this_suggestion, is_original);
+                !(is_this_suggestion || is_original)
+            });
             results
         }
         None => HashSet::new(),

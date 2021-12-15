@@ -1,6 +1,7 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
 use crate::database::existing::{ExistingExample, ExistingWord};
+use crate::format::DisplayHtml;
 use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::{set_up_db, Config};
 use chrono::Utc;
@@ -19,7 +20,6 @@ use std::io::{BufReader, BufWriter, Write};
 use std::process::Command;
 use std::time::Duration;
 use tempdir::TempDir;
-use crate::format::DisplayHtml;
 
 // TODO(restore users)
 pub fn restore(cfg: Config) {
@@ -222,7 +222,6 @@ impl WordRecord {
         ];
 
         let en_extra = Self::join_if_non_empty(&en_extra, " ");
-
 
         let class = match self.noun_class {
             Some(class) => format!("class {}", class.to_html()),

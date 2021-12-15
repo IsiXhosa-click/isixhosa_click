@@ -1,8 +1,8 @@
 use crate::auth::{ModeratorAccessDb, PublicUserInfo};
 use crate::database::existing::{ExistingExample, ExistingLinkedWord};
+use crate::database::WordId;
 use crate::database::WordOrSuggestionId;
 use crate::search::WordHit;
-use crate::submit::WordId;
 use fallible_iterator::FallibleIterator;
 use rusqlite::{params, Row};
 use std::collections::HashMap;

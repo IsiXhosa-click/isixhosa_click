@@ -1,12 +1,12 @@
 use crate::auth::{ModeratorAccessDb, PublicUserInfo, UserAccessDb};
 use crate::database::existing::ExistingExample;
 use crate::database::existing::ExistingWord;
+use crate::database::WordId;
 use crate::database::{add_attribution, WordOrSuggestionId};
 use crate::format::DisplayHtml;
 use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::search::{TantivyClient, WordDocument, WordHit};
 use crate::serialization::WithDeleteSentinel;
-use crate::submit::WordId;
 use crate::DebugExt;
 use fallible_iterator::FallibleIterator;
 use futures::executor::block_on;
@@ -550,7 +550,6 @@ pub struct SuggestedLinkedWord {
 }
 
 impl SuggestedLinkedWord {
-    // TODO have hit here?
     #[instrument(name = "Fetch suggested linked word", skip(db))]
     pub fn fetch(db: &impl UserAccessDb, suggestion: u64) -> SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "

@@ -44,6 +44,7 @@ function createLinkedWordSearch(preset_word, this_id) {
     input.type = "text";
     input.name = `linked_words[${current_linked_word_id}][other]`;
     input.autocomplete = "off";
+    input.setAttribute("aria-label", "Search for a word to link");
     input.setAttribute("data-lpignore", "true");
     input.addEventListener("focus", selectFocusIn);
     input.addEventListener("blur", selectFocusOut);

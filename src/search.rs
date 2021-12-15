@@ -418,6 +418,8 @@ impl SearcherActor {
 
 impl Actor for SearcherActor {}
 
+// TODO need to add duplicate_of: Option<thingie> or a separate live search idk
+
 pub struct SearchRequest {
     query: String,
     include: IncludeResults,
@@ -580,7 +582,7 @@ impl Handler<SearchRequest> for SearcherActor {
             }
         }
 
-        req.query = req.query.to_lowercase().replace("(", "").replace(")", "");
+        req.query = req.query.to_lowercase().replace('(', "").replace(')', "");
         req.query.truncate(64);
 
         let mut searcher = self.reader.searcher();
@@ -589,7 +591,6 @@ impl Handler<SearchRequest> for SearcherActor {
 
         spawn_blocking_child(move || {
             for level in 0..=2 {
-                // TODO just check if it has enough don't actually search it necessarily
                 SearcherActor::query_terms(&mut searcher, &client, level, &req, &mut results);
 
                 if results.len() >= RESULTS {

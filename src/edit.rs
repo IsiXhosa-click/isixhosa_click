@@ -1,15 +1,16 @@
-use crate::auth::{with_user_auth, DbBase, User, UserAccessDb};
-use crate::details::{word, WordChangeMethod};
-use crate::serialization::qs_form;
-use crate::submit::{
-    edit_word_page, submit_suggestion, suggest_word_deletion, WordId, WordSubmission,
-};
-
-use crate::search::TantivyClient;
-use crate::DebugBoxedExt;
 use std::sync::Arc;
+
 use tracing::instrument;
 use warp::{body, Filter, Rejection, Reply};
+
+use crate::auth::{with_user_auth, DbBase, User, UserAccessDb};
+use crate::database::submit::{submit_suggestion, suggest_word_deletion, WordSubmission};
+use crate::database::WordId;
+use crate::details::{word, WordChangeMethod};
+use crate::search::TantivyClient;
+use crate::serialization::qs_form;
+use crate::submit::edit_word_page;
+use crate::DebugBoxedExt;
 
 pub fn edit(
     db: DbBase,
