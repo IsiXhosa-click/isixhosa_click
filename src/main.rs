@@ -54,7 +54,7 @@ use warp::filters::compression::gzip;
 use warp::filters::BoxedFilter;
 use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE};
 use warp::http::uri::Authority;
-use warp::http::{uri, StatusCode, Uri, HeaderValue};
+use warp::http::{uri, HeaderValue, StatusCode, Uri};
 use warp::path::FullPath;
 use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
@@ -240,8 +240,21 @@ async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
             response
         };
 
-        if starts_with(mime, &["text/javascript", "application/javascript", "text/css", "image/png", "font/woff", "font/woff2"]) {
-            response.headers_mut().insert(CACHE_CONTROL, HeaderValue::from_static("public, max-age=31536000"));
+        if starts_with(
+            mime,
+            &[
+                "text/javascript",
+                "application/javascript",
+                "text/css",
+                "image/png",
+                "font/woff",
+                "font/woff2",
+            ],
+        ) {
+            response.headers_mut().insert(
+                CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=31536000"),
+            );
         }
 
         Ok(response)
@@ -445,8 +458,11 @@ async fn server(cfg: Config) {
                 })
             });
 
-
-        terms_of_use.or(about).or(style_guide).or(offline).debug_boxed()
+        terms_of_use
+            .or(about)
+            .or(style_guide)
+            .or(offline)
+            .debug_boxed()
     };
 
     let redirects = {
