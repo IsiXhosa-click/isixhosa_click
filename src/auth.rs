@@ -1,4 +1,4 @@
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 use crate::auth::db_impl::DbImpl;
 use crate::format::{DisplayHtml, HtmlFormatter};
@@ -22,17 +22,111 @@ use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use tracing::{debug, error, instrument, Span};
+use url::Url;
 use warp::http::uri;
 use warp::path::FullPath;
 use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-type OpenIDClient = Client<Discovered, StandardClaims>;
+use xtra::{Actor, Address, Context, Handler, Message};
+use xtra::spawn::TokioGlobalSpawnExt;
+
+type OpenIDClient = Address<OidcActor>;
 
 lazy_static::lazy_static! {
     pub static ref IN_PROGRESS_SIGN_INS: DashMap<SignInSessionId, SignInState> = DashMap::new();
     pub static ref MAX_OIDC_AGE: chrono::Duration = chrono::Duration::minutes(20);
+}
+
+struct OidcActor {
+    client: Client<Discovered, StandardClaims>,
+    client_id: String,
+    client_secret: String,
+    redirect: String,
+    issuer: Url,
+}
+
+impl OidcActor {
+    async fn new_client(client_id: &str, client_secret: &str, redirect: &str, issuer: &Url) -> Client<Discovered, StandardClaims> {
+        DiscoveredClient::discover(
+            client_id.to_owned(),
+            client_secret.to_owned(),
+            Some(redirect.to_owned()),
+            issuer.clone(),
+        ).await.unwrap()
+    }
+
+    async fn new(client_id: String, client_secret: String, redirect: String, issuer: Url) -> Self {
+        Self {
+            client: Self::new_client(&client_id, &client_secret, &redirect, &issuer).await,
+            client_id,
+            client_secret,
+            redirect,
+            issuer,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Actor for OidcActor {
+    async fn started(&mut self, ctx: &mut Context<Self>) {
+        const INTERVAL: Duration = Duration::from_secs(60 * 60 * 24); // 24 hours
+        tokio::spawn(ctx.notify_interval(INTERVAL, || RefreshClient).unwrap());
+    }
+}
+
+struct RefreshClient;
+
+impl Message for RefreshClient {
+    type Result = ();
+}
+
+#[async_trait::async_trait]
+impl Handler<RefreshClient> for OidcActor {
+    async fn handle(&mut self, _msg: RefreshClient, _ctx: &mut Context<Self>) {
+        self.client = Self::new_client(&self.client_id, &self.client_secret, &self.redirect, &self.issuer).await;
+    }
+}
+
+struct GetAuthUrl(Options);
+
+impl Message for GetAuthUrl {
+    type Result = Url;
+}
+
+#[async_trait::async_trait]
+impl Handler<GetAuthUrl> for OidcActor {
+    async fn handle(&mut self, options: GetAuthUrl, _: &mut Context<Self>) -> Url {
+        self.client.auth_url(&options.0)
+    }
+}
+
+struct RequestToken {
+    code: String,
+    nonce: String,
+}
+
+impl Message for RequestToken {
+    type Result = anyhow::Result<Option<(Token, Userinfo)>>;
+}
+
+#[async_trait::async_trait]
+impl Handler<RequestToken> for OidcActor {
+    async fn handle(&mut self, req: RequestToken, _: &mut Context<Self>) -> anyhow::Result<Option<(Token, Userinfo)>> {
+        let mut token: Token = self.client.request_token(&req.code).await?.into();
+
+        if let Some(id_token) = token.id_token.as_mut() {
+            self.client.decode_token(id_token)?;
+            self.client.validate_token(id_token, Some(&req.nonce), None)?;
+        } else {
+            return Ok(None);
+        }
+
+        let userinfo = self.client.request_userinfo(&token).await?;
+
+        Ok(Some((token, userinfo)))
+    }
 }
 
 const STAY_LOGGED_IN_COOKIE: &str = "isixhosa_click_login_token";
@@ -265,16 +359,10 @@ pub async fn auth(
 
     let issuer = url::Url::parse("https://accounts.google.com").unwrap();
 
-    let client = Arc::new(
-        DiscoveredClient::discover(
-            cfg.oidc_client.clone(),
-            cfg.oidc_secret.clone(),
-            Some(redirect),
-            issuer,
-        )
+    let client = OidcActor::new(cfg.oidc_client.clone(), cfg.oidc_secret.clone(), redirect, issuer)
         .await
-        .unwrap(),
-    );
+        .create(Some(32))
+        .spawn_global();
 
     let (host, https_port) = (cfg.host.clone(), cfg.https_port);
     let with_client_host = warp::any()
@@ -339,7 +427,7 @@ pub fn random_string_token() -> String {
 }
 
 async fn reply_authorize(
-    oidc_client: Arc<OpenIDClient>,
+    oidc_client: OpenIDClient,
     host_uri_builder: uri::Builder,
     redirect: LoginRedirectQuery,
 ) -> Result<impl warp::Reply, Infallible> {
@@ -355,13 +443,13 @@ async fn reply_authorize(
     let session_id = SignInSessionId(random_string_token());
     let nonce = random_string_token();
 
-    let auth_url = oidc_client.auth_url(&Options {
+    let auth_url = oidc_client.send(GetAuthUrl(Options {
         scope: Some("openid email".into()),
         state: Some(serde_json::to_string(&state).unwrap()),
         nonce: Some(nonce.clone()),
         max_age: Some(*MAX_OIDC_AGE),
         ..Default::default()
-    });
+    })).await.unwrap();
 
     let session_id_cookie = Cookie::build(SIGN_IN_SESSION_ID, &session_id.0)
         .path("/")
@@ -389,7 +477,7 @@ async fn reply_authorize(
 }
 
 async fn request_token(
-    oidc_client: Arc<OpenIDClient>,
+    oidc_client: OpenIDClient,
     session_id: &SignInSessionId,
     openid_query: &OpenIdLoginQuery,
 ) -> anyhow::Result<Option<(Token, Userinfo)>> {
@@ -427,24 +515,15 @@ async fn request_token(
         return Err(SignInInvalid::CsrfToken.into());
     }
 
-    let mut token: Token = oidc_client.request_token(&openid_query.code).await?.into();
+    let res = oidc_client.send(RequestToken { code: openid_query.code.clone(), nonce }).await.unwrap();
 
-    if let Some(id_token) = token.id_token.as_mut() {
-        oidc_client.decode_token(id_token)?;
-        oidc_client.validate_token(id_token, Some(&nonce), None)?;
-    } else {
-        return Ok(None);
-    }
-
-    let userinfo = oidc_client.request_userinfo(&token).await?;
-
-    Ok(Some((token, userinfo)))
+    res
 }
 
 async fn reply_login(
     openid_query: OpenIdLoginQuery,
     session_id: SignInSessionId,
-    oidc_client: Arc<OpenIDClient>,
+    oidc_client: OpenIDClient,
     host_builder: uri::Builder,
     db: impl PublicAccessDb,
 ) -> Result<impl warp::Reply, Infallible> {
@@ -548,7 +627,7 @@ async fn reply_insert_session(
 async fn signup_form_submit(
     form: SignupForm,
     session_id: SignInSessionId,
-    _oidc_client: Arc<OpenIDClient>,
+    _oidc_client: OpenIDClient,
     host_uri_builder: uri::Builder,
     db: impl PublicAccessDb,
 ) -> Result<impl warp::Reply, Infallible> {
