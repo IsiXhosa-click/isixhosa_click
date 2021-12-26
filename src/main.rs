@@ -54,7 +54,7 @@ use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
-use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE, LAST_MODIFIED};
+use warp::http::header::{CACHE_CONTROL, CONTENT_ENCODING, CONTENT_TYPE, LAST_MODIFIED};
 use warp::http::uri::Authority;
 use warp::http::{uri, HeaderValue, StatusCode, Uri};
 use warp::path::FullPath;
@@ -243,6 +243,11 @@ async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
         } else {
             response
         };
+
+        if starts_with(mime, &["text", "application/json"]) && !mime.contains("charset=UTF-8") {
+            let new_content_type = HeaderValue::from_str(&format!("{}; charset=UTF-8", mime)).unwrap();
+            response.headers_mut().insert(CONTENT_TYPE, new_content_type);
+        }
 
         if mime.starts_with("font/woff2") {
             response.headers_mut().insert(
@@ -471,8 +476,6 @@ async fn server(cfg: Config) {
         let last_modified = std::cmp::max(last_modified_static, last_modified_js);
         let last_modified = last_modified.format("%a, %d %m %Y %H:%M:%S GMT");
         let last_modified = HeaderValue::from_str(&last_modified.to_string()).unwrap();
-
-        tracing::debug!("{:#?}", static_files);
 
         let service_worker = warp::get()
             .and(warp::path("service_worker.js"))
