@@ -244,7 +244,7 @@ async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
             response
         };
 
-        if starts_with(mime, &["text", "application/json"]) && !mime.contains("charset=UTF-8") {
+        if starts_with(mime, &["text", "application/javascript"]) && !mime.contains("charset=UTF-8") {
             let new_content_type = HeaderValue::from_str(&format!("{}; charset=UTF-8", mime)).unwrap();
             response.headers_mut().insert(CONTENT_TYPE, new_content_type);
         }
