@@ -13,7 +13,12 @@
     box-sizing: border-box;
     width: 100%;
     font-size: medium;
-    outline-offset: -2px;
+}
+
+@-moz-document url-prefix() {
+    .searchbox_input {
+        outline-offset: -2px;
+    }
 }
 
 .searchbox_input:focus {

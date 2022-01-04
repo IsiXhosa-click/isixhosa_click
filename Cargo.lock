@@ -1319,6 +1319,7 @@ dependencies = [
  "genanki-rs",
  "html-minifier",
  "isixhosa",
+ "itertools",
  "lazy_static",
  "minifier",
  "num_cpus",
@@ -1354,9 +1355,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.0"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
+checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
 dependencies = [
  "either",
 ]

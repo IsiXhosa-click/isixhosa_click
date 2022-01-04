@@ -111,7 +111,12 @@ ul.spaced_list:last-child {
 
 .word_select_search {
     flex-grow: 1;
-    outline-offset: -2px;
+}
+
+@-moz-document url-prefix() {
+    .word_select_search {
+        outline-offset: -2px;
+    }
 }
 
 .word_select_search:focus {

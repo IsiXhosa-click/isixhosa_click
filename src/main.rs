@@ -78,7 +78,8 @@ mod serialization;
 mod session;
 mod submit;
 
-const COMMIT_HASH: &str = env!("GIT_HASH");
+const STATIC_FILES_HASH: &str = env!("GIT_HASH");
+const STATIC_BIN_FILES_HASH: &str = env!("GIT_BIN_FILES_HASH");
 
 pub fn spawn_blocking_child<F, R>(f: F) -> JoinHandle<R>
 where
@@ -462,16 +463,21 @@ async fn server(cfg: Config) {
             .filter_map(Result::ok)
             .filter(|entry| entry.file_type().is_file());
 
-        let static_files = walk()
+        fn ends_with(entry: &str, pats: &[&str]) -> bool {
+            pats.iter().any(|pat| entry.ends_with(pat))
+        }
+
+        let (bin_files, static_files) = walk()
             .map(|entry| entry.path().strip_prefix(&cfg.static_site_files).unwrap().to_str().unwrap().to_owned())
-            .filter(|entry| !entry.starts_with("LICENSE"))
-            .collect::<Vec<_>>();
+            .filter(|entry: &String| !entry.contains("LICENSE"))
+            .partition::<Vec<_>, _>(|entry| ends_with(entry, &["png", "svg", "woff2", "ico"]));
 
         let last_modified_static = walk()
             .filter_map(|entry| entry.metadata().ok())
             .filter_map(|meta| meta.modified().or(meta.created()).ok())
             .max()
             .unwrap();
+
         let last_modified_static = DateTime::<Utc>::from(last_modified_static);
         let last_modified_js = Utc::now(); // server boot time
         let last_modified = std::cmp::max(last_modified_static, last_modified_js);
@@ -482,7 +488,10 @@ async fn server(cfg: Config) {
             .and(warp::path("service_worker.js"))
             .and(warp::path::end())
             .map(move || {
-                let template = ServiceWorker { static_files: static_files.clone() };
+                let template = ServiceWorker {
+                    static_files: static_files.clone(),
+                    static_bin_files: bin_files.clone(),
+                };
                 warp::http::Response::builder()
                     .header(CONTENT_TYPE, HeaderValue::from_static("text/javascript"))
                     .header(LAST_MODIFIED, last_modified.clone())
@@ -626,6 +635,7 @@ struct StyleGuide {
 #[template(path = "service_worker.askama.js", escape = "none")]
 struct ServiceWorker {
     static_files: Vec<String>,
+    static_bin_files: Vec<String>,
 }
 
 #[derive(Template, Clone, Debug)]

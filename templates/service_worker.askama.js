@@ -1,18 +1,22 @@
 const OFFLINE_URL = "/offline";
-const CACHE_NAME = "isixhosa_click_site_files_{{ COMMIT_HASH }}";
+const STATIC_FILES_CACHE = "isixhosa_click_site_files_{{ STATIC_FILES_HASH }}";
+const STATIC_BIN_FILES_CACHE = "isixhosa_click_site_bin_files_{{ STATIC_BIN_FILES_HASH }}";
 
 const SITE_FILES = {{ static_files|json }};
+const BIN_FILES = {{ static_bin_files|json }};
 
 self.addEventListener("install", (event) => {
     console.log("Install!");
     event.waitUntil(
         (async () => {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
-            await cache.addAll(SITE_FILES);
+            const site_files_cache = await caches.open(STATIC_FILES_CACHE);
+            await site_files_cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
+            await site_files_cache.addAll(SITE_FILES);
+
+            const bin_files_cache = await caches.open(STATIC_BIN_FILES_CACHE);
+            await bin_files_cache.addAll(BIN_FILES);
         })()
     );
-    self.skipWaiting();
 });
 
 self.addEventListener("activate", function(event) {
@@ -21,7 +25,7 @@ self.addEventListener("activate", function(event) {
         caches.keys().then(function(cacheNames) {
             return Promise.all(
                 cacheNames.filter(function(cacheName) {
-                    return cacheName !== CACHE_NAME;
+                    return (cacheName !== STATIC_FILES_CACHE && cacheName !== STATIC_BIN_FILES_CACHE);
                 }).map(function(cacheName) {
                     console.log("Deleting " + cacheName);
                     return caches.delete(cacheName);
@@ -56,7 +60,7 @@ self.addEventListener("fetch", (event) => {
                     return await fetch(event.request);
                 } catch (error) {
                     console.log("Returning offline page as user seems to be offline", error);
-                    let cache = await caches.open(CACHE_NAME);
+                    let cache = await caches.open(STATIC_FILES_CACHE);
                     return await cache.match(OFFLINE_URL);
                 }
             })()
@@ -69,18 +73,3 @@ self.addEventListener("fetch", (event) => {
         );
     }
 });
-
-/* TODO finish this
-const baseRegex = new RegExp(`${ window.location.hostname}`);
-
-if (window.matchMedia("(display-mode: standalone)").matches) {
-    window.addEventListener("click", function(event) {
-        if (event.target.tagName === "a" && !baseRegex.test(event.target.href)) {
-            window.open( event.target.href );
-            event.preventDefault();
-        } else {
-            document.getElementById("loading_indicator").classList.add("active");
-        }
-    } );
-}
-*/
