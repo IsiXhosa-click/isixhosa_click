@@ -31,6 +31,7 @@ impl WordHit {
             part_of_speech: SerOnlyDisplay(row.get("part_of_speech")?),
             is_plural: row.get("is_plural")?,
             is_inchoative: row.get("is_inchoative")?,
+            is_informal: row.get("is_informal")?,
             transitivity: row.get_with_sentinel("transitivity")?.map(SerOnlyDisplay),
             is_suggestion: id.is_suggested(),
             noun_class: row
@@ -48,13 +49,13 @@ impl WordHit {
     pub fn fetch_from_db(db: &impl PublicAccessDb, id: WordOrSuggestionId) -> Option<WordHit> {
         const SELECT_EXISTING: &str = "
             SELECT
-                english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity, noun_class
+                english, xhosa, part_of_speech, is_plural, is_inchoative, is_informal, transitivity, noun_class
             FROM words
             WHERE word_id = ?1;
         ";
         const SELECT_SUGGESTED: &str = "
             SELECT
-                english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity, noun_class,
+                english, xhosa, part_of_speech, is_plural, is_inchoative, is_informal, transitivity, noun_class,
                 username, display_name, suggesting_user
             FROM word_suggestions
             INNER JOIN users ON word_suggestions.suggesting_user = users.user_id

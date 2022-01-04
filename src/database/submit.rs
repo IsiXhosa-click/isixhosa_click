@@ -86,9 +86,9 @@ pub async fn submit_suggestion(
     const INSERT_SUGGESTION: &str = "
         INSERT INTO word_suggestions (
             suggestion_id, suggesting_user, existing_word_id, changes_summary, english, xhosa,
-            part_of_speech, xhosa_tone_markings, infinitive, is_plural, is_inchoative, transitivity,
-            followed_by, noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+            part_of_speech, xhosa_tone_markings, infinitive, is_plural, is_inchoative, is_informal,
+            transitivity, followed_by, noun_class, note
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
             ON CONFLICT(suggestion_id) DO UPDATE SET
                 existing_word_id = excluded.existing_word_id,
                 changes_summary = excluded.changes_summary,
@@ -99,6 +99,7 @@ pub async fn submit_suggestion(
                 infinitive = excluded.infinitive,
                 is_plural = excluded.is_plural,
                 is_inchoative = excluded.is_inchoative,
+                is_informal = excluded.is_informal,
                 transitivity = excluded.transitivity,
                 followed_by = excluded.followed_by,
                 noun_class = excluded.noun_class,
@@ -146,6 +147,7 @@ pub async fn submit_suggestion(
             diff(w.infinitive.clone(), &orig.infinitive, use_submitted),
             diff(w.is_plural, &orig.is_plural, use_submitted),
             diff(w.is_inchoative, &orig.is_inchoative, use_submitted),
+            diff(w.is_informal, &orig.is_informal, use_submitted),
             diff_with_sentinel(w.transitivity, orig.transitivity),
             diff(w.followed_by.clone(), &orig.followed_by, use_submitted),
             diff_with_sentinel(w.noun_class, orig.noun_class),
@@ -189,6 +191,7 @@ pub async fn submit_suggestion(
                 transitivity: w.transitivity,
                 suggesting_user: Some(suggesting_user),
                 noun_class: w.noun_class,
+                is_informal: w.is_informal,
             };
 
             if orig_suggestion.is_none() {
@@ -586,6 +589,7 @@ pub struct WordFormTemplate {
     pub followed_by: Option<ConjunctionFollowedBy>,
     pub noun_class: Option<NounClass>,
     pub note: String,
+    pub is_informal: bool,
     pub examples: Vec<ExampleTemplate>,
     pub linked_words: Vec<LinkedWordTemplate>,
 }
@@ -641,6 +645,7 @@ impl From<SuggestedWord> for WordFormTemplate {
             followed_by: w.followed_by.current().clone(),
             noun_class: *w.noun_class.current(),
             note: w.note.current().clone(),
+            is_informal: *w.is_informal.current(),
             examples: w.examples.into_iter().map(Into::into).collect(),
             linked_words: w
                 .linked_words
@@ -665,6 +670,7 @@ impl From<ExistingWord> for WordFormTemplate {
             followed_by: w.followed_by,
             noun_class: w.noun_class,
             note: w.note,
+            is_informal: w.is_informal,
             examples: w.examples.into_iter().map(Into::into).collect(),
             linked_words: w.linked_words.into_iter().map(Into::into).collect(),
         }
@@ -835,6 +841,10 @@ pub struct WordSubmission {
     pub followed_by: Option<ConjunctionFollowedBy>,
     pub noun_class: Option<NounClass>,
 
+    #[serde(default = "false_fn")]
+    #[serde(deserialize_with = "deserialize_checkbox")]
+    pub is_informal: bool,
+
     #[serde(default)]
     examples: Vec<ExampleSubmission>,
     #[serde(default)]
@@ -850,6 +860,7 @@ impl WordSubmission {
             || self.infinitive != o.infinitive
             || self.is_plural != o.is_plural
             || self.is_inchoative != o.is_inchoative
+            || self.is_informal != o.is_informal
             || self.transitivity != o.transitivity
             || self.noun_class != o.noun_class
             || o.part_of_speech

@@ -100,6 +100,7 @@ pub struct WordRecord {
     pub infinitive: String,
     pub is_plural: bool,
     pub is_inchoative: bool,
+    pub is_informal: bool,
     #[serde_as(as = "NoneAsEmptyString")]
     pub transitivity: Option<Transitivity>,
     #[serde_as(as = "NoneAsEmptyString")]
@@ -299,6 +300,7 @@ impl From<ExistingWord> for WordRecord {
             infinitive: w.infinitive,
             is_plural: w.is_plural,
             is_inchoative: w.is_inchoative,
+            is_informal: w.is_informal,
             transitivity: w.transitivity,
             followed_by: w.followed_by,
             noun_class: w.noun_class,
@@ -381,7 +383,7 @@ fn write_words(cfg: &Config, conn: &Connection) {
     const SELECT_WORDS: &str = "
         SELECT
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            is_inchoative, transitivity, followed_by, noun_class, note
+            is_inchoative, is_informal, transitivity, followed_by, noun_class, note
         FROM words
         ORDER BY word_id;
     ";
@@ -444,8 +446,8 @@ fn restore_words(cfg: &Config, conn: &Connection) {
     const INSERT: &str = "
         INSERT INTO words (
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-            is_inchoative, transitivity, followed_by, noun_class, note
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);
+            is_inchoative, is_informal, transitivity, followed_by, noun_class, note
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);
     ";
 
     let mut csv = csv_reader(cfg, "words.csv");
@@ -464,6 +466,7 @@ fn restore_words(cfg: &Config, conn: &Connection) {
                 w.infinitive,
                 w.is_plural,
                 w.is_inchoative,
+                w.is_informal,
                 w.transitivity,
                 w.followed_by.unwrap_or_default(),
                 w.noun_class.map(|x| x as u8),

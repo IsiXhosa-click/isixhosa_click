@@ -130,6 +130,12 @@
                         </div>
 
                         <div>
+                            <label for="is_informal">Informal or slang?</label>
+                            <input type="checkbox" id="is_informal" name="is_informal"
+                                {%- if word.is_informal %} checked {%- endif -%}>
+                        </div>
+
+                        <div>
                             <label for="note">Note:</label>
                             <textarea id="note" name="note" autocomplete="off" spellcheck="true">
                                 {{- word.note -}}

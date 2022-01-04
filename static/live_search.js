@@ -135,6 +135,11 @@ export function formatResult(result, elt) {
         plural = "plural ";
     }
 
+    let informal = "";
+    if (result.is_informal) {
+        informal = "informal ";
+    }
+
     let inchoative = "";
     if (result.is_inchoative) {
         inchoative = "inchoative ";
@@ -152,7 +157,7 @@ export function formatResult(result, elt) {
         part_of_speech = "relative";
     }
 
-    let text = `${result.english} - ${result.xhosa} (${inchoative}${transitive}${plural}${part_of_speech}`;
+    let text = `${result.english} - ${result.xhosa} (${inchoative}${informal}${transitive}${plural}${part_of_speech}`;
 
     if (elt != null) {
         elt.innerText = text;

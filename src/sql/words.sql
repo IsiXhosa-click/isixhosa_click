@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS words (
     infinitive           TEXT NOT NULL,
     is_plural            BOOLEAN NOT NULL,
     is_inchoative        BOOLEAN NOT NULL,
+    is_informal          BOOLEAN NOT NULL,
     transitivity         INTEGER,
     followed_by          TEXT NOT NULL,
     noun_class           INTEGER,

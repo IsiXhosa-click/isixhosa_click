@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS word_suggestions (
     infinitive           TEXT,
     is_plural            BOOLEAN,
     is_inchoative        BOOLEAN,
+    is_informal          BOOLEAN,
     transitivity         INTEGER,
     followed_by          TEXT,
     -- 255 is sentinel for "no noun class" as opposed to null which is noun class not changed

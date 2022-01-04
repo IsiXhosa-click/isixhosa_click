@@ -41,6 +41,8 @@ pub struct SuggestedWord {
     pub noun_class: MaybeEdited<Option<NounClass>>,
     pub note: MaybeEdited<String>,
 
+    pub is_informal: MaybeEdited<bool>,
+
     pub examples: Vec<SuggestedExample>,
     pub linked_words: Vec<SuggestedLinkedWord>,
 }
@@ -65,7 +67,7 @@ impl SuggestedWord {
             SELECT
                 suggestion_id, suggesting_user, existing_word_id, changes_summary,
                 english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-                is_inchoative, transitivity, followed_by, noun_class, note, username, display_name
+                is_inchoative, is_informal, transitivity, followed_by, noun_class, note, username, display_name
             FROM word_suggestions
             INNER JOIN users ON word_suggestions.suggesting_user = users.user_id
             ORDER BY suggestion_id;";
@@ -102,7 +104,7 @@ impl SuggestedWord {
         const SELECT_SUGGESTION: &str = "
             SELECT
                 suggestion_id, existing_word_id, changes_summary, english, xhosa, part_of_speech,
-                xhosa_tone_markings, infinitive, is_plural, is_inchoative, transitivity,
+                xhosa_tone_markings, infinitive, is_plural, is_inchoative, is_informal, transitivity,
                 followed_by, noun_class, note, username, display_name, suggesting_user
             FROM word_suggestions
             INNER JOIN users ON word_suggestions.suggesting_user = users.user_id
@@ -154,8 +156,8 @@ impl SuggestedWord {
         const INSERT: &str = "
             INSERT INTO words (
                 word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-                is_inchoative, transitivity, followed_by, noun_class, note
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+                is_inchoative, is_informal, transitivity, followed_by, noun_class, note
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
                 ON CONFLICT(word_id) DO UPDATE SET
                     english = excluded.english,
                     xhosa = excluded.xhosa,
@@ -165,6 +167,7 @@ impl SuggestedWord {
                     is_plural = excluded.is_plural,
                     noun_class = excluded.noun_class,
                     is_inchoative = excluded.is_inchoative,
+                    is_informal = excluded.is_informal,
                     transitivity = excluded.transitivity,
                     followed_by = excluded.followed_by,
                     note = excluded.note
@@ -181,6 +184,7 @@ impl SuggestedWord {
             self.infinitive.current(),
             self.is_plural.current(),
             self.is_inchoative.current(),
+            self.is_informal.current(),
             self.transitivity.current(),
             self.followed_by.current().clone().unwrap_or_default(),
             self.noun_class.current().map(|x| x as u8),
@@ -242,6 +246,7 @@ impl SuggestedWord {
             transitivity: *self.transitivity.current(),
             suggesting_user: None,
             noun_class: *self.noun_class.current(),
+            is_informal: *self.is_informal.current()
         };
 
         let tantivy_clone = tantivy.clone();
@@ -315,6 +320,7 @@ impl SuggestedWord {
                 e.and_then(|e| e.noun_class),
             ),
             note: MaybeEdited::from_row("note", row, e.map(|e| e.note.clone())),
+            is_informal: MaybeEdited::from_row("is_informal", row, e.map(|e| e.is_plural)),
             examples: vec![],
             linked_words: vec![],
         }

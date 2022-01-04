@@ -116,6 +116,7 @@ impl TantivyClient {
         let xhosa_stemmed = builder.add_text_field("xhosa_stemmed", text_options);
         let part_of_speech = builder.add_u64_field("part_of_speech", STORED);
         let is_plural = builder.add_u64_field("is_plural", STORED);
+        let is_informal = builder.add_u64_field("is_informal", STORED);
         let is_inchoative = builder.add_u64_field("is_inchoative", STORED);
         let transitivity = builder.add_u64_field("is_transitive", STORED);
         let noun_class = builder.add_u64_field("noun_class", STORED);
@@ -131,6 +132,7 @@ impl TantivyClient {
             part_of_speech,
             is_plural,
             is_inchoative,
+            is_informal,
             transitivity,
             noun_class,
             suggesting_user,
@@ -158,11 +160,11 @@ impl TantivyClient {
             .map_err(Into::into)
     }
 
-    #[instrument(name = "Reindex the database")]
+    #[instrument(name = "Reindex the database", skip_all)]
     pub async fn reindex_database(&self, db: Pool<SqliteConnectionManager>) {
         const SELECT: &str = "
             SELECT
-                word_id, english, xhosa, part_of_speech, is_plural, is_inchoative, transitivity,
+                word_id, english, xhosa, part_of_speech, is_plural, is_inchoative, is_informal, transitivity,
                 followed_by, noun_class
             FROM words
             ORDER BY word_id;
@@ -185,6 +187,7 @@ impl TantivyClient {
                     transitivity: row.get_with_sentinel("transitivity")?,
                     suggesting_user: None,
                     noun_class: row.get_with_sentinel("noun_class")?,
+                    is_informal: row.get("is_informal")?,
                 })
             })
             .unwrap()
@@ -251,6 +254,7 @@ impl WriterActor {
             schema_info.suggesting_user => doc.suggesting_user.map(NonZeroU64::get).unwrap_or(0),
             schema_info.is_plural => doc.is_plural as u64,
             schema_info.is_inchoative => doc.is_inchoative as u64,
+            schema_info.is_informal => doc.is_informal as u64,
             schema_info.transitivity => doc.transitivity.map(|x| x as u64).unwrap_or(255),
             schema_info.noun_class => doc.noun_class.map(|x| x as u64).unwrap_or(255),
         );
@@ -544,35 +548,38 @@ impl Handler<SearchRequest> for SearcherActor {
         _ctx: &mut xtra::Context<Self>,
     ) -> Vec<WordHit> {
         #[derive(PartialEq, Eq)]
-        struct WordHitWithSim {
+        struct WordHitWithScore {
             hit: WordHit,
-            sim: OrderedFloat<f64>,
+            score: OrderedFloat<f64>,
         }
 
-        impl WordHitWithSim {
-            fn new(hit: WordHit, query: &str) -> WordHitWithSim {
+        impl WordHitWithScore {
+            fn new(hit: WordHit, query: &str) -> WordHitWithScore {
                 let sim = |hit: &str| OrderedFloat(strsim::jaro_winkler(query, &hit.to_lowercase()));
                 let xh_sim = sim(hit.xhosa.trim_start_matches("(i)"));
                 let en_sim = sim(&hit.english);
                 // Temporary fix for "become ___" ranking very low
                 let en_inchoative_sim = sim(hit.english.trim_start_matches("become "));
+                let sim_score = max(xh_sim, max(en_sim, en_inchoative_sim));
+                // 1% penalty to any informal words to make them rank lower (they are usually less relevant)
+                let informal_penalty = if hit.is_informal { 0.99 } else { 1.0 };
 
-                WordHitWithSim {
-                    sim: max(xh_sim, max(en_sim, en_inchoative_sim)),
+                WordHitWithScore {
+                    score: sim_score * informal_penalty,
                     hit,
                 }
             }
         }
 
-        impl PartialOrd for WordHitWithSim {
+        impl PartialOrd for WordHitWithScore {
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                 Some(self.cmp(other))
             }
         }
 
-        impl Ord for WordHitWithSim {
+        impl Ord for WordHitWithScore {
             fn cmp(&self, other: &Self) -> Ordering {
-                self.sim.cmp(&other.sim).reverse().then_with(|| {
+                self.score.cmp(&other.score).reverse().then_with(|| {
                     self.hit
                         .part_of_speech
                         .cmp(&other.hit.part_of_speech)
@@ -610,15 +617,15 @@ impl Handler<SearchRequest> for SearcherActor {
                 let _g =
                     info_span!("Sorting and ordering results", results = results.len()).entered();
 
-                let mut results: Vec<WordHitWithSim> = info_span!("Calculating string similarity")
+                let mut results: Vec<WordHitWithScore> = info_span!("Calculating string similarity")
                     .in_scope(|| {
                         results
                             .into_iter()
-                            .map(|hit| WordHitWithSim::new(hit, &req.query))
+                            .map(|hit| WordHitWithScore::new(hit, &req.query))
                             .collect()
                     });
 
-                debug_span!("Sorting list based on string similarity").in_scope(|| results.sort());
+                debug_span!("Sorting list based on score").in_scope(|| results.sort());
 
                 Ok(results.into_iter().take(RESULTS).map(|s| s.hit).collect())
             }
@@ -638,6 +645,7 @@ struct SchemaInfo {
     part_of_speech: Field,
     is_plural: Field,
     is_inchoative: Field,
+    is_informal: Field,
     transitivity: Field,
     noun_class: Field,
     suggesting_user: Field,
@@ -657,6 +665,7 @@ pub struct WordDocument {
     /// This is only `Some` for indexed suggestions.
     pub suggesting_user: Option<NonZeroU64>,
     pub noun_class: Option<NounClass>,
+    pub is_informal: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Hash, Eq, PartialEq)]
@@ -667,6 +676,7 @@ pub struct WordHit {
     pub part_of_speech: SerOnlyDisplay<PartOfSpeech>,
     pub is_plural: bool,
     pub is_inchoative: bool,
+    pub is_informal: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transitivity: Option<SerOnlyDisplay<Transitivity>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -683,6 +693,7 @@ impl WordHit {
             part_of_speech: SerOnlyDisplay(PartOfSpeech::Interjection),
             is_plural: false,
             is_inchoative: false,
+            is_informal: false,
             transitivity: None,
             noun_class: None,
             is_suggestion: false,
@@ -765,6 +776,7 @@ impl WordHit {
             part_of_speech,
             is_plural: get_bool(&doc, schema_info.is_plural, "is_plural")?,
             is_inchoative: get_bool(&doc, schema_info.is_inchoative, "is_inchoative")?,
+            is_informal: get_bool(&doc, schema_info.is_informal, "is_informal")?,
             transitivity: get_with_sentinel(&doc, schema_info.transitivity).map(SerOnlyDisplay),
             is_suggestion,
             noun_class: get_with_sentinel(&doc, schema_info.noun_class)
@@ -782,6 +794,7 @@ impl From<WordDocument> for WordHit {
             part_of_speech: SerOnlyDisplay(d.part_of_speech),
             is_plural: d.is_plural,
             is_inchoative: d.is_inchoative,
+            is_informal: d.is_informal,
             transitivity: d.transitivity.map(SerOnlyDisplay),
             is_suggestion: d.suggesting_user.is_some(),
             noun_class: d.noun_class.map(|c| c.to_prefixes()),

@@ -1,4 +1,4 @@
-{%- macro searchbox(start_query) -%}
+{%- macro searchbox(start_query, has_results) -%}
     <script type="module">import {LiveSearch} from "/live_search.js";
 
         window.addEventListener("DOMContentLoaded", function() {
@@ -60,8 +60,8 @@
         <form id="search" action="/search" method="GET" role="search">
 
             <input type="search" id="query" name="query" value="{{ start_query }}" {#--#}
-                placeholder="Type an English or Xhosa word" autofocus class="searchbox_input" spellcheck="false" {#--#}
-                aria-label="Search for a word">
+                placeholder="Type an English or Xhosa word" autofocus spellcheck="false" aria-label="Search for a word" {#--#}
+                class="searchbox_input {% if has_results %} has_results {% endif -%}">
             <button type="submit" class="screenreader_only">Search</button>
         </form>
     </noscript>

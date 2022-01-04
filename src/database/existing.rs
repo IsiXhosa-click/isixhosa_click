@@ -30,6 +30,8 @@ pub struct ExistingWord {
     pub noun_class: Option<NounClass>,
     pub note: String,
 
+    pub is_informal: bool,
+
     pub examples: Vec<ExistingExample>,
     pub linked_words: Vec<ExistingLinkedWord>,
     pub contributors: Vec<PublicUserInfo>,
@@ -60,7 +62,7 @@ impl ExistingWord {
         const SELECT_ORIGINAL: &str = "
             SELECT
                 word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
-                is_inchoative, transitivity, followed_by, noun_class, note
+                is_inchoative, is_informal, transitivity, followed_by, noun_class, note
             FROM words
             WHERE word_id = ?1;
         ";
@@ -126,6 +128,7 @@ impl TryFrom<&Row<'_>> for ExistingWord {
                 .ok(),
             noun_class: row.get_with_sentinel("noun_class")?,
             note: row.get("note")?,
+            is_informal: row.get("is_informal")?,
             examples: vec![],
             linked_words: vec![],
             contributors: vec![],

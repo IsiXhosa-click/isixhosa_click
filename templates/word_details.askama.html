@@ -160,6 +160,15 @@
                                         </tr>
                                     {%- endif -%}
 
+                                    {%- if word.is_informal -%}
+                                        <tr>
+                                            <th scope="row">Informal or slang?</th>
+                                            <td>
+                                                {%- if word.is_informal -%} yes {%- else -%} no {%- endif -%}
+                                            </td>
+                                        </tr>
+                                    {%- endif -%}
+
                                     {%- if !word.note.is_empty() -%}
                                         <tr>
                                             <th scope="row">Note</th>
