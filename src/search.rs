@@ -551,14 +551,14 @@ impl Handler<SearchRequest> for SearcherActor {
 
         impl WordHitWithSim {
             fn new(hit: WordHit, query: &str) -> WordHitWithSim {
+                let sim = |hit: &str| OrderedFloat(strsim::jaro_winkler(query, &hit.to_lowercase()));
+                let xh_sim = sim(hit.xhosa.trim_start_matches("(i)"));
+                let en_sim = sim(&hit.english);
+                // Temporary fix for "become ___" ranking very low
+                let en_inchoative_sim = sim(hit.english.trim_start_matches("become "));
+
                 WordHitWithSim {
-                    sim: max(
-                        OrderedFloat(strsim::jaro_winkler(
-                            query,
-                            hit.xhosa.trim_start_matches("(i)"),
-                        )),
-                        OrderedFloat(strsim::jaro_winkler(query, &hit.english)),
-                    ),
+                    sim: max(xh_sim, max(en_sim, en_inchoative_sim)),
                     hit,
                 }
             }

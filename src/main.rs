@@ -54,7 +54,7 @@ use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
 use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
-use warp::http::header::{CACHE_CONTROL, CONTENT_ENCODING, CONTENT_TYPE, LAST_MODIFIED};
+use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE, LAST_MODIFIED};
 use warp::http::uri::Authority;
 use warp::http::{uri, HeaderValue, StatusCode, Uri};
 use warp::path::FullPath;
