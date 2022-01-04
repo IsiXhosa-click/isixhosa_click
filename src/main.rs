@@ -464,6 +464,7 @@ async fn server(cfg: Config) {
 
         let static_files = walk()
             .map(|entry| entry.path().strip_prefix(&cfg.static_site_files).unwrap().to_str().unwrap().to_owned())
+            .filter(|entry| !entry.starts_with("LICENSE"))
             .collect::<Vec<_>>();
 
         let last_modified_static = walk()
