@@ -17,6 +17,7 @@ self.addEventListener("install", (event) => {
             await bin_files_cache.addAll(BIN_FILES);
         })()
     );
+    this.skipWaiting();
 });
 
 self.addEventListener("activate", function(event) {
