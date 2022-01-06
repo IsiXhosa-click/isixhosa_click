@@ -382,7 +382,7 @@ caption, .caption {
     color: white;
 }
 
-.menu :hover, #login_bar:hover, #login_popover > a:hover {
+.menu a:hover, #login_bar:hover, #login_popover > a:hover {
     background: #484848;
 }
 
