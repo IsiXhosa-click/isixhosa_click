@@ -354,6 +354,10 @@ caption, .caption {
     align-self: start;
 }
 
+#site_name_container:hover > * {
+    background: #484848;
+}
+
 #site_name {
     font-weight: bold;
     margin-bottom: 0.4rem;
@@ -379,7 +383,7 @@ caption, .caption {
     color: white;
 }
 
-.menu > a:hover, #login_bar:hover, #login_popover > a:hover {
+.menu :hover, #login_bar:hover, #login_popover > a:hover {
     background: #484848;
 }
 
