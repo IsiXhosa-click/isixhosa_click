@@ -351,7 +351,6 @@ caption, .caption {
     padding: 0;
     display: inline-flex;
     align-items: center;
-    align-self: start;
 }
 
 #site_name_container:hover > * {
