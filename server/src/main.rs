@@ -632,7 +632,7 @@ struct StyleGuide {
 }
 
 #[derive(Template, Clone, Debug)]
-#[template(path = "service_worker.askama.js", escape = "none")]
+#[template(path = "service_worker.askama.js", escape = "none", syntax = "js")]
 struct ServiceWorker {
     static_files: Vec<String>,
     static_bin_files: Vec<String>,
