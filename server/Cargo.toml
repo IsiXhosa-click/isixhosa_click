@@ -1,0 +1,59 @@
+[package]
+name = "isixhosa_server"
+version = "0.1.0"
+authors = ["Restioson <restiosondev@gmail.com>"]
+edition = "2021"
+resolver = "1" # TODO change this when askama fixes their issue
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+isixhosa_common = { path = "../common" }
+serde = { version = "1", features = ["derive"] }
+serde_qs = "0.8"
+serde_with = "1.10"
+fallible-iterator = "0.2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+futures = "0.3"
+warp = { version = "0.3", features = ["tls", "compression"] }
+# TODO pinned to rev to stop need for random .clone()s in templates - waiting for askama 0.11
+askama = { git = "https://github.com/djc/askama", rev = "9531747", features = ["serde-json"] }
+askama_warp = { git = "https://github.com/djc/askama", rev = "9531747" }
+warp-reverse-proxy = "0.4.0"
+html-minifier = "3.0.14"
+minifier = "0.0.41"
+rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly
+tracing = { version = "0.1.29", features = ["attributes"] }
+tracing-subscriber = "0.3.1"
+tracing-opentelemetry = "0.16.0"
+opentelemetry = { version = "0.16.0", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.15.0", features = ["rt-tokio"] }
+chrono = "0.4"
+r2d2 = "0.8"
+serde_json = "1"
+r2d2_sqlite = "0.18"
+num_enum = "0.5.4"
+xtra = { git = "https://github.com/Restioson/xtra", branch = "tracing", features = ["with-tokio-1", "with-tracing-0_1"] }
+async-trait = "0.1"
+tantivy = "0.15"
+anyhow = "1"
+num_cpus = "1"
+confy = "0.4"
+isixhosa = { version = "0.1.1", features = ["with-serde-1", "with-num_enum-0_5"] }
+openid = "0.9.3"
+url = "2.2.2"
+rand = "0.8.3"
+sha2 = "0.9.6"
+cookie = "0.16.0-rc.1"
+lazy_static = "1.4.0"
+percent-encoding = "2.1.0"
+dashmap = "4.0.2"
+argon2 = { version = "0.3.0", features = ["password-hash"] }
+strsim = "0.10.0"
+ordered-float = "2.8.0"
+csv = "1.1.6"
+tempdir = "0.3.7"
+genanki-rs = "0.1.2"
+walkdir = "2.3.2"
+itertools = "0.10.3"
+
+smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability
