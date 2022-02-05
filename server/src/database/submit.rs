@@ -1,10 +1,8 @@
-use crate::auth::{User, UserAccessDb};
-use crate::database::existing::{ExistingExample, ExistingLinkedWord, ExistingWord};
+use crate::auth::FullUser;
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::database::WordId;
 use crate::database::WordOrSuggestionId;
-use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
-use crate::search::{TantivyClient, WordDocument, WordHit};
+use crate::search::{TantivyClient, WordDocument};
 use crate::serialization::{deserialize_checkbox, false_fn};
 use crate::spawn_blocking_child;
 use futures::executor::block_on;
@@ -16,6 +14,9 @@ use serde_with::{serde_as, NoneAsEmptyString};
 use std::num::NonZeroU64;
 use std::sync::Arc;
 use tracing::{debug_span, instrument, Span};
+use isixhosa_common::database::UserAccessDb;
+use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
+use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, ExistingWord, WordHit};
 
 fn diff<T: PartialEq + Eq>(value: T, template: &T, override_use_value: bool) -> Option<T> {
     if override_use_value || &value != template {
@@ -50,7 +51,7 @@ where
 
 #[instrument(level = "trace", name = "Suggest word deletion", skip(db))]
 pub async fn suggest_word_deletion(
-    suggesting_user: &User,
+    suggesting_user: &FullUser,
     word_id: WordId,
     db: &impl UserAccessDb,
 ) {
@@ -79,7 +80,7 @@ pub async fn suggest_word_deletion(
 pub async fn submit_suggestion(
     word: WordSubmission,
     tantivy: Arc<TantivyClient>,
-    suggesting_user: &User,
+    suggesting_user: &FullUser,
     db: &impl UserAccessDb,
 ) {
     // Intentionally suggesting_user is not set to excluded

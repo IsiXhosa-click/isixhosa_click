@@ -6,21 +6,21 @@ use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use tracing::{error, instrument, Span};
 use warp::{body, Filter, Rejection, Reply};
-
-use crate::auth::ModeratorAccessDb;
-use crate::auth::{with_moderator_auth, Auth, DbBase, User};
+use isixhosa_common::auth::{Auth, Permissions};
+use isixhosa_common::database::{DbBase, ModeratorAccessDb, WordOrSuggestionId};
+use isixhosa_common::types::{ExistingWord, WordHit};
+use crate::auth::{with_moderator_auth, FullUser};
 use crate::database::deletion::{
     ExampleDeletionSuggestion, LinkedWordDeletionSuggestion, WordDeletionSuggestion,
 };
-use crate::database::existing::ExistingWord;
 use crate::database::submit::{submit_suggestion, WordSubmission};
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
-use crate::database::{WordId, WordOrSuggestionId};
-use crate::format::DisplayHtml;
-use crate::search::{TantivyClient, WordHit};
+use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::submit::edit_suggestion_page;
 use crate::{spawn_blocking_child, DebugBoxedExt};
+use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::database::WordId;
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]
@@ -202,7 +202,7 @@ pub fn moderation(
 #[instrument(name = "Display moderation template", skip_all)]
 async fn moderation_template(
     previous_success: Option<Success>,
-    user: User,
+    user: FullUser,
     db: impl ModeratorAccessDb,
 ) -> Result<impl warp::Reply, Rejection> {
     spawn_blocking_child(move || {
@@ -229,7 +229,7 @@ async fn moderation_template(
 async fn edit_suggestion_form(
     tantivy: Arc<TantivyClient>,
     submission: WordSubmission,
-    user: User,
+    user: FullUser,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let next_suggestion = submission.suggestion_anchor_ord;
@@ -377,7 +377,7 @@ async fn reject_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u6
 async fn process_one(
     tantivy: Arc<TantivyClient>,
     params: Action,
-    user: User,
+    user: FullUser,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();

@@ -1,5 +1,14 @@
 [workspace]
 members = [
     "server",
-    "common"
+    "common",
+    "pwa",
 ]
+
+exclude = ["wordle"]
+
+[profile.release]
+lto = "fat"
+
+[profile.release.package.isixhosa_pwa]
+opt-level = "z"

@@ -1,107 +1,10 @@
 use askama_warp::warp::http::header::CONTENT_TYPE;
-use num_enum::TryFromPrimitive;
-use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ValueRef};
-use rusqlite::Row;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::convert::{TryFrom, TryInto};
-use std::error::Error as StdError;
-use std::fmt::{self, Debug, Display, Formatter};
+use std::fmt::Debug;
+use serde::{Deserialize, Deserializer};
 use tracing::warn;
 use warp::hyper::body::Bytes;
 use warp::{Buf, Filter, Rejection};
-
-#[derive(Debug, Clone)]
-pub struct DiscrimOutOfRange(pub i64, pub &'static str);
-
-impl Display for DiscrimOutOfRange {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "discriminator {} out of range for type {}",
-            self.0, self.1
-        )
-    }
-}
-
-impl StdError for DiscrimOutOfRange {}
-
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct SerOnlyDisplay<T>(pub T);
-
-impl<T: PartialEq> PartialEq<T> for SerOnlyDisplay<T> {
-    fn eq(&self, other: &T) -> bool {
-        &self.0 == other
-    }
-}
-
-impl<T: Display> Display for SerOnlyDisplay<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<T: Display> Serialize for SerOnlyDisplay<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{}", self.0))
-    }
-}
-
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerOnlyDisplay<T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        T::deserialize(deserializer).map(SerOnlyDisplay)
-    }
-}
-
-#[derive(Debug)]
-pub enum WithDeleteSentinel<T> {
-    Some(T),
-    Remove,
-}
-
-pub trait GetWithSentinelExt<T> {
-    fn get_with_sentinel(&self, idx: &str) -> rusqlite::Result<Option<T>>;
-}
-
-impl<'a, T> GetWithSentinelExt<T> for Row<'a>
-where
-    T: TryFromPrimitive,
-    T::Primitive: TryFrom<i64>,
-{
-    fn get_with_sentinel(&self, idx: &str) -> rusqlite::Result<Option<T>> {
-        let opt = self.get::<&str, Option<WithDeleteSentinel<T>>>(idx)?;
-        Ok(opt.and_then(|x| match x {
-            WithDeleteSentinel::Some(v) => Some(v),
-            WithDeleteSentinel::Remove => None,
-        }))
-    }
-}
-
-impl<T> FromSql for WithDeleteSentinel<T>
-where
-    T: TryFromPrimitive,
-    T::Primitive: TryFrom<i64>,
-{
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        let v = value.as_i64()?;
-
-        if v == 255 {
-            Ok(WithDeleteSentinel::Remove)
-        } else {
-            let err =
-                || FromSqlError::Other(Box::new(DiscrimOutOfRange(v, std::any::type_name::<T>())));
-            T::try_from_primitive(v.try_into().map_err(|_| err())?)
-                .map_err(|_| err())
-                .map(WithDeleteSentinel::Some)
-        }
-    }
-}
 
 pub fn false_fn() -> bool {
     false

@@ -1,22 +1,15 @@
 use std::convert::Infallible;
-
-use crate::auth::db_impl::DbImpl;
-use crate::format::{DisplayHtml, HtmlFormatter};
+use isixhosa_common::auth::{Auth, Permissions};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use crate::{spawn_blocking_child, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
 use dashmap::DashMap;
-use fallible_iterator::FallibleIterator;
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
-use r2d2::{Pool, PooledConnection};
-use r2d2_sqlite::SqliteConnectionManager;
 use rand::Rng;
-use rusqlite::{params, Row};
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
-use std::convert::TryFrom;
 use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroU64;
 use std::str::FromStr;
@@ -31,6 +24,8 @@ use warp::{
 };
 use xtra::{Actor, Address, Context, Handler, Message};
 use xtra::spawn::TokioGlobalSpawnExt;
+use isixhosa_common::database::db_impl::DbImpl;
+use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb};
 
 type OpenIDClient = Address<OidcActor>;
 
@@ -168,46 +163,6 @@ impl FromStr for StaySignedInToken {
     }
 }
 
-#[derive(Default, Clone, Debug)]
-pub struct Auth {
-    user: Option<User>,
-}
-
-impl From<User> for Auth {
-    fn from(user: User) -> Self {
-        Auth { user: Some(user) }
-    }
-}
-
-impl Auth {
-    pub fn has_permissions(&self, permissions: Permissions) -> bool {
-        match self.user.as_ref() {
-            Some(user) => user.permissions.contains(permissions),
-            None => false,
-        }
-    }
-
-    pub fn username(&self) -> Option<&str> {
-        self.user.as_ref().map(|user| &user.username as &str)
-    }
-
-    pub fn user_id(&self) -> Option<NonZeroU64> {
-        self.user.as_ref().map(|u| u.id)
-    }
-}
-
-#[derive(PartialEq, Eq, Ord, PartialOrd, Clone, Copy, Debug)]
-pub enum Permissions {
-    User,
-    Moderator,
-    Administrator,
-}
-
-impl Permissions {
-    pub fn contains(&self, other: Permissions) -> bool {
-        *self >= other
-    }
-}
 
 #[derive(Deserialize, Debug)]
 pub struct LoginRedirectQuery {
@@ -265,7 +220,7 @@ pub struct SignupForm {
 
 // TODO this is probably passed around a bit too much?
 #[derive(Debug, Clone)]
-pub struct User {
+pub struct FullUser {
     pub id: NonZeroU64,
     pub username: String,
     pub display_name: bool,
@@ -274,62 +229,20 @@ pub struct User {
     pub locked: bool,
 }
 
-#[derive(Clone, Debug)]
-pub struct PublicUserInfo {
-    pub id: NonZeroU64,
-    pub username: String,
-    pub display_name: bool,
-}
-
-impl PublicUserInfo {
-    pub fn fetch_public_contributors_for_word(
-        db: &impl PublicAccessDb,
-        word: u64,
-    ) -> Vec<PublicUserInfo> {
-        const SELECT: &str = "
-            SELECT users.user_id as suggesting_user, users.username, display_name
-            FROM user_attributions
-            INNER JOIN users ON users.user_id = user_attributions.user_id
-            WHERE word_id = ?1 AND users.display_name = 1;
-        ";
-
-        let conn = db.get().unwrap();
-
-        let mut query = conn.prepare(SELECT).unwrap();
-
-        #[allow(clippy::redundant_closure)] // lifetime issue
-        query
-            .query(params![word])
-            .unwrap()
-            .map(|row| PublicUserInfo::try_from(row))
-            .collect()
-            .unwrap()
+impl Into<isixhosa_common::auth::User> for FullUser {
+    fn into(self) -> isixhosa_common::auth::User {
+        isixhosa_common::auth::User {
+            user_id: self.id,
+            username: self.username,
+            permissions: self.permissions,
+        }
     }
 }
 
-impl TryFrom<&Row<'_>> for PublicUserInfo {
-    type Error = rusqlite::Error;
-
-    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
-        Ok(PublicUserInfo {
-            id: NonZeroU64::new(row.get::<&str, u64>("suggesting_user")?).unwrap(),
-            username: row.get("username")?,
-            display_name: row.get("display_name")?,
-        })
-    }
-}
-
-impl DisplayHtml for PublicUserInfo {
-    fn fmt(&self, f: &mut HtmlFormatter) -> std::fmt::Result {
-        f.write_text(
-            Some(&self.username[..])
-                .filter(|_| self.display_name)
-                .unwrap_or_default(),
-        )
-    }
-
-    fn is_empty_str(&self) -> bool {
-        !self.display_name
+impl Into<Auth> for FullUser {
+    fn into(self) -> Auth {
+        let user: isixhosa_common::auth::User = self.into();
+        user.into()
     }
 }
 
@@ -558,7 +471,7 @@ async fn reply_login(
 
     let state: OpenIdState = serde_json::from_str(openid_query.state.as_ref().unwrap()).unwrap();
 
-    let response = match User::fetch_by_oidc_id(&db, token, oidc_id) {
+    let response = match FullUser::fetch_by_oidc_id(&db, token, oidc_id) {
         Some(user) => reply_insert_session(db, session_id, user, host_builder, state.redirect)
             .await
             .into_response(),
@@ -586,7 +499,7 @@ async fn reply_login(
 async fn reply_insert_session(
     db: impl PublicAccessDb,
     session_id: SignInSessionId,
-    user: User,
+    user: FullUser,
     host_uri_builder: uri::Builder,
     redirect_url: Option<String>,
 ) -> impl warp::Reply {
@@ -677,7 +590,7 @@ async fn signup_form_submit(
 
     let db_clone = db.clone();
     let user = spawn_blocking_child(move || {
-        User::register(
+        FullUser::register(
             &db,
             userinfo,
             form.username,
@@ -697,7 +610,7 @@ async fn signup_form_submit(
 }
 
 async fn reply_logout(
-    _user: User, // This _user is important as it implicitly validates the given token
+    _user: FullUser, // This _user is important as it implicitly validates the given token
     db: impl UserAccessDb,
     token: StaySignedInToken,
 ) -> Result<impl warp::Reply, Infallible> {
@@ -746,13 +659,13 @@ async fn extract_user(
     db: impl PublicAccessDb,
     redirect: String,
     stay_signed_in: Option<StaySignedInToken>,
-) -> Result<User, Rejection> {
+) -> Result<FullUser, Rejection> {
     spawn_blocking_child(move || {
         let span = Span::current();
 
         if let Some(stay_signed_in) = stay_signed_in {
             if let Some(user) = stay_signed_in.verify_token(&db) {
-                let user = User::fetch_by_id(&db, user).unwrap();
+                let user = FullUser::fetch_by_id(&db, user).unwrap();
 
                 span.record("id", &user.id);
                 span.record("name", &user.username.as_str());
@@ -790,38 +703,6 @@ async fn extract_user(
     .unwrap()
 }
 
-#[derive(Clone)]
-pub struct DbBase(Pool<SqliteConnectionManager>);
-
-impl DbBase {
-    pub fn new(pool: Pool<SqliteConnectionManager>) -> DbBase {
-        DbBase(pool)
-    }
-}
-
-mod db_impl {
-    use super::*;
-
-    #[derive(Clone)]
-    pub(super) struct DbImpl(pub(super) Pool<SqliteConnectionManager>);
-
-    impl PublicAccessDb for DbImpl {
-        fn get(&self) -> Result<PooledConnection<SqliteConnectionManager>, r2d2::Error> {
-            self.0.get()
-        }
-    }
-
-    impl UserAccessDb for DbImpl {}
-    impl ModeratorAccessDb for DbImpl {}
-}
-
-pub trait PublicAccessDb: Clone + Send + Sync + 'static {
-    fn get(&self) -> Result<PooledConnection<SqliteConnectionManager>, r2d2::Error>;
-}
-
-pub trait UserAccessDb: PublicAccessDb {}
-pub trait ModeratorAccessDb: UserAccessDb {}
-
 fn with_public_db(
     db: DbBase,
 ) -> impl Filter<Extract = (impl PublicAccessDb,), Error = Infallible> + Clone {
@@ -836,7 +717,7 @@ pub fn with_any_auth(
         .map(|path: FullPath| path.as_str().to_owned())
         .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))
         .and_then(move |path, cookie| extract_user(DbImpl(db.0.clone()), path, cookie))
-        .map(|user| Auth { user: Some(user) })
+        .map(|user: FullUser| user.into())
         .or(warp::any().map(Auth::default))
         .unify()
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
@@ -844,7 +725,7 @@ pub fn with_any_auth(
 
 pub fn with_user_auth(
     db: DbBase,
-) -> impl Filter<Extract = (User, impl UserAccessDb), Error = Rejection> + Clone {
+) -> impl Filter<Extract = (FullUser, impl UserAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
@@ -855,7 +736,7 @@ pub fn with_user_auth(
 
 pub fn with_moderator_auth(
     db: DbBase,
-) -> impl Filter<Extract = (User, impl ModeratorAccessDb), Error = Rejection> + Clone {
+) -> impl Filter<Extract = (FullUser, impl ModeratorAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())

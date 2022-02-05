@@ -1,11 +1,8 @@
-use crate::auth::UserAccessDb;
-use crate::auth::{with_user_auth, Auth, DbBase, User};
+use isixhosa_common::auth::{Auth, Permissions};
+use crate::auth::{with_user_auth, FullUser};
 use crate::database::submit;
 use crate::database::submit::{WordFormTemplate, WordSubmission};
 use crate::database::suggestion::SuggestedWord;
-use crate::format::DisplayHtml;
-use crate::language::NounClassExt;
-use crate::language::Transitivity;
 use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::{spawn_blocking_child, DebugBoxedExt};
@@ -15,6 +12,9 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::sync::Arc;
 use tracing::instrument;
 use warp::{body, path, Filter, Rejection, Reply};
+use isixhosa_common::database::{DbBase, UserAccessDb};
+use isixhosa_common::language::{Transitivity, NounClassExt};
+use isixhosa_common::format::DisplayHtml;
 
 #[derive(Template, Debug)]
 #[template(path = "submit.askama.html")]
@@ -91,7 +91,7 @@ pub fn submit(
 #[instrument(name = "Display edit suggestion page", skip(db, user))]
 pub async fn edit_suggestion_page(
     db: impl UserAccessDb,
-    user: User,
+    user: FullUser,
     suggestion_id: u64,
     suggestion_anchor_ord: u32,
 ) -> Result<impl Reply, Rejection> {
@@ -119,7 +119,7 @@ pub async fn edit_suggestion_page(
 pub async fn edit_word_page(
     previous_success: Option<bool>,
     id: u64,
-    user: User,
+    user: FullUser,
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
     submit_word_page(
@@ -136,7 +136,7 @@ pub async fn edit_word_page(
 async fn submit_word_page(
     previous_success: Option<bool>,
     action: SubmitFormAction,
-    user: User,
+    user: FullUser,
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let db = db.clone();
@@ -167,7 +167,7 @@ async fn submit_word_page(
 async fn submit_new_word_form(
     tantivy: Arc<TantivyClient>,
     word: WordSubmission,
-    user: User,
+    user: FullUser,
     db: impl UserAccessDb,
 ) -> Result<impl warp::Reply, Rejection> {
     submit::submit_suggestion(word, tantivy, &user, &db).await;

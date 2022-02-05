@@ -1,12 +1,11 @@
-use crate::auth::PublicAccessDb;
-use crate::auth::{with_any_auth, Auth, DbBase};
-use crate::database::existing::ExistingWord;
-use crate::format::DisplayHtml;
-use crate::language::PartOfSpeech;
+use isixhosa_common::auth::Auth;
+use crate::auth::with_any_auth;
 use crate::{spawn_blocking_child, DebugBoxedExt, NotFound};
-use askama::Template;
 use tracing::instrument;
 use warp::{Filter, Rejection, Reply};
+use isixhosa_common::database::{DbBase, PublicAccessDb};
+use isixhosa_common::types::ExistingWord;
+use isixhosa_common::templates::{WordChangeMethod, WordDetails};
 
 pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     warp::path!["word" / u64]
@@ -16,14 +15,6 @@ pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Repl
         .and(with_any_auth(db))
         .and_then(word)
         .debug_boxed()
-}
-
-#[derive(Template)]
-#[template(path = "word_details.askama.html")]
-struct WordDetails {
-    auth: Auth,
-    word: ExistingWord,
-    previous_success: Option<WordChangeMethod>,
 }
 
 #[instrument(name = "Display word details page", skip(auth, db, previous_success))]
@@ -46,9 +37,4 @@ pub async fn word(
         .into_response(),
         None => NotFound { auth }.into_response(),
     })
-}
-
-pub enum WordChangeMethod {
-    Edit,
-    Delete,
 }

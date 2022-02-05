@@ -1,18 +1,3 @@
-use crate::database::WordOrSuggestionId;
-
-use crate::format::DisplayHtml;
-use crate::language::{NounClassExt, NounClassPrefixes, PartOfSpeech, Transitivity};
-use crate::serialization::GetWithSentinelExt;
-use crate::serialization::SerOnlyDisplay;
-use crate::spawn_blocking_child;
-use anyhow::{Context, Result};
-use isixhosa::noun::NounClass;
-use num_enum::TryFromPrimitive;
-use ordered_float::OrderedFloat;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
-use serde::Serialize;
 use std::cmp::{max, Ordering};
 use std::collections::HashSet;
 use std::convert::{TryFrom, TryInto};
@@ -21,21 +6,33 @@ use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use anyhow::{Context, Result};
+use isixhosa::noun::NounClass;
+use num_enum::TryFromPrimitive;
+use ordered_float::OrderedFloat;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::params;
+use tantivy::{doc, LeasedItem, Searcher};
+use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{
-    Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
-    STORED,
+    Field, FieldValue, INDEXED, IndexRecordOption, Schema, STORED, TextFieldIndexing, TextOptions,
+    Value,
 };
-use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
-use tantivy::{doc, LeasedItem, Searcher};
-use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
+use tantivy::tokenizer::TextAnalyzer;
 use tracing::{debug_span, info, info_span, instrument, Span};
+use xtra::{Actor, Address, Handler, Message};
 use xtra::prelude::InstrumentedExt;
 use xtra::spawn::TokioGlobalSpawnExt;
-use xtra::{Actor, Address, Handler, Message};
+use isixhosa_common::database::{GetWithSentinelExt, WordOrSuggestionId};
+use isixhosa_common::language::{NounClassExt, PartOfSpeech, Transitivity};
+use isixhosa_common::serialization::SerOnlyDisplay;
+use isixhosa_common::types::WordHit;
+use crate::spawn_blocking_child;
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;
@@ -332,7 +329,6 @@ impl Handler<IndexWord> for WriterActor {
             id = ?doc.0.id,
             is_suggestion = doc.0.suggesting_user.is_some(),
             suggesting_user = doc.0.suggesting_user,
-            hit = %doc.0.to_plaintext(),
         )
         skip_all,
     )]
@@ -357,7 +353,6 @@ impl Handler<EditWord> for WriterActor {
         fields(
             id = ?edit.0.id,
             suggesting_user = edit.0.suggesting_user,
-            hit = %edit.0.to_plaintext(),
         )
         skip_all,
     )]
@@ -668,38 +663,11 @@ pub struct WordDocument {
     pub is_informal: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Hash, Eq, PartialEq)]
-pub struct WordHit {
-    pub id: u64,
-    pub english: String,
-    pub xhosa: String,
-    pub part_of_speech: SerOnlyDisplay<PartOfSpeech>,
-    pub is_plural: bool,
-    pub is_inchoative: bool,
-    pub is_informal: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub transitivity: Option<SerOnlyDisplay<Transitivity>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub noun_class: Option<NounClassPrefixes>,
-    pub is_suggestion: bool,
+trait WordHitExt {
+    fn try_deserialize(schema_info: &SchemaInfo, doc: Document) -> Result<WordHit>;
 }
 
-impl WordHit {
-    pub fn empty() -> WordHit {
-        WordHit {
-            id: 0,
-            english: String::new(),
-            xhosa: String::new(),
-            part_of_speech: SerOnlyDisplay(PartOfSpeech::Interjection),
-            is_plural: false,
-            is_inchoative: false,
-            is_informal: false,
-            transitivity: None,
-            noun_class: None,
-            is_suggestion: false,
-        }
-    }
-
+impl WordHitExt for WordHit {
     fn try_deserialize(schema_info: &SchemaInfo, doc: Document) -> Result<WordHit> {
         let pos_ord = doc
             .get_first(schema_info.part_of_speech)
@@ -756,9 +724,9 @@ impl WordHit {
         }
 
         fn get_with_sentinel<T>(document: &Document, field: Field) -> Option<T>
-        where
-            T: TryFromPrimitive,
-            T::Primitive: TryFrom<u64>,
+            where
+                T: TryFromPrimitive,
+                T::Primitive: TryFrom<u64>,
         {
             document
                 .get_first(field)
