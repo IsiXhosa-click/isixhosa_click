@@ -1,24 +1,23 @@
-use crate::auth::{ModeratorAccessDb, PublicUserInfo, UserAccessDb};
-use crate::database::existing::ExistingExample;
-use crate::database::existing::ExistingWord;
-use crate::database::WordId;
-use crate::database::{add_attribution, WordOrSuggestionId};
-use crate::format::DisplayHtml;
-use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
-use crate::search::{TantivyClient, WordDocument, WordHit};
-use crate::serialization::WithDeleteSentinel;
-use crate::DebugExt;
+use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
+use std::fmt::{self, Debug};
+use std::sync::Arc;
 use fallible_iterator::FallibleIterator;
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
+use rusqlite::{OptionalExtension, params, Row};
 use rusqlite::types::FromSql;
-use rusqlite::{params, OptionalExtension, Row};
-use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
-use std::fmt::Debug;
-use std::sync::Arc;
 use tracing::{instrument, Span};
+use isixhosa_common::database::{ModeratorAccessDb, UserAccessDb};
+use isixhosa_common::format::{DisplayHtml, HtmlFormatter, HyperlinkWrapper, NounClassInHit};
+use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
+use isixhosa_common::serialization::WithDeleteSentinel;
+use isixhosa_common::types::{ExistingExample, ExistingWord, PublicUserInfo, WordHit};
+use crate::database::{add_attribution, WordOrSuggestionId};
+use crate::database::WordId;
+use crate::DebugExt;
+use crate::search::{TantivyClient, WordDocument};
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -948,6 +947,13 @@ impl<T: Debug> MaybeEdited<Option<T>> {
     }
 }
 
+impl MaybeEdited<WordHit> {
+    pub fn hyperlinked(&self) -> MaybeEdited<HyperlinkWrapper<'_>> {
+        self.map(HyperlinkWrapper)
+    }
+}
+
+
 impl<T: FromSql + PartialEq + Eq> MaybeEdited<T> {
     fn from_row(idx: &str, row: &Row<'_>, existing: Option<T>) -> MaybeEdited<T> {
         match (row.get::<&str, Option<T>>(idx).unwrap(), existing) {
@@ -987,5 +993,115 @@ where
                 e
             ),
         }
+    }
+}
+impl<T: DisplayHtml> DisplayHtml for MaybeEdited<T> {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        match self {
+            MaybeEdited::Edited { new, old } => {
+                f.fmt.write_str("<ins>")?;
+                if new.is_empty_str() {
+                    f.fmt.write_str("[Removed]")?;
+                } else {
+                    new.fmt(f)?;
+                }
+                f.fmt.write_str("</ins> ")?;
+
+                f.fmt.write_str("<del>")?;
+                if old.is_empty_str() {
+                    f.fmt.write_str("[None]")?;
+                } else {
+                    old.fmt(f)?;
+                }
+                f.fmt.write_str("</del>")
+            }
+            MaybeEdited::Old(old) => old.fmt(f),
+            MaybeEdited::New(new) => {
+                f.fmt.write_str("<ins>")?;
+                new.fmt(f)?;
+                f.fmt.write_str("</ins>")
+            }
+        }
+    }
+
+    fn is_empty_str(&self) -> bool {
+        match self {
+            MaybeEdited::Edited { new, old } => new.is_empty_str() && old.is_empty_str(),
+            MaybeEdited::Old(v) => v.is_empty_str(),
+            MaybeEdited::New(v) => v.is_empty_str(),
+        }
+    }
+}
+
+trait TextIfBoolIn {
+    fn into_maybe_edited(self) -> MaybeEdited<bool>;
+}
+
+impl TextIfBoolIn for bool {
+    fn into_maybe_edited(self) -> MaybeEdited<bool> {
+        MaybeEdited::Old(self)
+    }
+}
+
+impl TextIfBoolIn for MaybeEdited<bool> {
+    fn into_maybe_edited(self) -> MaybeEdited<bool> {
+        self
+    }
+}
+
+fn text_if_bool<T: TextIfBoolIn>(
+    yes: &'static str,
+    no: &'static str,
+    b: T,
+    show_no_when_new: bool,
+) -> MaybeEdited<&'static str> {
+    match b.into_maybe_edited() {
+        MaybeEdited::Edited { new, old } => MaybeEdited::Edited {
+            new: if new { yes } else { no },
+            old: if old { yes } else { no },
+        },
+        MaybeEdited::New(b) if show_no_when_new => MaybeEdited::New(if b { yes } else { no }),
+        MaybeEdited::New(b) if b => MaybeEdited::New(yes),
+        MaybeEdited::Old(b) if b => MaybeEdited::Old(yes),
+        _ => MaybeEdited::Old(""),
+    }
+}
+
+impl DisplayHtml for SuggestedWord {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+        DisplayHtml::fmt(&self.english, f)?;
+        f.fmt.write_str(" - <span lang=\"xh\">")?;
+        DisplayHtml::fmt(&self.xhosa, f)?;
+        f.fmt.write_str("</span> (")?;
+
+        f.join_if_non_empty(
+            " ",
+            [
+                &text_if_bool("informal", "non-informal", self.is_informal, false),
+                &text_if_bool(
+                    "inchoative",
+                    "non-inchoative",
+                    self.is_inchoative,
+                    self.part_of_speech.was_or_is(&PartOfSpeech::Verb),
+                ),
+                &self
+                    .transitivity
+                    .map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x)))
+                    as &dyn DisplayHtml,
+                &text_if_bool(
+                    "plural",
+                    "singular",
+                    self.is_plural,
+                    self.part_of_speech.was_or_is(&PartOfSpeech::Noun),
+                ),
+                &self.part_of_speech,
+                &self.noun_class.map(|opt| opt.map(NounClassInHit)),
+            ],
+        )?;
+        f.write_text(")")
+    }
+
+    fn is_empty_str(&self) -> bool {
+        false
     }
 }

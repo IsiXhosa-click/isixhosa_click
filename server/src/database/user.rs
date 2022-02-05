@@ -1,5 +1,6 @@
+use isixhosa_common::auth::Permissions;
 use crate::auth::{
-    random_string_token, Permissions, PublicAccessDb, StaySignedInToken, User, UserAccessDb,
+    random_string_token, StaySignedInToken, FullUser,
 };
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
@@ -9,12 +10,13 @@ use rusqlite::{params, OptionalExtension};
 use std::convert::TryFrom;
 use std::num::NonZeroU64;
 use tracing::{debug_span, instrument, Span};
+use isixhosa_common::database::{PublicAccessDb, UserAccessDb};
 
-impl TryFrom<&Row<'_>> for User {
+impl TryFrom<&Row<'_>> for FullUser {
     type Error = rusqlite::Error;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
-        Ok(User {
+        Ok(FullUser {
             // AUTOINCREMENT starts at 1
             id: NonZeroU64::new(row.get::<&str, i64>("user_id")? as u64).unwrap(),
             username: row.get("username")?,
@@ -32,9 +34,9 @@ impl TryFrom<&Row<'_>> for User {
     }
 }
 
-impl User {
+impl FullUser {
     #[instrument(level = "trace", name = "Fetch user", fields(found), skip(db))]
-    pub fn fetch_by_id(db: &impl PublicAccessDb, id: u64) -> Option<User> {
+    pub fn fetch_by_id(db: &impl PublicAccessDb, id: u64) -> Option<FullUser> {
         const SELECT: &str = "
             SELECT
                 user_id, username, display_name, email, is_moderator, is_administrator, locked
@@ -48,7 +50,7 @@ impl User {
         let user = conn
             .prepare(SELECT)
             .unwrap()
-            .query_row(params![id], |row| User::try_from(row))
+            .query_row(params![id], |row| FullUser::try_from(row))
             .optional()
             .unwrap();
 
@@ -62,7 +64,7 @@ impl User {
         db: &impl PublicAccessDb,
         _proof: Token, // Make sure this is not called from the wrong context
         oidc_id: String,
-    ) -> Option<User> {
+    ) -> Option<FullUser> {
         const SELECT: &str = "
             SELECT
                 user_id, username, display_name, email, is_moderator, is_administrator, locked
@@ -76,7 +78,7 @@ impl User {
         let user = conn
             .prepare(SELECT)
             .unwrap()
-            .query_row(params![oidc_id], |row| User::try_from(row))
+            .query_row(params![oidc_id], |row| FullUser::try_from(row))
             .optional()
             .unwrap();
 
@@ -93,7 +95,7 @@ impl User {
         display_name: bool,
         email: String,
         permissions: Permissions,
-    ) -> User {
+    ) -> FullUser {
         const INSERT: &str = "
             INSERT INTO users
                 (oidc_id, username, display_name, email, is_moderator, is_administrator, locked)
@@ -114,7 +116,7 @@ impl User {
 
         let id: i64 = stmt.query_row(params, |row| row.get("user_id")).unwrap();
 
-        User {
+        FullUser {
             id: NonZeroU64::new(id as u64).unwrap(), // AUTOINCREMENT starts at 1
             username,
             display_name,

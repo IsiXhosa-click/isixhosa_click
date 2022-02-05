@@ -1,8 +1,5 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
-use crate::database::existing::{ExistingExample, ExistingWord};
-use crate::format::DisplayHtml;
-use crate::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use crate::{set_up_db, Config};
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;
@@ -20,6 +17,9 @@ use std::io::{BufReader, BufWriter, Write};
 use std::process::Command;
 use std::time::Duration;
 use tempdir::TempDir;
+use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
+use isixhosa_common::types::{ExistingExample, ExistingWord};
 
 // TODO(restore users)
 pub fn restore(cfg: Config) {

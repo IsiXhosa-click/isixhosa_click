@@ -4,3 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# TODO pinned to rev to stop need for random .clone()s in templates - waiting for askama 0.11
+askama = { git = "https://github.com/djc/askama", rev = "af552ee", features = ["serde-json"] }
+askama_warp = { git = "https://github.com/djc/askama", rev = "af552ee", optional = true }
+serde = "1.0.133"
+isixhosa = { version = "0.1.1", features = ["with-serde-1", "with-num_enum-0_5"] }
+num_enum = "0.5.6"
+
+rusqlite = { version = "0.25", features = ["chrono"], optional = true }
+tracing = { version = "0.1.29", features = ["attributes"], optional = true }
+r2d2 = { version = "0.8.9", optional = true }
+r2d2_sqlite = { version = "0.18", optional = true }
+fallible-iterator = { version = "0.2", optional = true }
+
+[features]
+server = ["rusqlite", "tracing", "r2d2", "r2d2_sqlite", "fallible-iterator", "askama_warp"]

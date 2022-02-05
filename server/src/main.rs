@@ -19,10 +19,8 @@
 // - embedded blog (static site generator?) for transparency
 
 use crate::auth::*;
-use crate::database::existing::ExistingWord;
 use crate::database::suggestion::SuggestedWord;
-use crate::format::DisplayHtml;
-use crate::search::{IncludeResults, TantivyClient, WordHit};
+use crate::search::{IncludeResults, TantivyClient};
 use crate::serialization::false_fn;
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
@@ -64,13 +62,16 @@ use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
+use isixhosa_common::auth::{Auth, Permissions};
+use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb};
+use isixhosa_common::types::{ExistingWord, WordHit};
+use isixhosa_common::format::DisplayHtml;
 
 mod auth;
 mod database;
 mod details;
 mod edit;
 mod export;
-mod format;
 mod language;
 mod moderation;
 mod search;
@@ -440,6 +441,10 @@ async fn server(cfg: Config) {
             .and(path::end())
             .and(with_any_auth(db.clone()))
             .map(|auth, _| StyleGuide { auth });
+        let wordle = warp::path("wordle")
+            .and(path::end())
+            .and(with_any_auth(db.clone()))
+            .map(|auth, _| Wordle { auth });
         let offline = warp::get()
             .and(warp::path("offline"))
             .and(path::end())
@@ -501,6 +506,7 @@ async fn server(cfg: Config) {
         terms_of_use
             .or(about)
             .or(style_guide)
+            .or(wordle)
             .or(offline)
             .or(service_worker)
             .debug_boxed()
@@ -632,6 +638,12 @@ struct StyleGuide {
 }
 
 #[derive(Template, Clone, Debug)]
+#[template(path = "wordle.askama.html")]
+struct Wordle {
+    auth: Auth,
+}
+
+#[derive(Template, Clone, Debug)]
 #[template(path = "service_worker.askama.js", escape = "none", syntax = "js")]
 struct ServiceWorker {
     static_files: Vec<String>,
@@ -695,7 +707,7 @@ struct DuplicateQuery {
 async fn duplicate_search(
     query: DuplicateQuery,
     tantivy: Arc<TantivyClient>,
-    _user: User,
+    _user: FullUser,
     db: impl ModeratorAccessDb,
 ) -> Result<impl warp::Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());

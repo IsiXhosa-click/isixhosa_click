@@ -2,11 +2,12 @@ use std::sync::Arc;
 
 use tracing::instrument;
 use warp::{body, Filter, Rejection, Reply};
+use isixhosa_common::database::{DbBase, UserAccessDb, WordId};
+use isixhosa_common::templates::WordChangeMethod;
 
-use crate::auth::{with_user_auth, DbBase, User, UserAccessDb};
+use crate::auth::{with_user_auth, FullUser};
 use crate::database::submit::{submit_suggestion, suggest_word_deletion, WordSubmission};
-use crate::database::WordId;
-use crate::details::{word, WordChangeMethod};
+use crate::details::word;
 use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::submit::edit_word_page;
@@ -60,7 +61,7 @@ async fn submit_suggestion_reply(
     id: u64,
     w: WordSubmission,
     tantivy: Arc<TantivyClient>,
-    user: User,
+    user: FullUser,
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
     submit_suggestion(w, tantivy, &user, &db).await;
@@ -70,7 +71,7 @@ async fn submit_suggestion_reply(
 #[instrument(name = "Suggest to delete word", skip(user, db))]
 async fn delete_word_reply(
     id: u64,
-    user: User,
+    user: FullUser,
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
     suggest_word_deletion(&user, WordId(id), &db).await;

@@ -11,11 +11,12 @@
         <a href="/search">Search</a>
         <a href="/about">About</a>
         <a href="/submit">Submit a word</a>
-        {%- if auth.has_permissions(crate::auth::Permissions::Moderator) -%}
+        <a href="/wordle">Wordle</a>
+        {%- if auth.has_permissions(Permissions::Moderator) -%}
             <a href="/moderation">Moderation</a>
         {%- endif -%}
 
-        {%- if auth.has_permissions(crate::auth::Permissions::Administrator) -%}
+        {%- if auth.has_permissions(Permissions::Administrator) -%}
             <a href="/admin/jaeger">Tracing</a>
         {%-endif -%}
 
