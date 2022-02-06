@@ -174,9 +174,8 @@ impl Component for Game {
             .filter(|word| !word.is_plural)
             .collect();
 
-        let first_matching = |strs: [String; 2]| {
-            strs
-                .into_iter()
+        let process = |str: String| {
+            iter::once(str)
                 .filter(|s| s.len() == WORD_LENGTH)
                 .map(|mut s| {
                     s.make_ascii_uppercase();
@@ -188,8 +187,8 @@ impl Component for Game {
 
         let dictionary: Vec<GuessWord> = list
             .into_iter()
-            .map(|word| (word.word_id, [word.infinitive, word.xhosa]))
-            .filter_map(|(word_id, strs)| first_matching(strs).map(|text| GuessWord { word_id, text }))
+            .map(|word| (word.word_id, word.xhosa))
+            .filter_map(|(word_id, str)| process(str).map(|text| GuessWord { word_id, text }))
             .collect();
 
         let mut rng = rand::thread_rng();
@@ -270,7 +269,7 @@ impl Component for Game {
 
         html! {
             <>
-                <h1>{ "Xhosa Wordle" }</h1>
+                <h1>{ "Xhosa Wordle (beta)" }</h1>
 
                 <div id="guesses">{ guesses }</div>
 
@@ -354,7 +353,6 @@ fn main() {
 struct WordRecord {
     word_id: u64,
     xhosa: String,
-    infinitive: String,
     is_plural: bool,
 }
 

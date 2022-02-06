@@ -14,7 +14,9 @@
 <body>
     {%- call macros::navbar() -%}
     <div id="main_wrap">
-        <header><h1>Xhosa Wordle (beta)</h1></header>
+        <div id="loading_spinner_container">
+             <div id="loading_spinner"></div>
+        </div>
 
         <script type="module">
             import init from '/isixhosa_wordle.js';

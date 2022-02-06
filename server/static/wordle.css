@@ -27,6 +27,28 @@ h1 {
     margin-block-end: 0;
 }
 
+#loading_spinner_container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+#loading_spinner {
+    border: 16px solid #f3f3f3; /* Light grey */
+    border-top: 16px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 @media screen and (min-width: 800px) {
     #keyboard {
         width: 80%;
@@ -80,6 +102,7 @@ h1 {
     align-items: center;
     outline: solid 1px black;
     aspect-ratio: 1 / 1;
+    height: 100%;
     font-size: 5vmin;
 }
 
