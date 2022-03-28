@@ -1,12 +1,12 @@
 use crate::database::WordId;
 use crate::database::WordOrSuggestionId;
 use fallible_iterator::FallibleIterator;
+use isixhosa_common::database::ModeratorAccessDb;
+use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, PublicUserInfo, WordHit};
 use rusqlite::{params, Row};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use tracing::{instrument, Span};
-use isixhosa_common::database::ModeratorAccessDb;
-use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, PublicUserInfo, WordHit};
 
 #[derive(Debug)]
 pub struct WordDeletionSuggestion {

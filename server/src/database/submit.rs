@@ -7,6 +7,9 @@ use crate::serialization::{deserialize_checkbox, false_fn};
 use crate::spawn_blocking_child;
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
+use isixhosa_common::database::UserAccessDb;
+use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
+use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, ExistingWord, WordHit};
 use rusqlite::types::{ToSqlOutput, Value};
 use rusqlite::{params, ToSql};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -14,9 +17,6 @@ use serde_with::{serde_as, NoneAsEmptyString};
 use std::num::NonZeroU64;
 use std::sync::Arc;
 use tracing::{debug_span, instrument, Span};
-use isixhosa_common::database::UserAccessDb;
-use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
-use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, ExistingWord, WordHit};
 
 fn diff<T: PartialEq + Eq>(value: T, template: &T, override_use_value: bool) -> Option<T> {
     if override_use_value || &value != template {

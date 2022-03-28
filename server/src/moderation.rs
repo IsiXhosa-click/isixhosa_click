@@ -1,14 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use askama::Template;
-use serde::Deserialize;
-use serde_with::{serde_as, DisplayFromStr};
-use tracing::{error, instrument, Span};
-use warp::{body, Filter, Rejection, Reply};
-use isixhosa_common::auth::{Auth, Permissions};
-use isixhosa_common::database::{DbBase, ModeratorAccessDb, WordOrSuggestionId};
-use isixhosa_common::types::{ExistingWord, WordHit};
 use crate::auth::{with_moderator_auth, FullUser};
 use crate::database::deletion::{
     ExampleDeletionSuggestion, LinkedWordDeletionSuggestion, WordDeletionSuggestion,
@@ -19,8 +11,16 @@ use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::submit::edit_suggestion_page;
 use crate::{spawn_blocking_child, DebugBoxedExt};
-use isixhosa_common::format::DisplayHtml;
+use askama::Template;
+use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::WordId;
+use isixhosa_common::database::{DbBase, ModeratorAccessDb, WordOrSuggestionId};
+use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::types::{ExistingWord, WordHit};
+use serde::Deserialize;
+use serde_with::{serde_as, DisplayFromStr};
+use tracing::{error, instrument, Span};
+use warp::{body, Filter, Rejection, Reply};
 
 #[derive(Template, Debug)]
 #[template(path = "moderation.askama.html")]

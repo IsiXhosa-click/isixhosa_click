@@ -1,4 +1,3 @@
-use isixhosa_common::auth::{Auth, Permissions};
 use crate::auth::{with_user_auth, FullUser};
 use crate::database::submit;
 use crate::database::submit::{WordFormTemplate, WordSubmission};
@@ -7,14 +6,15 @@ use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::{spawn_blocking_child, DebugBoxedExt};
 use askama::Template;
+use isixhosa_common::auth::{Auth, Permissions};
+use isixhosa_common::database::{DbBase, UserAccessDb};
+use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::language::{NounClassExt, Transitivity};
 use serde::Deserialize;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::sync::Arc;
 use tracing::instrument;
 use warp::{body, path, Filter, Rejection, Reply};
-use isixhosa_common::database::{DbBase, UserAccessDb};
-use isixhosa_common::language::{Transitivity, NounClassExt};
-use isixhosa_common::format::DisplayHtml;
 
 #[derive(Template, Debug)]
 #[template(path = "submit.askama.html")]

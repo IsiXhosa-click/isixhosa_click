@@ -1,11 +1,11 @@
-use isixhosa_common::auth::Auth;
 use crate::auth::with_any_auth;
 use crate::{spawn_blocking_child, DebugBoxedExt, NotFound};
+use isixhosa_common::auth::Auth;
+use isixhosa_common::database::{DbBase, PublicAccessDb};
+use isixhosa_common::templates::{WordChangeMethod, WordDetails};
+use isixhosa_common::types::ExistingWord;
 use tracing::instrument;
 use warp::{Filter, Rejection, Reply};
-use isixhosa_common::database::{DbBase, PublicAccessDb};
-use isixhosa_common::types::ExistingWord;
-use isixhosa_common::templates::{WordChangeMethod, WordDetails};
 
 pub fn details(db: DbBase) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     warp::path!["word" / u64]

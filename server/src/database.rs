@@ -1,9 +1,9 @@
 //! TODO(cleanup) refactor to put all DB stuff here or in a module under here
 
-use rusqlite::params;
-use tracing::instrument;
 use isixhosa_common::database::{ModeratorAccessDb, WordId, WordOrSuggestionId};
 use isixhosa_common::types::PublicUserInfo;
+use rusqlite::params;
+use tracing::instrument;
 
 pub mod deletion;
 pub mod submit;

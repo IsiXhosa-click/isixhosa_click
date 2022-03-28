@@ -5,6 +5,9 @@ use chrono::Utc;
 use fallible_iterator::FallibleIterator;
 use genanki_rs::{Deck, Field, Model, ModelType, Note, Template};
 use isixhosa::noun::NounClass;
+use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
+use isixhosa_common::types::{ExistingExample, ExistingWord};
 use rusqlite::backup::Backup;
 use rusqlite::{params, OptionalExtension};
 use rusqlite::{Connection, Row};
@@ -17,9 +20,6 @@ use std::io::{BufReader, BufWriter, Write};
 use std::process::Command;
 use std::time::Duration;
 use tempdir::TempDir;
-use isixhosa_common::format::DisplayHtml;
-use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
-use isixhosa_common::types::{ExistingExample, ExistingWord};
 
 // TODO(restore users)
 pub fn restore(cfg: Config) {

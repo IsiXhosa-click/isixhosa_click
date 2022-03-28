@@ -1,16 +1,14 @@
-use isixhosa_common::auth::Permissions;
-use crate::auth::{
-    random_string_token, StaySignedInToken, FullUser,
-};
+use crate::auth::{random_string_token, FullUser, StaySignedInToken};
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
+use isixhosa_common::auth::Permissions;
+use isixhosa_common::database::{PublicAccessDb, UserAccessDb};
 use openid::{Token, Userinfo};
 use r2d2_sqlite::rusqlite::Row;
 use rusqlite::{params, OptionalExtension};
 use std::convert::TryFrom;
 use std::num::NonZeroU64;
 use tracing::{debug_span, instrument, Span};
-use isixhosa_common::database::{PublicAccessDb, UserAccessDb};
 
 impl TryFrom<&Row<'_>> for FullUser {
     type Error = rusqlite::Error;

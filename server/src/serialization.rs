@@ -1,7 +1,7 @@
 use askama_warp::warp::http::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
-use std::fmt::Debug;
 use serde::{Deserialize, Deserializer};
+use std::fmt::Debug;
 use tracing::warn;
 use warp::hyper::body::Bytes;
 use warp::{Buf, Filter, Rejection};
