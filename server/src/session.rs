@@ -1,13 +1,13 @@
 use crate::search::{IncludeResults, TantivyClient};
 use futures::stream::SplitSink;
 use futures::SinkExt;
+use isixhosa_common::types::WordHit;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
 use xtra::prelude::*;
-use isixhosa_common::types::WordHit;
 
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,

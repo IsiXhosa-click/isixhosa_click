@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use tracing::instrument;
-use warp::{body, Filter, Rejection, Reply};
 use isixhosa_common::database::{DbBase, UserAccessDb, WordId};
 use isixhosa_common::templates::WordChangeMethod;
+use tracing::instrument;
+use warp::{body, Filter, Rejection, Reply};
 
 use crate::auth::{with_user_auth, FullUser};
 use crate::database::submit::{submit_suggestion, suggest_word_deletion, WordSubmission};

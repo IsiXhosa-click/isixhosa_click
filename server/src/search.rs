@@ -1,3 +1,15 @@
+use crate::spawn_blocking_child;
+use anyhow::{Context, Result};
+use isixhosa::noun::NounClass;
+use isixhosa_common::database::{GetWithSentinelExt, WordOrSuggestionId};
+use isixhosa_common::language::{NounClassExt, PartOfSpeech, Transitivity};
+use isixhosa_common::serialization::SerOnlyDisplay;
+use isixhosa_common::types::WordHit;
+use num_enum::TryFromPrimitive;
+use ordered_float::OrderedFloat;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::params;
 use std::cmp::{max, Ordering};
 use std::collections::HashSet;
 use std::convert::{TryFrom, TryInto};
@@ -6,33 +18,21 @@ use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use anyhow::{Context, Result};
-use isixhosa::noun::NounClass;
-use num_enum::TryFromPrimitive;
-use ordered_float::OrderedFloat;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
-use tantivy::{doc, LeasedItem, Searcher};
-use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{
-    Field, FieldValue, INDEXED, IndexRecordOption, Schema, STORED, TextFieldIndexing, TextOptions,
-    Value,
+    Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
+    STORED,
 };
-use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::tokenizer::TextAnalyzer;
+use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
+use tantivy::{doc, LeasedItem, Searcher};
+use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use tracing::{debug_span, info, info_span, instrument, Span};
-use xtra::{Actor, Address, Handler, Message};
 use xtra::prelude::InstrumentedExt;
 use xtra::spawn::TokioGlobalSpawnExt;
-use isixhosa_common::database::{GetWithSentinelExt, WordOrSuggestionId};
-use isixhosa_common::language::{NounClassExt, PartOfSpeech, Transitivity};
-use isixhosa_common::serialization::SerOnlyDisplay;
-use isixhosa_common::types::WordHit;
-use crate::spawn_blocking_child;
+use xtra::{Actor, Address, Handler, Message};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;
@@ -550,7 +550,8 @@ impl Handler<SearchRequest> for SearcherActor {
 
         impl WordHitWithScore {
             fn new(hit: WordHit, query: &str) -> WordHitWithScore {
-                let sim = |hit: &str| OrderedFloat(strsim::jaro_winkler(query, &hit.to_lowercase()));
+                let sim =
+                    |hit: &str| OrderedFloat(strsim::jaro_winkler(query, &hit.to_lowercase()));
                 let xh_sim = sim(hit.xhosa.trim_start_matches("(i)"));
                 let en_sim = sim(&hit.english);
                 // Temporary fix for "become ___" ranking very low
@@ -612,8 +613,8 @@ impl Handler<SearchRequest> for SearcherActor {
                 let _g =
                     info_span!("Sorting and ordering results", results = results.len()).entered();
 
-                let mut results: Vec<WordHitWithScore> = info_span!("Calculating string similarity")
-                    .in_scope(|| {
+                let mut results: Vec<WordHitWithScore> =
+                    info_span!("Calculating string similarity").in_scope(|| {
                         results
                             .into_iter()
                             .map(|hit| WordHitWithScore::new(hit, &req.query))
@@ -724,9 +725,9 @@ impl WordHitExt for WordHit {
         }
 
         fn get_with_sentinel<T>(document: &Document, field: Field) -> Option<T>
-            where
-                T: TryFromPrimitive,
-                T::Primitive: TryFrom<u64>,
+        where
+            T: TryFromPrimitive,
+            T::Primitive: TryFrom<u64>,
         {
             document
                 .get_first(field)

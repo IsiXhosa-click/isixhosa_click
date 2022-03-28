@@ -1,23 +1,23 @@
-use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
-use std::fmt::{self, Debug};
-use std::sync::Arc;
+use crate::database::WordId;
+use crate::database::{add_attribution, WordOrSuggestionId};
+use crate::search::{TantivyClient, WordDocument};
+use crate::DebugExt;
 use fallible_iterator::FallibleIterator;
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
-use num_enum::TryFromPrimitive;
-use rusqlite::{OptionalExtension, params, Row};
-use rusqlite::types::FromSql;
-use tracing::{instrument, Span};
 use isixhosa_common::database::{ModeratorAccessDb, UserAccessDb};
 use isixhosa_common::format::{DisplayHtml, HtmlFormatter, HyperlinkWrapper, NounClassInHit};
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use isixhosa_common::serialization::WithDeleteSentinel;
 use isixhosa_common::types::{ExistingExample, ExistingWord, PublicUserInfo, WordHit};
-use crate::database::{add_attribution, WordOrSuggestionId};
-use crate::database::WordId;
-use crate::DebugExt;
-use crate::search::{TantivyClient, WordDocument};
+use num_enum::TryFromPrimitive;
+use rusqlite::types::FromSql;
+use rusqlite::{params, OptionalExtension, Row};
+use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
+use std::fmt::{self, Debug};
+use std::sync::Arc;
+use tracing::{instrument, Span};
 
 #[derive(Clone, Debug)]
 pub struct SuggestedWord {
@@ -245,7 +245,7 @@ impl SuggestedWord {
             transitivity: *self.transitivity.current(),
             suggesting_user: None,
             noun_class: *self.noun_class.current(),
-            is_informal: *self.is_informal.current()
+            is_informal: *self.is_informal.current(),
         };
 
         let tantivy_clone = tantivy.clone();
@@ -952,7 +952,6 @@ impl MaybeEdited<WordHit> {
         self.map(HyperlinkWrapper)
     }
 }
-
 
 impl<T: FromSql + PartialEq + Eq> MaybeEdited<T> {
     fn from_row(idx: &str, row: &Row<'_>, existing: Option<T>) -> MaybeEdited<T> {

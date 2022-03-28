@@ -1,15 +1,17 @@
-use std::convert::Infallible;
-use isixhosa_common::auth::{Auth, Permissions};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use crate::{spawn_blocking_child, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
 use dashmap::DashMap;
+use isixhosa_common::auth::{Auth, Permissions};
+use isixhosa_common::database::db_impl::DbImpl;
+use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb};
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
+use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroU64;
 use std::str::FromStr;
@@ -22,10 +24,8 @@ use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-use xtra::{Actor, Address, Context, Handler, Message};
 use xtra::spawn::TokioGlobalSpawnExt;
-use isixhosa_common::database::db_impl::DbImpl;
-use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb};
+use xtra::{Actor, Address, Context, Handler, Message};
 
 type OpenIDClient = Address<OidcActor>;
 
@@ -43,13 +43,20 @@ struct OidcActor {
 }
 
 impl OidcActor {
-    async fn new_client(client_id: &str, client_secret: &str, redirect: &str, issuer: &Url) -> Client<Discovered, StandardClaims> {
+    async fn new_client(
+        client_id: &str,
+        client_secret: &str,
+        redirect: &str,
+        issuer: &Url,
+    ) -> Client<Discovered, StandardClaims> {
         DiscoveredClient::discover(
             client_id.to_owned(),
             client_secret.to_owned(),
             Some(redirect.to_owned()),
             issuer.clone(),
-        ).await.unwrap()
+        )
+        .await
+        .unwrap()
     }
 
     async fn new(client_id: String, client_secret: String, redirect: String, issuer: Url) -> Self {
@@ -80,7 +87,13 @@ impl Message for RefreshClient {
 #[async_trait::async_trait]
 impl Handler<RefreshClient> for OidcActor {
     async fn handle(&mut self, _msg: RefreshClient, _ctx: &mut Context<Self>) {
-        self.client = Self::new_client(&self.client_id, &self.client_secret, &self.redirect, &self.issuer).await;
+        self.client = Self::new_client(
+            &self.client_id,
+            &self.client_secret,
+            &self.redirect,
+            &self.issuer,
+        )
+        .await;
     }
 }
 
@@ -108,12 +121,17 @@ impl Message for RequestToken {
 
 #[async_trait::async_trait]
 impl Handler<RequestToken> for OidcActor {
-    async fn handle(&mut self, req: RequestToken, _: &mut Context<Self>) -> anyhow::Result<Option<(Token, Userinfo)>> {
+    async fn handle(
+        &mut self,
+        req: RequestToken,
+        _: &mut Context<Self>,
+    ) -> anyhow::Result<Option<(Token, Userinfo)>> {
         let mut token: Token = self.client.request_token(&req.code).await?.into();
 
         if let Some(id_token) = token.id_token.as_mut() {
             self.client.decode_token(id_token)?;
-            self.client.validate_token(id_token, Some(&req.nonce), None)?;
+            self.client
+                .validate_token(id_token, Some(&req.nonce), None)?;
         } else {
             return Ok(None);
         }
@@ -162,7 +180,6 @@ impl FromStr for StaySignedInToken {
         serde_json::from_str(s)
     }
 }
-
 
 #[derive(Deserialize, Debug)]
 pub struct LoginRedirectQuery {
@@ -272,10 +289,15 @@ pub async fn auth(
 
     let issuer = url::Url::parse("https://accounts.google.com").unwrap();
 
-    let client = OidcActor::new(cfg.oidc_client.clone(), cfg.oidc_secret.clone(), redirect, issuer)
-        .await
-        .create(Some(32))
-        .spawn_global();
+    let client = OidcActor::new(
+        cfg.oidc_client.clone(),
+        cfg.oidc_secret.clone(),
+        redirect,
+        issuer,
+    )
+    .await
+    .create(Some(32))
+    .spawn_global();
 
     let (host, https_port) = (cfg.host.clone(), cfg.https_port);
     let with_client_host = warp::any()
@@ -356,13 +378,16 @@ async fn reply_authorize(
     let session_id = SignInSessionId(random_string_token());
     let nonce = random_string_token();
 
-    let auth_url = oidc_client.send(GetAuthUrl(Options {
-        scope: Some("openid email".into()),
-        state: Some(serde_json::to_string(&state).unwrap()),
-        nonce: Some(nonce.clone()),
-        max_age: Some(*MAX_OIDC_AGE),
-        ..Default::default()
-    })).await.unwrap();
+    let auth_url = oidc_client
+        .send(GetAuthUrl(Options {
+            scope: Some("openid email".into()),
+            state: Some(serde_json::to_string(&state).unwrap()),
+            nonce: Some(nonce.clone()),
+            max_age: Some(*MAX_OIDC_AGE),
+            ..Default::default()
+        }))
+        .await
+        .unwrap();
 
     let session_id_cookie = Cookie::build(SIGN_IN_SESSION_ID, &session_id.0)
         .path("/")
@@ -428,7 +453,13 @@ async fn request_token(
         return Err(SignInInvalid::CsrfToken.into());
     }
 
-    let res = oidc_client.send(RequestToken { code: openid_query.code.clone(), nonce }).await.unwrap();
+    let res = oidc_client
+        .send(RequestToken {
+            code: openid_query.code.clone(),
+            nonce,
+        })
+        .await
+        .unwrap();
 
     res
 }

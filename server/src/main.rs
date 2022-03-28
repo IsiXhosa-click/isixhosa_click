@@ -24,11 +24,15 @@ use crate::search::{IncludeResults, TantivyClient};
 use crate::serialization::false_fn;
 use crate::session::{LiveSearchSession, WsMessage};
 use askama::Template;
-use chrono::{DateTime, Utc};
 use auth::auth;
+use chrono::{DateTime, Utc};
 use details::details;
 use edit::edit;
 use futures::StreamExt;
+use isixhosa_common::auth::{Auth, Permissions};
+use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb};
+use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::types::{ExistingWord, WordHit};
 use moderation::moderation;
 use opentelemetry::global;
 use opentelemetry::sdk::propagation::TraceContextPropagator;
@@ -62,10 +66,6 @@ use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
 use xtra::spawn::TokioGlobalSpawnExt;
 use xtra::Actor;
-use isixhosa_common::auth::{Auth, Permissions};
-use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb};
-use isixhosa_common::types::{ExistingWord, WordHit};
-use isixhosa_common::format::DisplayHtml;
 
 mod auth;
 mod database;
@@ -246,9 +246,13 @@ async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
             response
         };
 
-        if starts_with(mime, &["text", "application/javascript"]) && !mime.contains("charset=UTF-8") {
-            let new_content_type = HeaderValue::from_str(&format!("{}; charset=UTF-8", mime)).unwrap();
-            response.headers_mut().insert(CONTENT_TYPE, new_content_type);
+        if starts_with(mime, &["text", "application/javascript"]) && !mime.contains("charset=UTF-8")
+        {
+            let new_content_type =
+                HeaderValue::from_str(&format!("{}; charset=UTF-8", mime)).unwrap();
+            response
+                .headers_mut()
+                .insert(CONTENT_TYPE, new_content_type);
         }
 
         if mime.starts_with("font/woff2") {
@@ -463,17 +467,27 @@ async fn server(cfg: Config) {
                 })
             });
 
-        let walk = || walkdir::WalkDir::new(&cfg.static_site_files)
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|entry| entry.file_type().is_file());
+        let walk = || {
+            walkdir::WalkDir::new(&cfg.static_site_files)
+                .into_iter()
+                .filter_map(Result::ok)
+                .filter(|entry| entry.file_type().is_file())
+        };
 
         fn ends_with(entry: &str, pats: &[&str]) -> bool {
             pats.iter().any(|pat| entry.ends_with(pat))
         }
 
         let (bin_files, static_files) = walk()
-            .map(|entry| entry.path().strip_prefix(&cfg.static_site_files).unwrap().to_str().unwrap().to_owned())
+            .map(|entry| {
+                entry
+                    .path()
+                    .strip_prefix(&cfg.static_site_files)
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_owned()
+            })
             .filter(|entry: &String| !entry.contains("LICENSE"))
             .partition::<Vec<_>, _>(|entry| ends_with(entry, &["png", "svg", "woff2", "ico"]));
 

@@ -1,10 +1,9 @@
 [workspace]
 members = [
-    "server",
-    "common",
+    "wordle",
+    "pwa",
 ]
-
-exclude = ["wasm"]
 
 [profile.release]
 lto = "fat"
+opt-level = "z"

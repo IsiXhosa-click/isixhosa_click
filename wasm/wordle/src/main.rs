@@ -290,14 +290,19 @@ impl Component for Game {
         let callback = ctx.link().callback(|c: char| AsciiChar::new(c));
         let listener = EventListener::new(&document, "keydown", move |event| {
             let event = event.dyn_ref::<web_sys::KeyboardEvent>().unwrap();
+
+            log::debug!("This is a test message!");
+
             let first_char = event.key().chars().next().unwrap();
 
             let msg = match &event.key() as &str {
                 "Backspace" => '\x08',
                 "Enter" => '\n',
-                _ if first_char.is_ascii_alphabetic() => first_char,
+                _ if event.key().len() == 1 && first_char.is_ascii_alphabetic() => first_char,
                 _ => return,
             };
+
+            log::debug!("{}", msg);
 
             callback.emit(msg);
         });
@@ -343,8 +348,6 @@ impl From<AsciiChar> for GuessLetter {
 
 fn main() {
     wasm_logger::init(wasm_logger::Config::default());
-    log::info!("Starting in main_wrap");
-
     let wrap = gloo::utils::document().get_element_by_id("main_wrap");
     yew::start_app_in_element::<Game>(wrap.unwrap());
 }
