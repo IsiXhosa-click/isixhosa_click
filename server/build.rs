@@ -1,8 +1,8 @@
 use std::process::Command;
 
-fn get_hash_for_path(path: &str) -> String {
+fn get_last_changed(path: &str) -> String {
     let output = Command::new("bash")
-        .args(&["-c", &format!("git log -n 1 --pretty=format:%H {}", path)])
+        .args(&["-c", &format!("stat -c %Y {path} | sort -n | head -1")])
         .output()
         .unwrap();
 
@@ -11,9 +11,9 @@ fn get_hash_for_path(path: &str) -> String {
 
 fn main() {
     println!("cargo:rerun-if-changed=static/");
-    println!("cargo:rustc-env=GIT_HASH={}", get_hash_for_path("static"));
+    println!("cargo:rustc-env=STATIC_LAST_CHANGED={}", get_last_changed("static"));
     println!(
-        "cargo:rustc-env=GIT_BIN_FILES_HASH={}",
-        get_hash_for_path("static/**/*.{png,svg,woff2,ico}")
+        "cargo:rustc-env=STATIC_BIN_FILES_LAST_CHANGED={}",
+        get_last_changed("static/**/*.{png,svg,woff2,ico}")
     );
 }

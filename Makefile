@@ -36,4 +36,5 @@ $(wasm_exported)/%_bg.wasm $(wasm_exported)/%.js: $(wasm_target)/%.wasm
 $(isixhosa_server): Cargo.toml server/Cargo.toml $(wildcard server/src/**) $(wildcard server/templates/**)
 	cd server && cargo build $(cargo_flags)
 
+.SECONDARY: $(wasm_target)/%.wasm
 .PHONY: build run clean

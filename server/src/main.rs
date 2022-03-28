@@ -79,8 +79,8 @@ mod serialization;
 mod session;
 mod submit;
 
-const STATIC_FILES_HASH: &str = env!("GIT_HASH");
-const STATIC_BIN_FILES_HASH: &str = env!("GIT_BIN_FILES_HASH");
+const STATIC_LAST_CHANGED: &str = env!("STATIC_LAST_CHANGED");
+const STATIC_BIN_FILES_LAST_CHANGED: &str = env!("STATIC_BIN_FILES_LAST_CHANGED");
 
 pub fn spawn_blocking_child<F, R>(f: F) -> JoinHandle<R>
 where
