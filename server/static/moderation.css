@@ -40,44 +40,6 @@ table {
     word-wrap: break-word;
 }
 
-#confirm {
-    position: fixed;
-    z-index: 999;
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-}
-
-#confirm.open {
-    visibility: visible;
-    opacity: 1;
-    background-color: rgba(211, 211, 211, 0.5);
-    pointer-events: auto;
-}
-
-#confirm > div {
-    position: absolute;
-    border: 1px solid lightgray;
-    border-radius: 10px;
-    background-color: white;
-    top: 25%;
-    left: 50%;
-    transform: translate(-50%, -25%);
-    padding: 2em;
-    text-align: center;
-}
-
-@media screen and (max-width: 800px) {
-    #confirm > div {
-        top: 50%;
-        transform: translate(-50%, -50%);
-    }
-}
-
 #confirm_buttons {
     display: flex;
     flex-direction: row;

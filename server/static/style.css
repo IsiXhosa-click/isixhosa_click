@@ -455,6 +455,44 @@ ul.examples > li > p {
     border: 0;
 }
 
+.modal {
+    position: fixed;
+    z-index: 999;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.modal.open {
+    visibility: visible;
+    opacity: 1;
+    background-color: rgba(211, 211, 211, 0.5);
+    pointer-events: auto;
+}
+
+.modal > div {
+    position: absolute;
+    border: 1px solid lightgray;
+    border-radius: 10px;
+    background-color: white;
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -25%);
+    padding: 2em;
+    text-align: center;
+}
+
+@media screen and (max-width: 800px) {
+    .modal > div {
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+}
+
 @media screen and (max-width: 800px) {
     #main_wrap {
         margin-left: 8px;

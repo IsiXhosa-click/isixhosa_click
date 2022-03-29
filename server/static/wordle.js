@@ -1,0 +1,1 @@
+../../wasm/wordle/wordle.js
