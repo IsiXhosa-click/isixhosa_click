@@ -2,11 +2,14 @@ use serde::Deserialize;
 use std::fmt::{self, Display, Formatter, Write};
 use std::iter;
 use ascii::{AsciiChar, AsciiString, IntoAsciiString};
+use chrono::{Local, NaiveDate, NaiveDateTime, TimeZone};
 use gloo::events::EventListener;
 use rand::prelude::*;
 use tinyvec::ArrayVec;
 use wasm_bindgen::JsCast;
 use yew::{Callback, Component, Context, function_component, Html, html, Properties};
+
+const  SEED: u64 = 11530789889988543622;
 
 const CSV: &[u8] = include_bytes!("../words.csv");
 const WORD_LENGTH: usize = 5;
@@ -204,7 +207,18 @@ impl Component for Game {
             .filter_map(|(word_id, word)| process(word, String::new()).map(|text| GuessWord { word_id, text }))
             .collect();
 
-        let mut rng = rand::thread_rng();
+        let start_date = Local.from_utc_date(&NaiveDate::from_ymd(2022, 3, 29));
+        let mut rng = StdRng::seed_from_u64(SEED);
+
+        let since_epoch = (js_sys::Date::now() / 1000.0) as i64;
+
+        let now = NaiveDateTime::from_timestamp(since_epoch, 0);
+        let now = Local.from_local_datetime(&now).unwrap().date();
+
+        for _ in 0..(now - start_date).num_days() {
+            let _ = targets.choose(&mut rng).unwrap();
+        }
+
         let word = targets.choose(&mut rng).unwrap().clone();
 
         let rows = ["QWERTYUIOP", "|ASDFGHJKL|", "\nZXCVBNM\x08"];
@@ -230,8 +244,6 @@ impl Component for Game {
         if self.state != GameState::Continue {
             return false;
         }
-
-        log::debug!("{}", msg);
 
         match msg.into() {
             '\x08' => self.current_guess().letters.pop().is_some(),
@@ -303,8 +315,6 @@ impl Component for Game {
         let callback = ctx.link().callback(|c: char| AsciiChar::new(c));
         let listener = EventListener::new(&document, "keydown", move |event| {
             let event = event.dyn_ref::<web_sys::KeyboardEvent>().unwrap();
-
-            log::debug!("This is a test message!");
 
             let first_char = event.key().chars().next().unwrap();
 
