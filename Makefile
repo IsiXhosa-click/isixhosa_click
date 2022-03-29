@@ -13,7 +13,7 @@ ifeq ($(profile), release)
 	cargo_flags := --release
 endif
 
-build: $(isixhosa_server) $(wordle) $(pwa)
+build: $(wordle) $(pwa) $(isixhosa_server)
 
 run: build
 ifeq ($(jaeger_debug), 1)

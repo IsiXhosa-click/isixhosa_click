@@ -1,1407 +1,1405 @@
-word_id,english,xhosa,part_of_speech,xhosa_tone_markings,infinitive,is_plural,is_inchoative,is_informal,transitivity,followed_by,noun_class,note
-1,help,uncedo,noun,,,false,false,false,,,Ulu,
-3,see,bona,verb,,ukubona,false,false,false,either,,,
-4,orange,i-orenji,noun,,,false,false,false,,,In,"Some speakers use this noun as a Class 5/6 noun - i-orenji/ama-orenji, while others use it as a Class 9/10 noun, i-orenji/ii-orenji"
-5,show,bonisa,verb,,ukubonisa,false,false,false,transitive-only,,,
-6,oranges,ii-orenji,noun,,,true,false,false,,,Izin,
-7,tell,xelela,verb,,ukuxelela,false,false,false,transitive-only,,,
-8,buy,thenga,verb,,ukuthenga,false,false,false,transitive-only,,,
-9,eat,tya,verb,,ukutya,false,false,false,either,,,
-10,baby,usana,noun,,,false,false,false,,,Ulu,"Many speakers use ""umntwana"" (child) these days instead of ""usana""."
-11,babies,iintsana,noun,,,true,false,false,,,Izin,
-12,father,utata,noun,,,false,false,false,,,U,"Utata can be used to describe any middle aged man or older, even if they are not your father."
-13,fathers,ootata,noun,,,true,false,false,,,Oo,Ootata can be used to refer to any group of middle aged men or older. Even if they are not actually fathers.
-14,be similar,fana,verb,,ukufana,false,false,false,intransitive,,,
-15,sing,cula,verb,,ukucula,false,false,false,either,,,
-16,start,qala,verb,,ukuqala,false,false,false,either,,,
-17,calm,thuthuzela,verb,,ukuthuthuzela,false,false,false,either,,,
-19,cars,iimoto,noun,,,true,false,false,,,Izin,
-20,car,imoto,noun,,,false,false,false,,,In,
-21,watch,bukela,verb,,ukubukela,false,true,false,transitive-only,,,
-22,become damaged,onakala,verb,,ukonakala,false,true,false,intransitive,,,
-23,father,ubawo,noun,,,false,false,false,,,U,
-24,hurry,khawuleza,verb,,ukukhawuleza,false,false,false,intransitive,,,
-25,depend,xhomekeka,verb,,ukuxhomekeka,false,true,false,intransitive,,,
-26,advise,yala,verb,,ukuyala,false,false,false,either,,,
-27,television,umabonakude,noun,,,false,false,false,,,U,Note that most speakers use iTV in Class 9 (in-) for television
-28,drunkard,inxila,noun,,,false,false,false,,,Ili,
-29,succeed,phumelela,verb,,ukuphumelela,false,false,false,intransitive,,,
-30,preach,shumayela,verb,,ukushumayela,false,false,false,either,,,
-31,guy,umfo,noun,,,false,false,false,,,Class1Um,
-32,about,malunga,preposition,,,false,false,false,,,,"""malunga"" is always followed by ""na-"".  You can also use nga- e.g. Le yincwadi ethetha ngethemba. This is a book  that speaks about hope."
-33,beloved,isithandwa,noun,,,false,false,false,,,Isi,
-34,as if,ngathi,preposition,,,false,false,false,,,,
-35,ambition,ikhwele,noun,,,false,false,false,,,Ili,"""Ikhwele"" is usually used to mean a kind of envy of someone which motivates a person to work hard so that they too can achieve the same things which they envy, meaning it is more positive than the negative ""ubukhwele""."
-36,envy,ubukhwele,noun,,,false,false,false,,,Ubu,
-37,ride,khwela,verb,,ukukhwela,false,true,false,either,,,
-38,field,ibala,noun,,,false,false,false,,,Ili,
-39,story,ibali,noun,,,false,false,false,,,Ili,
-40,stories,amabali,noun,,,true,false,false,,,Ama,
-41,fields,amabala,noun,,,true,false,false,,,Ama,
-42,colour,umbala,noun,,,false,false,false,,,Class3Um,
-43,colours,imibala,noun,,,true,false,false,,,Imi,
-44,count,bala,verb,,ukubala,false,false,false,either,,,
-45,write,bhala,verb,,ukubhala,false,false,false,either,,,
-46,bed,umandlalo,noun,,,false,false,false,,,Class3Um,"This is a rather archaic term for a bed, coming from the word to prepare a reed bed."
-47,bed,ibhedi,noun,,,false,false,false,,,In,"Modern term for a bed from ""bed"" in English and Afrikaans"
-48,exact revenge,phindeza,verb,,ukuphindeza,false,false,false,,,,
-49,characterise,phawula,verb,,ukuphawula,false,false,false,,,,
-50,character,isimilo,noun,,,false,false,false,,,Isi,"This refers to the character of a person, not a fictional or typographical character. "
-51,plant,isityalo,noun,,,false,false,false,,,Isi,
-52,garden,isitiya,noun,,,false,false,false,,,Isi,"""igadi"" is often used more than ""isitiya"", especially colloquially."
-53,control,lawula,verb,,ukulawula,false,false,false,transitive-only,,,
-54,bread,isonka,noun,,,false,false,false,,,Isi,
-55,egg,iqanda,noun,,,false,false,false,,,Ili,
-56,calm down,zola,verb,,ukuzola,false,false,false,intransitive,,,
-57,detail,inkcukacha,noun,,,false,false,false,,,Izin,
-58,sack,ingxowa,noun,,,false,false,false,,,Izin,
-59,kick,khaba,verb,,ukukhaba,false,false,false,,,,
-60,demolish,diliza,verb,,ukudiliza,false,false,false,transitive-only,,,
-61,decorations,izihombiso,noun,,,true,false,false,,,Izi,
-62,book,incwadi,noun,,,false,false,false,,,In,
-63,play,dlala,verb,,ukudlala,false,false,false,,,,
-64,learn,funda,verb,,ukufunda,false,false,false,,,,
-65,a lot of,inkitha ya-,noun,,,false,false,false,,,In,
-66,wish happy birthday,bhafisa,verb,,ukubhafisa,false,false,false,transitive-only,,,
-67,try,zama,verb,,ukuzama,false,false,false,either,,,
-68,thing,into,noun,,,false,false,false,,,In,
-69,things,izinto,noun,,,true,false,false,,,Izin,
-70,like that,njalo,adverb,,,false,false,false,,,,"This word has multiple meanings, and can often be translated as, ""so"", ""like that"", ""in that way"" etc."
-71,journalist,intatheli,noun,,,false,false,false,,,In,
-72,hat,umnqwazi,noun,,,false,false,false,,,Class3Um,
-73,tear apart,krazuka,verb,,ukukrazuka,false,false,false,transitive-only,,,
-74,improve,phucula,verb,,ukuphucula,false,false,false,transitive-only,,,
-75,shade,umthunzi,noun,,,false,false,false,,,Class3Um,
-76,battle,idabi,noun,,,false,false,false,,,Ili,
-77,example,umzekelo,noun,,,false,false,false,,,Class3Um,
-78,examples,imizekelo,noun,,,true,false,false,,,Imi,
-79,extract,isicatshulwa,noun,,,false,false,false,,,Isi,
-80,trophy,indebe,noun,,,false,false,false,,,In,
-81,swear,thuka,verb,,ukuthuka,false,false,false,,,,
-82,become shocked,othuka,verb,,ukothuka,false,true,false,intransitive,,,
-83,slow down,cothisa,verb,,ukucothisa,false,false,false,either,,,
-84,especially,ngakumbi,adverb,,,false,false,false,,,,
-85,become hurried,ngxama,verb,,ukungxama,false,true,false,intransitive,,,
-86,love,thanda,verb,,ukuthanda,false,false,false,,,,
-87,go home,goduka,verb,,ukugoduka,false,false,false,,,,
-88,rinse,pula,verb,,ukupula,false,false,false,either,,,
-89,brush against,thintana na-,verb,,ukuthintana na-,false,false,false,,,,
-90,short while,isiqhuphe,noun,,,false,false,false,,,Isi,
-91,laugh,hleka,verb,,ukuhleka,false,false,false,,,,
-92,song,ingoma,noun,,,false,false,false,,,In,
-93,refuse,ala,verb,,ukwala,false,false,false,either,,,
-94,say,thi,verb,,ukuthi,false,false,false,either,,,"""thi"" has many meanings, and it can also be used as a generic tense marker as well as the verb ""say"""
-95,tree,umthi,noun,,,false,false,false,,,Class3Um,
-96,trees,imithi,noun,,,true,false,false,,,Imi,
-97,like that,njalo,relative,,,false,false,false,,,,"This word has multiple meanings, and can often be translated as, ""so"", ""such"", ""these kinds of"", etc."
-98,sun,ilanga,noun,,,false,false,false,,,Ili,
-99,fountain,umthombo,noun,,,false,false,false,,,Class3Um,
-100,difficult,nzima,relative,,,false,false,false,,,,
-101,hard,nzima,adverb,,,false,false,false,,,,
-102,hundred,ikhulu,noun,,,false,false,false,,,Ili,
-103,cat,ikati,noun,,,false,false,false,,,In,
-104,cats,iikati,noun,,,true,false,false,,,Izin,
-105,give,pha,verb,,ukupha,false,false,false,transitive-only,,,
-106,arrive,fika,verb,,ukufika,false,false,false,intransitive,,,"Often used in the context of ""get to"""
-107,gift,isipho,noun,,,false,false,false,,,Isi,
-108,provoke,xhokonxa,verb,,ukuxhokonxa,false,false,false,,,,
-109,gifts,izipho,noun,,,true,false,false,,,Izi,
-110,humiliate,phoxa,verb,,ukuphoxa,false,false,false,,,,
-111,drought,imbalela,noun,,,false,false,false,,,In,
-112,fur,uboya,noun,,,false,false,false,,,Ubu,
-113,bump into,tshayisana na-,verb,,ukutshayisana,false,false,false,either,,,
-114,celebrate,bhiyoza,verb,,ukubhiyoza,false,false,false,either,,,
-115,abuse,xhaphaza,verb,,ukuxhaphaza,false,false,false,,,,
-116,blanket,ingubo,noun,,,false,false,false,,,In,
-117,prosper,hluma,verb,,ukuhluma,false,false,false,intransitive,,,
-118,bring,phathela,verb,,ukuphathela,false,false,false,,,,
-119,burn,tsha,verb,,ukutsha,false,false,false,intransitive,,,
-120,close,vala,verb,,ukuvala,false,false,false,transitive-only,,,
-121,drive,qhuba,verb,,ukuqhuba,false,false,false,,,,
-122,price,ixabiso,noun,,,false,false,false,,,Ili,
-123,cut,sika,verb,,ukusika,false,false,false,,,,"""sika"" is used for things that are not growing (for example, bread). ""cheba"" should instead be used for something growing, such as hair."
-124,dance,danisa,verb,,ukudanisa,false,false,false,,,,
-125,disappoint,danisa,verb,,ukudanisa,false,false,false,transitive-only,,,
-126,die,fa,verb,,ukufa,false,false,false,intransitive,,,"""fa"" should generally only be used for yourself or animals, as it can be disrespectful to use it for other people. In those cases, more respectful terms such as ""sweleka"" or ""bhubha"" should be used. Note the infinitive form UKUFA is also used to translate ""death""."
-127,do,enza,verb,,ukwenza,false,false,false,transitive-only,,,
-128,drink,sela,verb,,ukusela,false,false,false,either,,,"""sela"" should be used for things that are cold, such as water. ""phunga"" should be used for things that are hot, such as tea."
-129,decide,gqiba,verb,,ukugqiba,false,false,false,either,,,
-130,forget,libala,verb,,ukulibala,false,false,false,either,,,
-131,go,ya,verb,,ukuya,false,false,false,intransitive,,,"Note with the reflexive Object Concord -zi- and the applied extension -el- this verb can be used to mean ""Go by the self"" e.g. Umntwana wam uziyela esikolweni ""The child goes by itself to school"""
-132,agree,vuma,verb,,ukuvuma,false,false,false,,,,
-133,answer,phendula,verb,,ukuphendula,false,false,false,either,,,
-134,believe,kholelwa,verb,,ukukholelwa,false,false,false,,,,
-135,call,biza,verb,,ukubiza,false,false,false,transitive-only,,,
-136,choose,khetha,verb,,ukukhetha,false,false,false,either,,,
-137,date,umhla,noun,,,false,false,false,,,Class3Um,"Xhosa speakers also use the English word ""i-date"""
-138,change,tshintsha,verb,,ukutshintsha,false,false,false,either,,,"This is borrowed from the English ""change""."
-139,clean,coca,verb,,ukucoca,false,false,false,transitive-only,,,"-cocekile ""clean"" is the adjectival use, as in ""Icocekile le ndawo"" (This place is clean)"
-140,open,vula,verb,,ukuvula,false,false,false,transitive-only,,,
-141,compare,thelekisa,verb,,ukuthelekisa,false,false,false,,,,
-142,cry,lila,verb,,ukulila,false,false,false,,,,
-143,cook,pheka,verb,,ukupheka,false,false,false,,,,
-144,prices,amaxabiso,noun,,,true,false,false,,,Ama,
-145,dates,imihla,noun,,,true,false,false,,,Imi,
-146,give,nika,verb,,ukunika,false,false,false,,,,
-147,leave alone,yeka,verb,,ukuyeka,false,false,false,transitive-only,,,
-148,forgive,xolela,verb,,ukuxolela,false,false,false,transitive-only,,,
-149,remember,khumbula,verb,,ukukhumbula,false,false,false,either,,,"Khumbula is also used to translate ""miss"", e.g. Ndikhumbula umama. I miss mom."
-150,fix,lungisa,verb,,ukulungisa,false,false,false,,,,
-151,find,fumana,verb,,ukufumana,false,true,false,transitive-only,,,
-152,become full,gcwala,verb,,ukugcwala,false,true,false,intransitive,,,
-153,fight,lwa,verb,,ukulwa,false,false,false,,,,
-154,explain,cacisa,verb,,ukucacisa,false,false,false,either,,,
-155,cost,xabisa,verb,,ukuxabisa,false,false,false,intransitive,,,
-156,cut,cheba,verb,,ukucheba,false,false,false,either,,,"""cheba"" is used for things that are growing (such as hair). ""sika"" should instead be used for things that are not growing (such as bread)."
-157,become disappointed,dana,verb,,ukudana,false,true,false,intransitive,,,
-158,describe,chaza,verb,,ukuchaza,false,false,false,,,,
-159,destroy,tshabalalisa,verb,,ukutshabalalisa,false,false,false,transitive-only,,,
-160,make,enza,verb,,ukwenza,false,false,false,transitive-only,,,
-161,pass away,sweleka,verb,,ukusweleka,false,false,false,,,,
-162,drink,phunga,verb,,ukuphunga,false,false,false,,,,"""phunga"" should be used for things that are hot, such as tea. ""sela"" should be used for things that are cold, such as water."
-163,fall,wa,verb,,ukuwa,false,false,false,,,,
-164,burn,tshisa,verb,,ukutshisa,false,false,false,transitive-only,,,
-165,interest,umdla,noun,,,false,false,false,,,Class3Um,"This refers to interest in something, not to financial interest."
-166,vaccine,ugonyo,noun,,,false,false,false,,,Ulu,
-167,rain,netha,verb,,ukunetha,false,false,false,intransitive,,,
-168,hand,isandla,noun,,,false,false,false,,,Isi,
-169,sleep,lala,verb,,ukulala,false,true,false,intransitive,,,"Note the irregular stative form ""lele"" to translate is asleep, e.g. She is asleep - Ulele."
-170,dog,inja,noun,,,false,false,false,,,In,
-171,advise,cebisa,verb,,ukucebisa,false,false,false,either,,,
-172,clever,krelekrele,relative,,,false,false,false,,,,
-173,dogs,izinja,noun,,,true,false,false,,,Izin,
-174,ask,buza,verb,,ukubuza,false,false,false,either,,,
-175,continue,qhubekeka,verb,,ukuqhubekeka,false,false,false,intransitive,,,"Note: qhubeka is the original word for ""continue"" - the additional -ek- is, however, becoming popular"
-176,rain,imvula,noun,,,false,false,false,,,In,
-177,complain,khalaza,verb,,ukukhalaza,false,false,false,,,,
-178,help,nceda,verb,,ukunceda,false,false,false,either,,,
-179,pray,thandaza,verb,,ukuthandaza,false,false,false,,,,
-180,love,uthando,noun,,,false,false,false,,,Ulu,
-181,bark,khonkotha,verb,,ukukhonkotha,false,false,false,,,,
-182,command,yalela,verb,,ukuyalela,false,false,false,either,,,
-183,birthday,umhla wokuzalwa,noun,,,false,false,false,,,Class3Um,"Note: many Xhosa speakers now just use ibirthday.  Note the personal possessive comes immediately after UMHLA - so umhla wakho wokuzalwa - literally ""day of yours of being born"".  Also note that imini yokuzalwa is also used for ""birthday"".  Usuku lokuzalwa is another variation."
-184,desert,intlango,noun,,,false,false,false,,,In,
-185,doubt,thandabuza,verb,,ukuthandabuza,false,false,false,,,,
-186,vaccinate,gonya,verb,,ukugonya,false,false,false,,,,
-187,congratulations,halala,interjection,,,false,false,false,,,,
-188,soft,tofotofo,relative,,,false,false,false,,,,"Usually only used to describe things like thick blankets, pillows, cushions and soft furnishings."
-189,alcohol,utywala,noun,,,false,false,false,,,Ubu,
-190,remind,khumbuza,verb,,ukukhumbuza,false,false,false,transitive-only,,,
-191,carry,phatha,verb,,ukuphatha,false,true,false,transitive-only,,,"""phatha"" takes an irregular recent-past tense and stative form of ""phethe""."
-192,virus,intsholongwane,noun,,,false,false,false,,,In,
-193,register,bhalisa,verb,,ukubhalisa,false,false,false,either,,,
-194,emphasise,gxininisa,verb,,ukugxininisa,false,false,false,transitive-only,,,
-195,become angry,qumba,verb,,ukuqumba,false,true,false,intransitive,,,
-196,suck,munca,verb,,ukumunca,false,false,false,transitive-only,,,
-197,wash,hlamba,verb,,ukuhlamba,false,false,false,either,,,Note:  the borrowed word vasa is also used for wash
-198,sleep,ubuthongo,noun,,,false,false,false,,,Ubu,
-199,rest,phumla,verb,,ukuphumla,false,false,false,intransitive,,,
-200,repeat,phinda,verb,,ukuphinda,false,false,false,,,,
-201,body,umzimba,noun,,,false,false,false,,,Class3Um,
-202,hands,izandla,noun,,,true,false,false,,,Izi,
-203,hide,fihla,verb,,ukufihla,false,false,false,either,,,
-204,mould,xonxa,verb,,ukuxonxa,false,false,false,,,,
-205,dish,isitya,noun,,,false,false,false,,,Isi,
-206,pay attention,hoya,verb,,ukuhoya,false,false,false,either,,,
-207,ashes,uthuthu,noun,,,false,false,false,,,Ulu,
-208,produce,velisa,verb,,ukuvelisa,false,false,false,,,,
-209,take,thatha,verb,,ukuthatha,false,false,false,transitive-only,,,
-210,return,buya,verb,,ukubuya,false,false,false,intransitive,,,
-211,shout,khwaza,verb,,ukukhwaza,false,false,false,,,,
-212,sit,hlala,verb,,ukuhlala,false,true,false,intransitive,,,"Note that ""sitting"" is translated as ""hleli"", as this is the irregular stative form of ""hlala""."
-213,run,baleka,verb,,ukubaleka,false,false,false,intransitive,,,
-214,stay behind,sala,verb,,ukusala,false,false,false,intransitive,,,"""Sala kakuhle"" can be used to mean ""goodbye"" to someone who will be staying where they are."
-215,shout,shawuta,verb,,ukushawuta,false,false,false,,,,
-216,sell,thengisa,verb,,ukuthengisa,false,false,false,,,,
-217,take out,khupha,verb,,ukukhupha,false,false,false,transitive-only,,,
-218,throw,jula,verb,,ukujula,false,false,false,either,,,
-219,service,inkonzo,noun,,,false,false,false,,,In,
-220,finish,gqiba,verb,,ukugqiba,false,false,false,either,,,
-221,teach,fundisa,verb,,ukufundisa,false,false,false,,,,
-222,think,cinga,verb,,ukucinga,false,false,false,,,,
-223,hope,ithemba,noun,,,false,false,false,,,Ili,
-224,coffee,ikofu,noun,,,false,false,false,,,In,
-226,bring back,buyisa,verb,,ukubuyisa,false,false,false,transitive-only,,,"Also used in the sense of ""return something or someone to a place"""
-227,send,thuma,verb,,ukuthuma,false,false,false,either,,,"Note: send something or someone to a place will be ""thumela"".  In Xhosa ""thuma"" is often used when someone is sending someone to the shop and then is used simply as ""thuma"""
-228,smile,ncuma,verb,,ukuncuma,false,true,false,intransitive,,,"""Smiling"" is normally translated as ""ncumile"""
-229,speak,thetha,verb,,ukuthetha,false,false,false,either,,,
-230,stand up,phakama,verb,,ukuphakama,false,false,false,,,,
-231,support,xhasa,verb,,ukuxhasa,false,false,false,,,,
-232,take to,sa,verb,,ukusa,false,false,false,transitive-only,,,"This word is used to describe taking someone/something to a place. Note in the perfect tense form it is sometimes difficult to see the verb as it so short, particularily if there is an object concord as well, e.g. Bamsile kwagqirha? - ba-m-s-ile ""Have they taken her to the doctor?"""
-233,understand,qonda,verb,,ukuqonda,false,false,false,either,,,
-234,urinate,chama,verb,,ukuchama,false,false,false,,,,
-235,use,sebenzisa,verb,,ukusebenzisa,false,false,false,,,,
-236,want,funa,verb,,ukufuna,false,false,false,,,,
-237,hope,themba,verb,,ukuthemba,false,false,false,either,,,
-238,work,sebenza,verb,,ukusebenza,false,false,false,either,,,
-239,hear,va,verb,,ukuva,false,false,false,either,,,
-240,understand,va,verb,,ukuva,false,false,false,either,,,
-241,become injured,enzakala,verb,,ukwenzakala,false,true,false,intransitive,,,"An alternative form is ""onzakala"""
-242,injure,enzakalisa,verb,,ukwenzakalisa,false,false,false,transitive-only,,,
-243,better,ngcono,relative,,,false,false,false,,,,
-244,jump,tsiba,verb,,ukutsiba,false,false,false,intransitive,,,
-245,kill,bulala,verb,,ukubulala,false,false,false,either,,,"Note that ""bulala"" takes the irregular passive form of ""bulawa""."
-246,know,azi,verb,,ukwazi,false,false,false,either,,,"Azi is commonly used in the construction ""know how to"" as ""kwazi uku"", very often used with object concords"
-247,read,funda,verb,,ukufunda,false,false,false,,,,
-248,go,hamba,verb,,ukuhamba,false,false,false,intransitive,,,"Hamba does not describe the act of going to a location, it refers to the act of going in general."
-249,leave,(i)mka,verb,,ukumka,false,false,false,either,,,"""mka"" is a latent-i verb.  This verb is used generally to indicate ""depart""/""depart from"""
-250,leave,shiya,verb,,ukushiya,false,false,false,,,,
-251,lie down,ngqengqa,verb,,ukungqengqa,false,false,false,intransitive,,,
-252,like,thanda,verb,,ukuthanda,false,false,false,transitive-only,,,"""thanda"" can be used to indicate something that happens often, or a tendency."
-253,lie,xoka,verb,,ukuxoka,false,false,false,intransitive,,,"""xoka"" can be rather rude, especially if used to an older person or someone commanding respect. A more euphemistic phrasing is ""phosisa""."
-254,look,jonga,verb,,ukujonga,false,false,false,,,,
-255,move,fudukela,verb,,ukufudukela,false,false,false,intransitive,,,"Fudukela describes a person moving from one place to another such as moving city, or moving house."
-256,move,bekelisa,verb,,ukubekelisa,false,false,false,transitive-only,,,"""bekelisa"" should not be used for a person moving houses, for instance - ""fudukela"" should be used instead. Bekelisa is often used to mean ""move out of the way""."
-257,need,funa,verb,,ukufuna,false,false,false,transitive-only,,,
-258,need,dinga,verb,,ukudinga,false,false,false,either,,,"This is a more serious kind of need than ""funa""."
-259,pay,bhatala,verb,,ukubhatala,false,false,false,either,,,
-260,prepare,lungiselela,verb,,ukulungiselela,false,false,false,transitive-only,,,
-261,press,cofa,verb,,cofa,false,false,false,transitive-only,,,
-262,push,tyhala,verb,,ukutyala,false,false,false,,,,
-263,put in,faka,verb,,ukufaka,false,false,false,,,,
-264,pull,tsala,verb,,ukutsala,false,false,false,,,,
-265,put,beka,verb,,ukubeka,false,false,false,either,,,"Used when translating ""put on"" as in ""put the books on the table"""
-266,hide,zimela,verb,,ukuzimela,false,true,false,intransitive,,,
-267,hold,bamba,verb,,ukubamba,false,false,false,,,,
-268,listen,mamela,verb,,ukumamela,false,true,false,either,,,
-269,move,shukumisa,verb,,ukushukumisa,false,false,false,transitive-only,,,
-270,move,shukuma,verb,,ukushukuma,false,false,false,intransitive,,,
-271,live,phila,verb,,ukuphila,false,false,false,intransitive,,,"The word ""phila"" should not be used to mean ""live somewhere"", ""hlala"" should be used instead. It is more similar to ""be well"". The word ""phila"" is an inchoative verb, so it can be used in the perfect tense when meaning ""well"".  When meaning ""alive"" it is used in the present tense, usually with the progressive aspect -sa-."
-272,live,hlala,verb,,ukuhlala,false,false,false,,,,"""hlala"" is used for ""live somewhere"", not to live as in to be alive or be well - ""phila"" should instead be used in that case."
-273,happen,enzeka,verb,,ukwenzeka,false,false,false,intransitive,,,"""enzeka"" is sometimes used in the construction ""into eyenzekayo"" (""the thing that happens"") which can be used at the beginning of a sentence to introduce new information, similar to the English construction ""What happens is that..."" "
-274,meet,dibana,verb,,ukudibana,false,false,false,intransitive,,,
-275,lie,phosisa,verb,,ukuphosisa,false,false,false,,,,"""phosisa"" is a respectful, euphemistic way to say ""lie""."
-276,plant,tyala,verb,,ukutyala,false,false,false,,,,
-277,plants,izityalo,noun,,,true,false,false,,,Izi,
-278,notice,qaphela,verb,,ukuqaphela,false,false,false,either,,,
-279,potato,itapile,noun,,,false,false,false,,,In,
-280,pineapple,ipayina,noun,,,false,false,false,,,Ili,
-281,pineapples,amapayina,noun,,,true,false,false,,,Ama,
-282,local government,urhulumente wengingqi,noun,,,false,false,false,,,U,"""Urhulumente wasekhaya"" is also used for ""local government""."
-283,local governments,oorhulumente beengingqi,noun,,,true,false,false,,,Oo,
-284,municipal council,iBhunga likaMasipala,noun,,,false,false,false,,,Ili,
-285,day,usuku,noun,,,false,false,false,,,Ulu,"""usuku"" refers to 24-hour day"
-286,today,namhlanje,adverb,,,false,false,false,,,,
-287,days,iintsuku,noun,,,true,false,false,,,Izin,"""iintsuku"" refers to 24-hour periods"
-288,court,inkundla,noun,,,false,false,false,,,In,
-289,potatoes,iitapile,noun,,,true,false,false,,,Izin,
-290,yesterday,izolo,noun,,,false,false,false,,,Ili,
-291,day before yesterday,izolo elinye,noun,,,false,false,false,,,Ili,
-292,pumpkin,ithanga,noun,íthanga,,false,false,false,,,Ili,
-293,pumpkins,amathanga,noun,ámáthanga,,true,false,false,,,Ama,
-294,rice,irayisi,noun,,,false,false,false,,,In,
-295,courts,iinkundla,noun,,,true,false,false,,,Ili,
-296,spinach,ispinatshi,noun,,,false,false,false,,,In,"Sometimes used as a noun in the isi- group, e.g. ""Simnandi esi spinatshi."" ""This spinach is nice."""
-297,Supreme Court of Appeal,INkundla ePhezulu yeziBheno,noun,,,false,false,false,,,In,
-298,Constitutional Court,INkundla yezomGaqo-siseko,noun,,,false,false,false,,,In,
-299,municipal councils,amaBhunga ooMasipala,noun,,,true,false,false,,,Ama,
-300,High Court,INkundla ePhakamileyo,noun,,,false,false,false,,,In,
-301,tomato,itumato,noun,,,false,false,false,,,In,
-302,wild berry,iqunube,noun,,,false,false,false,,,Ili,
-303,Small Claims Court,INkundla yamaBango amaNcinci,noun,,,false,false,false,,,In,
-304,watermelon,ivatala,noun,,,false,false,false,,,In,
-305,Magistrate's Court,INkundla kaMantyi,noun,,,false,false,false,,,In,
-306,tomorrow,ngomso,adverb,,,false,false,false,,,,
-307,watermelons,iivatala,noun,,,false,false,false,,,Izin,
-308,weekend,impelaveki,noun,,,false,false,false,,,In,
-309,ingredient,isithako,noun,,,false,false,false,,,Isi,
-310,tomatoes,iitumato,noun,,,true,false,false,,,Izin,
-311,appeal,isibheno,noun,,,false,false,false,,,Isi,
-312,weekends,iimpelaveki,noun,,,true,false,false,,,Izin,
-313,application for bail,isicelo sebheyile,noun,,,false,false,false,,,Isi,
-314,early in the morning,kwakusasa,adverb,,,false,false,false,,,,
-315,wild berries,amaqunube,noun,,,true,false,false,,,Ama,
-316,aeroplane,inqwelomoya,noun,,,false,false,false,,,In,Most people use i-eropleyini for aeroplane.
-317,accused,ummangalelwa,noun,,,false,false,false,,,Class1Um,
-318,accused,abamangalelwa,noun,,,true,false,false,,,Aba,
-319,appeals,izibheno,noun,,,true,false,false,,,Izin,
-320,ingredients,izithako,noun,,,true,false,false,,,Izin,
-321,bicycles,iibhayisekile,noun,,,true,false,false,,,Izin,
-322,bail,ibheyile,noun,,,false,false,false,,,In,
-323,bicycle,ibhayisekile,noun,,,false,false,false,,,In,
-324,wagon,inqwelo,noun,,,false,false,false,,,In,
-325,armed robbery,ukuphanga kuxhotyiwe,noun,,,false,false,false,,,Uku,"Literally translates ""to rob, being armed"".  Ukuxhoba is ""to arm"" and ukuxhotywa is ""to be armed"" -iwe is the stative suffix ""kuxhotyiwe"" translates ""being armed"""
-326,aeroplanes,iinqwelomoya,noun,,,true,false,false,,,Izin,
-327,applications for bail,izicelo zebheyile,noun,,,true,false,false,,,Izin,
-328,case,ityala,noun,,,false,false,false,,,Ili,Legal case
-329,wagons,iinqwelo,noun,,,true,false,false,,,Izin,
-330,days,iimini,noun,,,true,false,false,,,Izin,"""iimini"" refers to 12-hour days."
-331,day,imini,noun,,,false,false,false,,,In,"""imini"" refers to the 12-hour day."
-332,at dawn,ekuseni,adverb,,,false,false,false,,,,
-333,in the morning,kusasa,adverb,,,false,false,false,,,,
-334,sunrise,ukuphuma kwelanga,noun,,,false,false,false,,,Uku,
-335,late in the morning,ngentlazane,adverb,,,false,false,false,,,,
-336,night,ubusuku,noun,,,false,false,false,,,Ubu,
-337,moon,inyanga,noun,,,false,false,false,,,In,
-338,cases,amatyala,noun,,,true,false,false,,,Ama,Legal cases
-339,cell,isisele,noun,,,false,false,false,,,Isi,"""isele"" refers to a jail cell."
-340,suns,amalanga,noun,,,true,false,false,,,Ama,
-341,boat,isikhitshana,noun,,,false,false,false,,,Isi,
-342,boats,izikhitshana,noun,,,true,false,false,,,Izi,
-343,ship,isikhephe,noun,,,false,false,false,,,Isi,
-344,ships,izikhephe,noun,,,true,false,false,,,Izi,
-345,promise,thembisa,verb,,ukuthembisa,false,false,false,either,,,
-346,cells,izisele,noun,,,true,false,false,,,Izin,Jail cells
-347,charge,isityholo,noun,,,false,false,false,,,Isi,Legal charge
-348,bus,ibhasi,noun,,,false,false,false,,,In,
-349,charges,izityholo,noun,,,true,false,false,,,Izin,
-350,buses,iibhasi,noun,,,true,false,false,,,Izin,
-351,preparations,amalungiselelo,noun,,,true,false,false,,,Ama,
-352,traditional doctor,igqirha,noun,,,true,false,false,,,Ili,
-353,complaint,isikhalazo,noun,,,false,false,false,,,Isi,
-354,complaints,izikhalazo,noun,,,false,false,false,,,Izi,
-355,doctor,ugqirha,noun,,,false,false,false,,,U,"""ugqirha"" can be used to refer to a medical doctor or someone who got their doctorate in academia."
-356,doctors,oogqirha,noun,,,true,false,false,,,Oo,"""oogqirha"" can be used to refer to medical doctors or people who got their doctorate in academia."
-357,corruption,urhwaphilizo,noun,,,false,false,false,,,Ulu,
-358,death penalty,isigwebo sentambo,noun,,,false,false,false,,,Isi,
-359,strike,gwayimba,verb,,ukugwayimba,false,false,false,intransitive,,,"""gwayimba"" is used to describe the act of refusing to work due to unfavourable working conditions/pay."
-360,evidence,ubungqina,noun,,,false,false,false,,,Ubu,
-361,drug,isiyobisi,noun,,,false,false,false,,,Isi,
-362,crane,isilenge,noun,,,false,false,false,,,Isi,"""isilenge"" is used to refer to a crane which is a machine used in construction."
-363,defendants,abamangalelwa,noun,,,true,false,false,,,Ama,
-364,izilenge,cranes,noun,,,true,false,false,,,Izi,"""izilenge"" is used to refer to cranes which are machines used in construction."
-365,defendant,ummangalelwa,noun,,,false,false,false,,,Class1Um,
-366,plaintiff,ummangali,noun,,,false,false,false,,,Class1Um,
-367,plaintiffs,abamangali,noun,,,true,false,false,,,Aba,
-368,traditional doctors,amagqirha,noun,,,true,false,false,,,Ama,
-369,fish,iintlanzi,noun,,,true,false,false,,,Izin,
-370,cable car,ikhetshi,noun,,,false,false,false,,,In,
-371,crime,ubugebenga,noun,,,false,false,false,,,Ubu,
-372,drugs,iziyobisi,noun,,,true,false,false,,,Izi,
-373,fine,isihlawuliso,noun,,,false,false,false,,,Isi,Monetary fine
-374,van,iveni,noun,,,false,false,false,,,In,
-375,dock,umkhumbi,noun,,,false,false,false,,,Class3Um,Court dock
-376,helicopter,ihelikhopta,noun,,,false,false,false,,,In,
-377,motorbikes,izithuthuthu,noun,,,true,false,false,,,Izi,
-378,fines,izihlawuliso,noun,,,true,false,false,,,Izin,Monetary fine
-379,fines,imidliwo,noun,,,true,false,false,,,Imi,Monetary fines
-380,fraud,urhwaphilizo,noun,,,false,false,false,,,Ulu,
-381,motorbike,isithuthuthu,noun,,,false,false,false,,,Isi,
-382,fish,loba,verb,,ukuloba,false,false,false,either,,,
-383,public transport,isithuthi sikawonke-wonke,noun,,,false,false,false,,,Isi,
-384,helicopters,iihelikhopta,noun,,,true,false,false,,,Izin,
-385,mugger,umphangi,noun,,,false,false,false,,,Class1Um,
-386,passengers,abakhweli,noun,,,true,false,false,,,Aba,
-387,fine,umdliwo,noun,,,false,false,false,,,Class3Um,Monetary fine.
-388,perpetrator,isikrelemnqa,noun,,,false,false,false,,,Isi,
-389,passenger,umkhweli,noun,,,false,false,false,,,Class1Um,
-390,perpetrators,izikrelemnqa,noun,,,false,false,false,,,Izin,
-391,ship,inqanawe,noun,,,false,false,false,,,In,
-392,vans,iiveni ,noun,,,true,false,false,,,Izin,
-393,muggers,abaphangi,noun,,,true,false,false,,,Aba,
-394,ships,iinqanawe,noun,,,true,false,false,,,Izin,
-395,famine,indlala,noun,,,false,false,false,,,In,
-396,guilt,ityala,noun,,,false,false,false,,,In,
-397,midday,imini emaqanda,noun,,,false,false,false,,,In,
-398,in the afternoon,emva kwemini,adverb,,,false,false,false,,,,
-399,[in] the afternoon,emalanga,adverb,,,false,false,false,,,,"This word can also just indicate ""in the afternoons"" with a more general sense."
-400,set,tshona,verb,,ukutshona,false,false,false,intransitive,,,"""tshona"" refers to the setting of the sun."
-401,exit,phuma,verb,,ukuphuma,false,false,false,intransitive,,,
-402,rise,phuma,verb,,ukuphuma,false,false,false,intransitive,,,"""phuma"" refers to the sun rising."
-403,vehicle,isithuthi,noun,,,false,false,false,,,Isi,
-404,vehicles,izithuthi,noun,,,true,false,false,,,Izin,
-405,at sunset,matshona,adverb,,,false,false,false,,,,
-406,fish,intlanzi,noun,,,false,false,false,,,In,
-407,space ship,isipheke-pheke,noun,,,false,false,false,,,Isi,
-408,space ships,izipheke-pheke,noun,,,true,false,false,,,Izi,
-409,tricks,amaqhinga,noun,,,true,false,false,,,Ama,
-410,trick,iqhinga,noun,,,false,false,false,,,Ili,
-411,before,phambili,preposition,,,false,false,false,,,,"""phambili"" appears as ""phambi"" when it is modifying something."
-412,up,phezulu,preposition,,,false,false,false,,,,"The -el- verbal extension is often used with verbs that come before ""phezulu"" e.g. Culela phezulu! Sing up!"
-413,down,phantsi,preposition,,,false,false,false,,,,
-414,below,phantsi,preposition,,,false,false,false,,,,
-415,chop,canda,verb,,ukucanda,false,false,false,transitive-only,,,"""canda"" refers to splitting of wood."
-416,eat,canda,verb,,ukucanda,false,false,false,either,,,"Canda is generally used for ""chop"" but can be used informally for ""eat"""
-417,pour,galela,verb,,ukugalela,false,false,false,transitive-only,,,
-418,intestine,ulusu,noun,,,false,false,false,,,Ulu,
-419,skin,ulusu,noun,,,false,false,false,,,Ulu,"These days many Xhosa speakers just use the borrowed word ""iskin"" using it as a noun in the isi- group, e.g. ""Sihle iskin sakho."" ""Your skin is beautiful."""
-420,cut,ncwela,verb,,ukuncwela,false,false,false,transitive-only,,,"""ncwela"" can be used to refer to cutting paper or leather into smaller strips, or even stripping/trimming a plant. Informally ""ncwela"" can be used for ""bribe""."
-421,bully,ncwela,verb,,ukuncwela,false,false,true,transitive-only,,,
-422,walk,hamba,verb,,ukuhamba,false,false,false,intransitive,,,
-423,home,idlala,noun,,,false,false,true,,,Ili,
-424,brother,umnakwethu,noun,,,false,false,false,,,Class1Um,Used to refer to your brother regardless of whether they are younger or older.
-425,younger brother,umninawa,noun,,,false,false,false,,,Class1Um,Only used when referring to your younger brother
-426,no,hayi,interjection,,,false,false,false,,,,
-427,yes,ewe,interjection,,,false,false,false,,,,
-428,language,ulwimi,noun,,,false,false,false,,,Ulu,
-429,languages,iilwimi,noun,,,true,false,false,,,Izin,
-430,face,ubuso,noun,,,false,false,false,,,Ubu,
-431,car,ihashe,noun,,,false,false,false,,,Ili,Informal.
-432,horse,ihashe,noun,,,false,false,false,,,Ili,
-433,silo,idlala,noun,,,false,false,false,,,Ili,Standard meaning.
-434,Cape Town,iKapa,noun,,,false,false,false,,,Ili,
-435,if,ukuba,conjunction,,,false,false,false,,indicative mood,,
-436,across,phesheya,preposition,,,false,false,false,,,,
-437,there,phaya,preposition,,,false,false,false,,,,"""phaya"" is used to refer to something far away."
-438,there,apho,preposition,,,false,false,false,,,,
-439,here,apha,preposition,,,false,false,false,,,,
-440,in the evening,ngorhatya,adverb,,,false,false,false,,,,
-441,but,kodwa,conjunction,,,false,false,false,,indicative mood,,
-442,country,ilizwe,noun,,,false,false,false,,,Ili,
-443,money,imali,noun,,,false,false,false,,,Izin,
-444,probably,kungenzeka,adverb,,,false,false,false,,,,"""kungenzeka"" translates directly as ""it can happen"" or ""it can be doable"" and is often followed by ""ukuba""."
-445,almost,phantse,adverb,,,false,false,false,,indicative mood,,
-446,effect,ifuthe,noun,,,false,false,false,,,Ili,"Also has the sense of ""impact""."
-447,effects,amafuthe,noun,,,true,false,false,,,Ama,
-448,oil,amafutha,noun,,,false,false,false,,,Ama,"These days most people use ""i-oyile"" for ""oil""."
-449,become lost,lahleka,verb,,ukulahleka,false,true,false,intransitive,,,"This is used to say ""I have lost something"" by putting it in the passive voice. See the first example."
-450,dump,lahla,verb,,ukulahla,false,false,false,either,,,
-451,war,imfazwe,noun,,,false,false,false,,,In,
-452,above,phezulu,preposition,,,false,false,false,,,,"""phezulu"" appears as ""phezu"" when used before a noun to mean above/ on top of it."
-453,tin can,inkonxa,noun,,,false,false,false,,,In,Refers to any tin can
-454,sour milk,amasi,noun,,,false,false,false,,,Ama,
-455,first,ukuqala,noun,,,false,false,false,,,Uku,"Although, ""ukuqala"" is just the infinitive of ""qala"" meaning ""start"", it is used to mean ""first"" and is preceded by a possessive concord."
-456,minute,umzuzu,noun,,,false,false,false,,,Class3Um,
-457,minutes,imizuzu,noun,,,true,false,false,,,Imi,
-458,hour,iyure,noun,,,false,false,false,,,In,
-459,second,umzuzwana,noun,,,false,false,false,,,Class3Um,
-460,seconds,imizuzwana,noun,,,true,false,false,,,Imi,
-461,hours,iiyure,noun,,,true,false,false,,,Izin,
-462,second,isibini,noun,,,false,false,false,,,Isi,
-463,society,uluntu,noun,,,false,false,false,,,Ulu,
-464,clap,qhwaba,verb,,ukuqhwaba,false,false,false,either,,,
-465,services,iinkonzo,noun,,,true,false,false,,,Izin,
-466,community,uluntu,noun,,,false,false,false,,,Ulu,
-467,come ,(i)za,verb,,ukuza,false,false,false,either,,,"""(i)za"" is a latent i verb."
-468,slap,qhwaba,verb,,ukuqhwaba,false,false,false,either,,,
-469,pastor,umfundisi,noun,,,false,false,false,,,Class1Um,
-470,bin,umgqomo,noun,,,false,false,false,,,Class3Um,
-471,ever,kha,verb,,ukukha,false,false,false,intransitive,,,An auxiliary verb followed by the present subjunctive or the past subjunctive
-472,remain,sala,verb,,ukusala,false,false,false,either,,,
-474,mine,umgodi,noun,,,false,false,false,,,Class3Um,
-475,person,umntu,noun,,,false,false,false,,,Class1Um,
-476,although,noxa,conjunction,,,false,false,false,,participial mood,,
-477,talk,thetha,verb,,ukuthetha,false,false,false,either,,,
-478,other,mbi,relative,,,false,false,false,,,,"""mbi"" takes the object concord for all noun classes except 1a and 2a (which take ""wu""). The initial vowel of the noun preceding ""mbi"" is dropped."
-479,another,mbi,adverb,,,false,false,false,,,,"""mbi"" takes the object concord for all noun classes except 1a and 2a (which take ""wu""). The initial vowel of the noun preceding ""mbi"" is dropped."
-480,people,abantu,noun,,,true,false,false,,,Aba,
-481,condition,imo,noun,,,false,false,false,,,In,
-482,situation,imeko,noun,,,false,false,false,,,In,
-483,shape,imo,noun,,,false,false,false,,,In,
-484,form,imo,noun,,,false,false,false,,,In,
-485,president,umongameli,noun,,,false,false,false,,,U,
-486,archbishop,umongameli,noun,,,false,false,false,,,U,
-487,girl,intombi,noun,,,false,false,false,,,In,
-488,"lady, female",inenekazi,noun,,,false,false,false,,,Ili,
-489,lot,ninzi,adjective,,,false,false,false,,,,
-490,dream,iphupha,noun,,,false,false,false,,,Ili,
-491,recently,mva nje,adverb,,,false,false,false,,,,
-492,ways,iindlela,noun,,,true,false,false,,,Izin,
-493,roads,iindlela,noun,,,true,false,false,,,Izin,
-494,road,indlela,noun,,,false,false,false,,,In,
-495,way,indlela,noun,,,false,false,false,,,In,
-496,home,ikhaya,noun,,,false,false,false,,,Ili,
-497,many,ninzi,adjective,,,false,false,false,,,,
-498,man,indoda,noun,,,false,false,false,,,In,"The word ""utata"" is often used to refer to any man these days, not just to a ""father""."
-499,woman,umfazi,noun,,,false,false,false,,,Class1Um,
-500,mister,umnumzana,noun,,,false,false,false,,,Class1Um,
-501,mister,umhlekazi,noun,,,false,false,false,,,Class1Um,"""Mhlekazi"" is a respectful term of address for a man who is middle aged or older."
-502,can,nakho,verb,,ukuba nakho,false,false,false,either,,,
-503,can,kwazi uku-,verb,,ukukwazi,false,false,false,either,,,"Sometimes the initial vowel of ""uku-"" is dropped in the negative.
-
-It means can in the sense of ""be able to""."
-504,time,ixesha,noun,,,false,false,false,,,Ili,
-505,times,amaxesha,noun,,,true,false,false,,,Ama,
-506,year,unyaka,noun,,,false,false,false,,,Class3Um,Although this noun is in the UM- group the M of the prefix has been dropped.
-507,women,abafazi,noun,,,true,false,false,,,Aba,
-508,men,amadoda,noun,,,true,false,false,,,Ama,
-509,years,iminyaka,noun,,,true,false,false,,,Imi,
-510,other,nye,adjective,,,false,false,false,,,,
-511,outside,phandle,preposition,,,false,false,false,,,,"Also sometimes ""ngaphandle""."
-512,between,phakathi,preposition,,,false,false,false,,,,"""phakathi"" is followed by ""kwa"" when it is used to mean ""between"""
-513,inside,phakathi,preposition,,,false,false,false,,,,"""phakathi"" is followed by the locative when taken to mean ""inside"""
-514,after,emva,preposition,,,false,false,false,,,,"After doing something very often used with kwa-infinitive --> koku-, e.g. emva kokuthetha naye - after speaking with him/her"
-515,in front,phambili,preposition,,,false,false,false,,,,"""phambili"" appears as ""phambi"" when it is modifying something."
-516,forward,phambili,preposition,,,false,false,false,,,,
-517,behind,emva,preposition,,,false,false,false,,,,
-518,sides,amacala,noun,,,true,false,false,,,Ama,
-519,next to,ecaleni,preposition,,,false,false,false,,,,
-520,on the right,ekunene,preposition,,,false,false,false,,,,"Many Xhosa speakers now just say ""ngaseright"" for ""on/to the right"""
-521,on the left,ekhohlo,preposition,,,false,false,false,,,,"Many Xhosa speakers just say ""ngaseleft"" for ""on/to the left"""
-522,some,nye,adjective,,,false,false,false,,,,
-523,so that,ukuze,conjunction,,,false,false,false,,subjunctive mood,,
-524,that,ukuba,conjunction,,,false,false,false,,,,
-525,take,thabatha,verb,,ukuthabatha,false,false,false,transitive-only,,,"""thabatha"" has the same meaning as ""thatha"". It is mostly a matter of preference."
-526,get,fumana,verb,,ukufumana,false,true,false,transitive-only,,,
-527,bring,zisa,verb,,ukuzisa,false,false,false,transitive-only,,,
-528,just,qha,adverb,,,false,false,false,,,,
-529,only,kuphela,adverb,,,false,false,false,,,,
-530,now,ngoku,adverb,,,false,false,false,,,,
-531,and also,kwaye,conjunction,,,false,false,false,,indicative mood,,
-532,dream,phupha,verb,,ukuphupha,false,false,false,either,,,
-533,what?,ntoni?,relative,,,false,false,false,,,,
-534,always,okokoko,adverb,,,false,false,false,,,,Nice explanation on https://www.capetalk.co.za/podcasts/294/breakfast-with-refilwe-moloto/374210/everyday-xhosa-okokoko
-535,always,soloko,verb,,ukusoloko,false,false,false,intransitive,participial mood,,"""soloko"" is an auxiliary verb"
-536,bins,imigqomo,noun,,,true,false,false,,,Imi,
-537,history,imbali,noun,,,false,false,false,,,In,
-538,culture,inkcubeko,noun,,,false,false,false,,,In,
-539,allow,vumela,verb,,ukuvumela,false,false,false,transitive-only,,,
-540,religion,inkolo,noun,,,false,false,false,,,In,
-541,be like,fana,verb,,ukufana,false,false,false,intransitive,,,"Often followed by na-, Compare  ""Bayafana"" ""They are alike"" with ""Bafana nathi"" ""They are like us"". "
-542,where?,phi?,relative,,,false,false,false,,,,
-543,health,impilo,noun,,,false,false,false,,,In,
-544,life,ubomi,noun,,,false,false,false,,,Ubu,
-545,life,impilo,noun,,,false,false,false,,,In,
-546,how?,njani?,relative,,,false,false,false,,,,
-547,nice,mnandi,relative,,,false,false,false,,,,
-548,well,kakuhle,adverb,,,false,false,false,,,,
-549,world,umhlaba,noun,,,false,false,false,,,Class3Um,
-550,homestead,umzi,noun,,,false,false,false,,,Class3Um,
-551,house,indlu,noun,,,false,false,false,,,In,
-552,houses,izindlu,noun,,,true,false,false,,,Izin,
-553,because,kuba,conjunction,,,false,false,false,,indicative mood,,
-554,school,isikolo,noun,,,false,false,false,,,Isi,"""isikolo"" can also be used to mean ""university""."
-555,university,iyunivesithi,noun,,,false,false,false,,,In,
-556,study,funda,verb,,ukufunda,false,false,false,either,,,
-557,universities,iiyunivesithi,noun,,,true,false,false,,,Izin,
-558,schools,izikolo,noun,,,true,false,true,,,Izi,
-559,child,umntwana,noun,,,false,false,false,,,Class1Um,
-560,children,abantwana,noun,,,true,false,false,,,Aba,
-561,feel,va,verb,,ukuva,false,false,false,either,,,"The verb ""va"" when used to translate ""feel"" is usually used with the reflexive object concord -zi-"
-562,problems,iingxaki,noun,,,true,false,false,,,Izin,
-563,earth,umhlaba,noun,,,false,false,false,,,Class3Um,"Similar to ""ground"" or ""soil"""
-564,place,indawo,noun,,,false,false,false,,,In,
-565,places,iindawo,noun,,,true,false,false,,,Izin,
-566,few,mbalwa,relative,,,false,false,false,,,,
-567,turn,jika,verb,,ukujika,false,false,false,intransitive,,,
-568,straight,ngqo,preposition,,,false,false,false,,,,
-569,throw water,chitha,verb,,ukuchitha,false,false,false,either,,,
-570,spend,chitha,verb,,ukuchitha,false,false,false,either,,,
-571,weak,buthathaka,relative,,,false,false,false,,,,
-572,world,ihlabathi,noun,,,false,false,false,,,Ili,
-573,friend,umhlobo,noun,,,false,false,false,,,Class1Um,
-574,twin,iwele,noun,,,false,false,false,,,Ili,
-575,waterfalls,iingxangxasi,noun,,,true,false,false,,,Izin,
-576,extract,caphula,verb,,ukucaphula,false,false,false,transitive-only,,,
-577,homes,amakhaya,noun,,,true,false,false,,,Ama,
-578,waterfall,ingxangxasi,noun,,,false,false,false,,,In,
-579,while,logama,conjunction,,,false,false,false,,participial mood,,
-580,another,nye,adjective,,,false,false,false,,,,
-581,side,icala,noun,,,false,false,false,,,Ili,
-582,destroy,chitha,verb,,ukuchitha,false,false,false,either,,,
-583,problem,ingxaki,noun,,,false,false,false,,,In,
-584,homesteads,imizi,noun,,,true,false,false,,,Imi,
-585,month,inyanga,noun,,,false,false,false,,,In,
-586,week,iveki,noun,,,false,false,false,,,In,
-587,terms,imimiselo,noun,,,true,false,false,,,Imi,
-588,conditions,imiqathango,noun,,,true,false,false,,,Imi,
-589,husband,umyeni,noun,,,false,false,false,,,Class1Um,
-590,wife,umfazi,noun,,,false,false,false,,,Class1Um,
-591,power,amandla,noun,,,false,false,false,,,Ama,
-592,terms and conditions,imimiselo nemiqathango,noun,,,true,false,false,,,Imi,
-593,energy,amandla,noun,,,false,false,false,,,Ama,
-595,weeks,iiveki,noun,,,true,false,false,,,Izin,
-596,phone,umnxeba,noun,,,false,false,false,,,U,"It also refers to the land-line.  Most people use ""ifoni""."
-597,radio,unomathotholo,noun,,,false,false,false,,,U,
-598,river,umlambo,noun,,,false,false,false,,,Class3Um,
-599,pen,usiba,noun,,,false,false,false,,,Ulu,
-600,pens,iintsiba,noun,,,true,false,false,,,Izin,
-601,feather,usiba,noun,,,false,false,false,,,Ulu,
-602,feathers,iintsiba,noun,,,true,false,false,,,Izin,
-603,heart,intliziyo,noun,,,false,false,false,,,In,
-604,beach,ulwandle,noun,,,false,false,false,,,Ulu,"While ulwandle does not specifically mean beach, it is commonly used to refer to a beach."
-605,hello,molo,interjection,,,false,false,false,,,,"""Molo"" is only used to say ""hello"" to ONE person.  "
-606,goodbye,sala kakuhle,interjection,,,false,false,false,,,,"Sala kakuhle is said to someone who is staying where they are, if you are the one leaving.  It can only be used when addressing one person, otherwise use salani kakuhle."
-607,hello,molweni,interjection,,,true,false,false,,,,Used when addressing two or more people.
-608,goodbye,hamba kakuhle,interjection,,,false,false,false,,,,hamba kakuhle is said to someone who is leaving. Can only be used to address ONE person.
-609,underneath,ngaphantsi,preposition,,,false,false,false,,,,
-610,sea,ulwandle,noun,,,false,false,false,,,Ulu,
-611,rivers,imilambo,noun,,,true,false,false,,,Imi,
-612,pastors,abefundisi,noun,,,true,false,false,,,Aba,
-613,on the left,ekunxele,preposition,,,false,false,false,,,,
-614,arm,ingalo,noun,,,false,false,false,,,In,
-615,afraid,oyika,verb,,ukoyika,false,false,false,either,,,
-616,peace,uxolo,noun,,,false,false,false,,,Ulu,
-617,today,namhla,adverb,,,false,false,false,,,,
-618,farm ,amasimi,noun,,,false,false,false,,,Ama,"Some  Xhosa speakers use ""amasimi"" ""fields"" to refer to a ""farm""."
-619,sorry,uxolo,interjection,,,false,false,false,,,,
-620,noise,ingxolo,noun,,,false,false,false,,,In,
-621,anywhere,naphi na,adverb,,,false,false,false,,,,
-622,anyone,nabani na,noun,,,false,false,false,,,U,indefinite pronoun
-623,beauty,ubuhle,noun,,,false,false,false,,,Ubu,
-624,bag,ibhegi,noun,,,false,false,false,,,In,
-625,stop,yeka,verb,,ukuyeka,false,false,false,transitive-only,,,
-626,floor,umgangatho,noun,,,false,false,false,,,Class3Um,
-627,turn on,layita,verb,,ukulayita,false,false,false,transitive-only,,,
-628,be happy,vuya,verb,,ukuvuya,false,false,false,either,,,
-629,backward,umva,preposition,,,false,false,false,,,,
-630,coast,unxweme,noun,,,false,false,false,,,Ulu,
-631,hand,ingalo,noun,,,false,false,false,,,In,"Sometimes Xhosa speakers use ""ingalo"" to refer to ""isandla"" ""hand""."
-632,arms,iingalo,noun,,,true,false,false,,,Izin,
-633,hands,iingalo,noun,,,true,false,false,,,Izin,"Sometimes Xhosa speakers use ""iingalo"" (arms) to refer to ""izandla"" (hands)."
-634,make noise,ngxola,verb,,ukungxola,false,false,false,intransitive,,,
-635,field,intsimi,noun,,,false,false,false,,,In,
-636,fields,amasimi,noun,,,true,false,false,,,Ama,
-637,become OK,lunga,verb,,ukulunga,false,true,false,intransitive,,,
-638,turn off,cima,verb,,ukucima,false,false,false,transitive-only,,,
-639,be sick,gula,verb,gúlá,ukugula,false,false,false,intransitive,,,
-640,become hungry,lamba,verb,,ukulamba,false,true,false,intransitive,,,
-641,spine,umqolo,noun,,,false,false,false,,,Class3Um,
-642,serve,phaka,verb,,ukuphaka,false,false,false,either,,,
-643,at the back,ngasemva,preposition,,,false,false,false,,,,
-644,food,ukutya,noun,,,false,false,false,,,Uku,
-645,music,umculo,noun,,,false,false,false,,,Class3Um,
-646,firstly,okukuqala,adverb,,,false,false,false,,,,
-647,comfort,thuthuzela,verb,,ukuthuthuzela,false,false,false,either,,,
-648,extinguish,cima,verb,,ukucima,false,false,false,transitive-only,,,
-649,light,layita,verb,,ukulayita,false,false,false,transitive-only,,,
-650,beginning,isiqalo,noun,,,false,false,false,,,Isi,
-651,in the beginning,ekuqaleni,preposition,,,false,false,false,,,,
-652,light,isibane,noun,,,false,false,false,,,Isi,
-653,lights,izibane,noun,,,true,false,false,,,Izi,
-654,student,umfundi,noun,,,false,false,false,,,Class1Um,
-655,students,abafundi,noun,,,true,false,false,,,Aba,
-656,in the end,ekugqibeleni,preposition,,,false,false,false,,,,
-657,finally,ekugqibeleni,adverb,,,false,false,false,,,,
-658,bad,bi,adjective,,,false,false,false,,,,You will need a prefix that concords with the noun.
-659,names,amagama,noun,,,true,false,false,,,Ama,
-660,name,igama,noun,,,false,false,false,,,Ili,
-661,program,inkqubo,noun,,,false,false,false,,,In,
-662,procedure,inkqubo,noun,,,false,false,false,,,In,
-663,countries,amazwe,noun,,,true,false,false,,,Ama,
-664,ray of light,ilitha,noun,,,false,false,false,,,Ili,
-665,districts,izithili,noun,,,true,false,false,,,Izi,
-666,nation,isizwe,noun,,,false,false,false,,,Isi,
-667,district,isithili,noun,,,false,false,false,,,Isi,
-668,fruit,isiqhamo,noun,,,false,false,false,,,Isi,
-669,fruits,iziqhamo,noun,,,true,false,false,,,Izi,
-670,follow,landela,verb,,ukulandela,false,false,false,either,,,
-671,eye,iliso,noun,,,false,false,false,,,Ili,
-672,eyes,amehlo,noun,,,true,false,false,,,Ama,
-673,nations,izizwe,noun,,,true,false,false,,,Izi,
-674,city,isixeko,noun,,,false,false,false,,,Isi,
-675,cities,izixeko,noun,,,true,false,false,,,Izi,
-676,area,ingingqi,noun,,,false,false,false,,,In,This refers to a geographical area.
-677,area,umgama,noun,,,false,false,false,,,Class3Um,"Also used in the sense of ""distance"" as in ""social distance""."
-678,region,ummandla,noun,,,false,false,false,,,Class3Um,
-679,letter,incwadi,noun,,,false,false,false,,,In,"Many Xhosa speakers use ""ileta""."
-680,regions,imimandla,noun,,,true,false,false,,,Class3Um,
-681,vegetable,umfino,noun,,,false,false,false,,,Class3Um,Xhosa speakers often use 'iveg'.
-682,vegetables,imifuno,noun,,,true,false,false,,,Imi,"Xhosa speakers often use ""amaveg"""
-683,lack,swela,verb,,ukuswela,false,false,false,transitive-only,,,"""swela"" is often used for a more serious kind of lacking"
-684,below,ezantsi,preposition,,,false,false,false,,,,
-685,as well as,kunye,conjunction,,,false,false,false,,indicative mood or 'na',,
-686,town,idolophu,noun,,,false,false,false,,,In,
-687,system,inkqubo,noun,,,false,false,false,,,In,
-688,crime,ulwaphulo-mthetho ,noun,,,false,false,false,,,Ulu,
-689,stand,(i)ma,verb,,ukuma,false,true,false,intransitive,,,
-690,stop,(i)ma,verb,,ukuma,false,false,false,either,,,
-691,chair,isitulo,noun,,,false,false,false,,,Isi,
-692,chairs,izitulo,noun,,,true,false,false,,,Izi,
-693,how much,ngakanani,relative,,,false,false,false,,,,
-694,team,iqela,noun,,,false,false,false,,,Ili,
-695,teams,amaqela,noun,,,true,false,false,,,Ama,
-696,group,iqela,noun,,,false,false,false,,,Ili,
-697,groups,amaqela,noun,,,true,false,false,,,Ama,
-698,political party,iqela lezopolitiko,noun,,,false,false,false,,,Ili,
-699,political parties,amaqela ezopolitiko,noun,,,true,false,false,,,Ama,
-700,government,urhulumente,noun,,,false,false,false,,,U,
-701,governments,oorhulumente,noun,,,true,false,false,,,Oo,
-702,head,intloko,noun,,,false,false,false,,,In,
-703,heads,iintloko,noun,,,true,false,false,,,Izin,
-704,room,igumbi,noun,,,false,false,false,,,Ili,
-705,rooms,amagumbi,noun,,,true,false,false,,,Ama,
-706,floors,imigangatho,noun,,,true,false,false,,,Imi,
-707,class,iklasi,noun,,,false,false,false,,,In,"Note that this does not refer to ""class"" as in ""type""."
-708,classes,iiklasi,noun,,,true,false,false,,,Izin,"Note that this does not refer to ""classes"" as in ""types""."
-709,building,isakhiwo,noun,,,false,false,false,,,Isi,
-710,toilet,indlu yangasese,noun,,,false,false,false,,,In,"Most Xhosa speakers use ""itoyilethi""."
-711,buildings,izakhiwo,noun,,,true,false,false,,,Izi,
-712,type,udidi,noun,,,false,false,false,,,Ulu,
-713,types,iindidi,noun,,,true,false,false,,,Izin,
-714,Johannesburg,iGoli,noun,,,false,false,false,,,Ili,
-715,jail,intolongo,noun,,,false,false,false,,,In,
-716,jails,iintolongo,noun,,,true,false,false,,,Izin,
-717,prisoner,umbanjwa,noun,,,false,false,false,,,Class1Um,
-718,prisoners,ababanjwa,noun,,,true,false,false,,,Aba,
-719,goodbye,hambani kakuhle,interjection,,,true,false,false,,,,
-720,goodbye,salani kakuhle,interjection,,,true,false,false,,,,
-721,how many,ngaphi,adjective,,,false,false,false,,,,
-722,however,kambe ke,conjunction,,,false,false,false,,indicative mood,,
-723,end,phela,verb,,ukuphela,false,false,false,intransitive,,,"""phela"" means more ""run out""  or ""come to an end"" in comparison to ""gqiba"" which is usually used when somebody finishes/completes something."
-724,boy,inkwenkwe,noun,,,false,false,false,,,In,"""ubhuti"" is also used to refer to any boy or young man"
-725,boys,amakhwenkwe,noun,,,true,false,false,,,Ama,
-726,why,kutheni,adverb,,,false,false,false,,participial mood,,
-727,water,amanzi,noun,,,false,false,false,,,Ama,
-728,picture,umfanekiso,noun,,,false,false,false,,,Class3Um,"These days many Xhosa speakers use ""ipicture"""
-729,pictures,imifanekiso,noun,,,true,false,false,,,Imi,
-730,question,umbuzo,noun,,,false,false,false,,,Class3Um,
-731,questions,imibuzo,noun,,,true,false,false,,,Imi,
-732,back,umhlana,noun,,,false,false,false,,,Class3Um,
-733,keep,gcina,verb,,ukugcina,false,false,false,transitive-only,,,
-734,catch,bamba,verb,,ukubamba,false,false,false,either,,,
-735,words,amagama,noun,,,true,false,false,,,Ama,
-736,shout,bhomboloza,verb,,ukubhomboloza,false,false,false,either,,,"""bhomboloza"" describes particularly loud shouting."
-737,touch,bamba,verb,,ukubamba,false,false,false,transitive-only,,,
-738,word,igama,noun,,,false,false,false,,,Ili,
-739,tooth,izinyo,noun,,,false,false,false,,,Ili,
-740,become strong,qina,verb,,ukuqina,false,true,false,either,,,
-741,permission,imvume,noun,,,false,false,false,,,In,
-742,department,icandelo,noun,,,false,false,false,,,Ili,
-743,faculty,icandelo,noun,,,false,false,false,,,Ili,
-744,faculties,amacandelo,noun,,,true,false,false,,,Ama,
-745,departments,amacandelo,noun,,,true,false,false,,,Ama,
-746,department,isebe,noun,,,false,false,false,,,Ili,
-747,departments,amasebe,noun,,,true,false,false,,,Ama,
-748,tongue,ulwimi,noun,,,false,false,false,,,Ulu,
-749,teeth,amazinyo,noun,,,true,false,false,,,Ama,
-750,soil,umhlaba,noun,,,false,false,false,,,Class3Um,
-751,stone,ilitye,noun,,,false,false,false,,,Ili,
-752,stones,amatye,noun,,,true,false,false,,,Ama,
-753,brick,isitena,noun,,,false,false,false,,,Isi,
-754,bricks,izitena,noun,,,true,false,false,,,Izi,
-755,ear,indlebe,noun,,,false,false,false,,,In,
-756,ears,iindlebe,noun,,,true,false,false,,,In,
-757,garden,igadi,noun,,,false,false,false,,,In,
-758,cool down,phola,verb,,ukuphola,false,true,false,intransitive,,,"Can be used for weather ""cooling down/being cool"" as well as for people ""calming down"" or ""being calm"""
-759,game,umdlalo,noun,,,false,false,false,,,Class3Um,
-760,decorate,hombisa,verb,,ukuhombisa,false,false,false,either,,,
-761,education,imfundo,noun,,,false,false,false,,,In,
-762,have a birthday,bhafa,verb,,ukubhafa,false,false,false,intransitive,,,"This is the colloquial use - formal Xhosa uses ""zalwa - be given birth""."
-763,blink,qhwanyaza,verb,,ukuqhwanyaza,false,false,false,either,,,
-764,again,ngaphinde,adverb,,,false,false,false,,,,"Used in the negative, ""don't again"""
-765,disappoint,phoxa,verb,,ukuphoxa,false,false,false,either,,,
-766,stomach,isisu,noun,,,false,false,false,,,Isi,Refers to both a belly and a stomach
-767,sneeze,thimla,verb,,ukuthimla,false,false,false,either,,,
-768,foot,unyawo,noun,,,false,false,false,,,Ulu,
-769,feet,iinyawo,noun,,,true,false,false,,,Izin,
-770,become urgent,ngxamiseka,verb,,ukungxamiseka,false,true,false,intransitive,,,
-771,urgently,ngokungxamisekileyo,adverb,,,false,false,false,,,,
-772,books,iincwadi,noun,,,true,false,false,,,Izin,
-773,letters,iincwadi,noun,,,true,false,false,,,Izin,"Contemporary Xhosa speakers are more likely to use ""iileta"""
-774,thank you,enkosi,interjection,,,false,false,false,,,,
-775,thank,bulela,verb,,ukubulela,false,false,false,either,,,
-776,practise,ziqhelisa,verb,,ukuziqhelisa,false,false,false,transitive-only,,,Usually followed by uku
-777,budget,uhlalo lwabiwo mali,noun,,,false,false,false,,,Ulu,
-778,partner,iqabane,noun,,,false,false,false,,,Ili,
-779,partners,amaqabane,noun,,,true,false,false,,,Ama,
-780,comrade,iqabane,noun,,,false,false,false,,,Ili,
-781,comrades,amaqabane,noun,,,true,false,false,,,Ama,
-782,fast,ngokukhawuleza,adverb,,,false,false,false,,,,
-783,become cruel,khohlakala,verb,,ukukhohlakala,false,true,false,intransitive,,,It can be used in a more lighthearted way than it would usually be used in English.
-784,test,uvavanyo,noun,,,false,false,false,,,Ulu,"Xhosa speakers often just say ""itest"""
-785,tests,iimvavanyo,noun,,,true,false,false,,,Izin,
-786,exam,uvavanyo,noun,,,false,false,false,,,Ulu,
-787,exams,iimvavanyo,noun,,,true,false,false,,,Izin,
-788,test,uviwo,noun,,,false,false,false,,,Ulu,
-789,tests,iimviwo,noun,,,true,false,false,,,Izin,
-790,death penalty,isigwebo sokufa,noun,,,false,false,false,,,Isi,
-791,be cold,banda,verb,,ukubanda,false,false,false,intransitive,,,"This is usually of a non-person subject. For people, ""godola"" is used."
-792,be cold,godola,verb,,ukugodola,false,false,false,intransitive,,,
-793,take an oath,funga,verb,,ukufunga,false,false,false,either,,,"Do not confuse with ""swear - thuka"". Note that if you ""swear by"" something, the thing that you swear by is used just as an object following the verb and the word ""by"" is not translated."
-794,bathe,bhafa,verb,,ukubhafa,false,false,false,either,,,
-795,reject,ala,verb,,ukwala,false,false,false,either,,,
-796,foot,inyawo,noun,,,false,false,false,,,Ili,
-797,leg,umlenze,noun,,,false,false,false,,,Class3Um,
-798,legs,imilenze,noun,,,true,false,false,,,Imi,
-799,piece,iqatha,noun,,,false,false,false,,,Ili,
-800,ankle,iqatha,noun,,,false,false,false,,,Ili,
-801,pieces,amaqatha,noun,,,true,false,false,,,Ama,
-802,ankles,amaqatha,noun,,,true,false,false,,,Ama,
-803,finger,umnwe,noun,,,false,false,false,,,Class3Um,Can be used to refer to both fingers of your hand and toes
-804,fingers,iminwe,noun,,,true,false,false,,,Imi,
-806,stomachs,izisu,noun,,,true,false,false,,,Izi,
-807,veteran,igqala,noun,,,false,false,false,,,Ili,
-808,toe,umnwe,noun,,,false,false,false,,,Class3Um,"The formal Xhosa for ""toe"" is ""uzwane"" but most people use ""umnwe"", sometimes followed by the word for foot ""unyawo"".  In this case the posessive concord wa- will be used."
-809,toes,iminwe,noun,,,true,false,false,,,Imi,"The formal Xhosa word for ""toes"" is ""iinzwane"" but most Xhosa speakers use ""iminwe"" which is sometimes followed by the word for ""foot/feet"" in which case a possessive concord will be used, e.g. ""iminwe yonyawo"" the toes of the foot."
-810,profit,inzuzo,noun,,,false,false,false,,,In,
-811,play,umdlalo weqonga,noun,,,false,false,false,,,Class3Um,"This refers to a theatrical play and translates to ""game of the stage"" which used to be used for ""theatrical performance/play"" but these days most people just say ""ishow"" for a theatrical ""play"""
-812,sprout,hluma,verb,,ukuhluma,false,false,false,intransitive,,,
-813,exam,uviwo,noun,,,false,false,false,,,Ulu,
-814,quickly,ngokukhawuzela,adverb,,,false,false,false,,,,
-815,daily,yonke imihla,adverb,,,false,false,false,,,,"Also translates ""every day"""
-816,cry out,khala,verb,,ukukhala,false,false,false,intransitive,,,"""khala"" is also often used for the sound of things like alarms ""I-alam iyakhala""."
-817,sound,khalisa,verb,,ukukhalisa,false,false,false,transitive-only,,,"Often used for ""ring"" as in ""ring the bell"" or ""sound"" as in ""sound the alarm""."
-818,fill,gcwalisa,verb,,ukugcwalisa,false,false,false,transitive-only,,,
-819,drop,wisa,verb,,ukuwisa,false,false,false,transitive-only,,,"Used in the sense of ""let fall"" not ""drop prices"" which would be ""thoba amaxabiso"""
-820,continue,qhubeka,verb,,ukuqhubeka,false,false,false,intransitive,,,"This is the original form of ""qhubekeka"", however ""qhubekeka"" is now becoming more popular. ""Qhubeka"" is often followed by the subjunctive, or by na- ""continue with""."
-821,anger,umsindo,noun,,,false,false,false,,,Class3Um,"Can be used with -na- to indicate being angry, e.g. Ndinomsindo. Literally ""I have anger"". Do not confuse with the Zulu meaning of umsindo being ""noise""."
-822,become thin,bhitya,verb,,ukubhitya,false,true,false,intransitive,,,
-823,every,qho,adverb,,,false,false,false,,,,
-824,marry,tshata,verb,,ukutshata,false,true,false,either,,,
-825,smell,va,verb,,ukuva,false,false,false,either,,,
-826,become tired,dinwa,verb,,ukudinwa,false,true,false,intransitive,,,
-827,wake up,vuka,verb,,ukuvuka,false,false,false,intransitive,,,
-828,remove,susa,verb,,ukususa,false,false,false,transitive-only,,,
-829,draw,zoba,verb,,ukuzoba,false,false,false,either,,,
-830,bird,intaka,noun,,,false,false,false,,,In,
-831,bake,bhaka,verb,,ukubhaka,false,false,false,either,,,
-832,worship,khonza,verb,,ukukhonza,false,false,false,either,,,"Can also refer to ""attend church""."
-833,shark,ukrebe,noun,,,false,false,false,,,U,
-834,sharks,ookrebe,noun,,,true,false,false,,,Oo,
-835,complete,gqibezela,verb,,ukugqibezela,false,false,false,either,,,"Also used in the sense of ""finish off"""
-836,be employed,phangela,verb,,ukuphangela,false,false,false,intransitive,,,
-837,witness,ingqina,noun,,,false,false,false,,,Ili,
-838,zero,iqanda,noun,,,false,false,false,,,Ili,"Although ""iqanda"" comes from the word for egg, it is also used for ZERO - like the French ""l'œuf"" (the egg) which we hear as LOVE in tennis matches"
-839,birds,iintaka,noun,,,true,false,false,,,Izin,
-840,come from,vela,verb,,ukuvela,false,false,false,intransitive,,,
-841,come from,suka,verb,,ukusuka,false,false,false,intransitive,,,"Also used to translate ""go from"", as in ""this train goes from Cape Town to Simonstown"" ""Le treyini isuka eKapa isiya eSimonstown"". In its infinitive form it can be used for time spans, e.g. From Monday to Friday: Ukusuka ngoMvulo ukuya ngoLwesihlanu."
-842,pay,hlawula,verb,,ukuhlawula,false,false,false,either,,,
-843,hit,betha,verb,,ukubetha,false,false,false,either,,,
-844,stay,hlala,verb,,ukuhlala,false,true,false,intransitive,,,"""hleli"", the irregular stative of hlala, generally translates ""staying"" or ""sitting"""
-845,trust,themba,verb,,ukuthemba,false,false,false,either,,,"With the reflexive object concord -zi-  it can also mean ""confident"" [self-trust]. "
-846,not,hayi,adverb,,,false,false,false,,,,"Used in simple sentences where NOT is used to modify a noun, pronoun, verb, adverb, adjective"
-847,poverty,ubuhlwempu,noun,,,false,false,false,,,Ubu,
-848,daughter,intombi,noun,,,false,false,false,,,In,
-849,result,isiphumo,noun,,,false,false,false,,,Isi,
-850,if,xa,conjunction,,,false,false,false,,participial mood,,
-851,mistake,impazamo,noun,,,false,false,false,,,In,
-852,mistakes,iimpazamo,noun,,,true,false,false,,,Izin,
-853,nicely,kamnandi,adverb,,,false,false,false,,,,
-854,woman,umama,noun,,,false,false,false,,,U,"Although ""umama"" means ""mother"" it is frequently used to refer to any ""woman"" and is more respectful than ""umfazi""."
-855,man,utata,noun,,,false,false,false,,,U,"Although ""utata"" means ""father"" it is often used to refer to any ""man""."
-856,space,indawo,noun,,,false,false,false,,,In,"Not used for ""outer space"""
-857,when?,nini?,adverb,,,false,false,false,,,,"""nini?"" will always occur after the verb.  It can occur with a Subject Concord, e.g. Inini itest? When is the test?"
-858,taste,ngcamla,verb,,ukungcamla,false,false,false,either,,,"Sometimes ""va"" is also used for ""taste"""
-859,taste,incasa,noun,,,false,false,false,,,In,
-860,become happy,onwaba,verb,,ukonwaba,false,true,false,intransitive,,,
-861,wipe,sula,verb,,ukusula,false,false,false,either,,,
-862,across,ngapha,preposition,,,false,false,false,,,,
-863,radio,irediyo,noun,,,false,false,false,,,In,"More common in speech than ""unomathotholo"""
-864,pen,ipen,noun,,,false,false,false,,,In,
-865,friend,itshomi,noun,,,false,false,false,,,In,"Informal but very common.  From the English ""chum""."
-866,when,xa,conjunction,,,false,false,false,,participial mood,,
-867,sin,isono,noun,,,false,false,false,,,Isi,
-868,sins,izono,noun,,,false,false,false,,,Izi,
-869,sin,ona,verb,,ukona,false,false,false,intransitive,,,
-870,swell up,dumba,verb,,ukudumba,false,true,false,intransitive,,,
-871,face,jongana na-,verb,,ukujongana na-,false,true,false,intransitive,,,"Often in stative -jongene na- ""facing"""
-872,click,cofa,verb,,ukucofa,false,false,false,transitive-only,,,
-873,institution,iziko,noun,,,false,false,false,,,Ili,
-874,brother,ubhuti,noun,,,false,false,false,,,U,"Also used to refer to any ""boy"" or ""young man"""
-875,throat,umqala,noun,,,false,false,false,,,Class3Um,
-876,branch,isebe,noun,,,false,false,false,,,Ili,
-877,son,unyana,noun,,,false,false,false,,,U,
-878,Johannesburg,iRhawuti,noun,,,false,false,false,,,Ili,
-879,disturb,phazamisa,verb,,ukuphazama,false,false,false,either,,,
-880,be equal,lingana,verb,,ukulingana,false,false,false,intransitive,,,"Refers to things or people being the same in size, quality, age, etc. It can also be used for social equality."
-881,recently,kutshanje,adverb,,,false,false,false,,,,
-882,smell,nuka,verb,,ukunuka,false,false,false,intransitive,,,"Normally only used to indicate ""give out a smell"""
-883,become sprained,kruneka,verb,,ukukruneka,false,true,false,intransitive,,,
-884,crocodile,ingwenya,noun,,,false,false,false,,,In,
-885,work/job,umsebenzi,noun,,,false,false,false,,,Class3Um,
-886,worker/staff member/employee,umsebenzi,noun,,,false,false,false,,,Class1Um,"Do not confuse with umsebenzi ""work"".  "
-887,cough,khohlela,verb,,ukukhohlela,false,false,false,intransitive,,,
-888,seed,imbewu,noun,,,false,false,false,,,In,
-889,grow,khula,verb,,ukukhula,false,false,false,intransitive,,,
-890,sheep,igusha,noun,,,false,false,false,,,Ili,
-891,animal,isilwanyana,noun,,,false,false,false,,,Isi,
-892,seeds,iimbewu,noun,,,true,false,false,,,Izin,
-893,animals,izilwanyana,noun,,,true,false,false,,,Izi,
-894,family,usapho,noun,,,false,false,false,,,Ulu,
-895,level,umgangatho,noun,,,false,false,false,,,Class3Um,
-896,grass,ingca,noun,,,false,false,false,,,In,
-897,sheep,amagusha,noun,,,true,false,false,,,Ama,
-898,water,nkcenkceshela,verb,,ukunkcenkceshela,false,false,false,transitive-only,,,
-899,skin (generally of an animal),ufele,noun,,,false,false,false,,,Ulu,"""ufele"" is also used for human skin, or just generally ""outward appearance""."
-900,dry,omile,relative,,,false,false,false,,,,"From the inchoative verb ""ukoma"" which means ""to become dry""."
-901,community,ekuhlaleni,noun,,,false,false,false,,,Uku,Literally: in the living
-902,peacefully,ngoxolo,adverb,,,false,false,false,,,,
-903,red,bomvu,relative,,,false,false,false,,,,
-904,blue,blowu,relative,,,false,false,false,,,,
-905,morning,intsasa,noun,,,false,false,false,,,In,
-906,grey,ngwevu,relative,,,false,false,false,,,,
-907,black,mnyama,relative,,,false,false,false,,,,
-908,brown,mdaka,relative,,,false,false,false,,,,
-909,tear,inyembezi,noun,,,false,false,false,,,In,
-910,tears,iinyembezi,noun,,,true,false,false,,,Izin,
-911,rule,umthetho,noun,,,false,false,false,,,Class3Um,
-912,rules,imithetho,noun,,,false,false,false,,,Imi,
-913,families,iintsapho,noun,,,true,false,false,,,Izin,
-914,decoration,isihombiso,noun,,,false,false,false,,,Isi,
-915,white,mhlophe,relative,,,false,false,false,,,,
-916,green,luhlaza,relative,,,false,false,false,,,,
-917,milk,ubisi,noun,,,false,false,false,,,Ulu,
-918,wind,umoya,noun,,,false,false,false,,,Class3Um,
-919,wake,vukisa,verb,,ukuvukisa,false,false,false,transitive-only,,,
-920,marriage,umtshato,noun,,,false,false,false,,,Class3Um,
-921,braai,oja,verb,,ukoja,false,false,false,either,,,
-922,principals,iinqununu,noun,,,true,false,false,,,Izin,
-923,principal,inqununu,noun,,,false,false,false,,,In,
-924,persevere,nyamezela,verb,,ukunyamezela,false,false,false,either,,,
-925,add (in maths),dibanisa,verb,,ukudibanisa,false,false,false,transitive-only,,,"Note ""dibanisa"" literally means ""make meet/join"""
-926,add (an ingredient),galela,verb,,ukugalela,false,false,false,transitive-only,,,
-927,come from/come out from,phuma,verb,,ukuphuma,false,false,false,intransitive,,,
-928,it could be,Inokuba/inoba,conjunction,,,false,false,false,,,,
-929,be left,shiyeka,verb,,ukushiyeka,false,false,false,intransitive,,,"In the perfect tense form can translate ""left over"""
-930,chat,ncokola,verb,,ukuncokola,false,false,false,either,,,
-931,"be silly, naughty",geza,verb,,ukugeza,false,false,false,intransitive,,,"Can be confusable with the Zulu word for ""wash"" which is also ""geza""."
-932,bhabhayini,goodbye,interjection,,,false,false,false,,,,"Informal but very common. Can be used just like the English ""Bye!"""
-933,strong,omelele,relative,,,false,false,false,,,,"In Xhosa ""to get strong"" is ""ukomelela"" which is an inchoative verb. The relative is derived from this verb."
-934,branches,amasebe,noun,,,true,false,false,,,Ama,
-935,burst,gqabhuka,verb,,ukugqabhuka,false,false,false,intransitive,,,Also has the sense of EXPLODE
-936,become fat,tyeba,verb,,ukutyeba,false,true,false,intransitive,,,"Sometimes used to mean ""get rich""."
-937,TV,iTV,noun,,,false,false,false,,,In,"More common than ""umabonakude"""
-938,hot,shushu,relative,,,false,false,false,,,,
-939,train,uloliwe,noun,,,false,false,false,,,U,
-940,trains,oololiwe,noun,,,true,false,false,,,Oo,
-941,patient,isigulana,noun,,,false,false,false,,,Isi,
-942,patients,izigulana,noun,,,true,false,false,,,Izi,
-943,hospital,isibhedlele,noun,,,false,false,false,,,Isi,
-944,hospitals,izibhedlele,noun,,,true,false,false,,,Izi,
-945,spring,intwasahlobo,noun,,,false,false,false,,,In,
-946,winter,ubusika,noun,,,false,false,false,,,Ubu,
-947,writer,umbhali,noun,,,false,false,false,,,Class1Um,
-948,writers,ababhali,noun,,,true,false,false,,,Aba,
-949,gun,umpu,noun,,,false,false,false,,,Class3Um,
-950,guns,imipu,noun,,,true,false,false,,,Imi,
-951,autumn,ukwindla,noun,,,false,false,false,,,Uku,
-952,opinion,uluvo,noun,,,false,false,false,,,Ulu,
-953,nose,impumlo,noun,,,false,false,false,,,In,
-954,noses,iimpumlo,noun,,,true,false,false,,,Izin,
-955,flu,iflu,noun,,,false,false,false,,,Ili,
-956,fever,ifiva,noun,,,false,false,false,,,Ili,
-957,answer,impendulo,noun,,,false,false,false,,,In,
-958,answers,iimpendulo,noun,,,true,false,false,,,Izin,
-959,mouth,umlomo,noun,,,false,false,false,,,Class3Um,
-960,thighs,amathanga,noun,ámáthangá,,true,false,false,,,Ama,
-961,thigh,ithanga,noun,íthangá,,false,false,false,,,Ili,
-962,amagxa,shoulders,noun,,,true,false,false,,,Ama,
-963,shoulder,iligxa,noun,,,false,false,false,,,Ili,
-964,necks,iintamo,noun,,,true,false,false,,,Izin,
-965,neck,intamo,noun,,,false,false,false,,,In,
-966,bone,ithambo,noun,,,false,false,false,,,Ili,
-967,bones,amathambo,noun,,,false,false,false,,,Ama,
-968,lip,umlebe,noun,,,false,false,false,,,Class3Um,
-969,lips,imilebe,noun,,,true,false,false,,,Imi,
-970,knee,idolo,noun,,,false,false,false,,,Ili,
-971,cheek,isidlele,noun,,,false,false,false,,,Isi,
-972,cheeks,izidlele,noun,,,true,false,false,,,Izi,
-973,hairs,iinwele,noun,,,true,false,false,,,Izin,
-974,chin,isilevu,noun,,,false,false,false,,,Isi,
-975,chins,izilevu,noun,,,false,false,false,,,Izi,
-976,mouths,imilomo,noun,,,true,false,false,,,Imi,
-977,knees,amadolo,noun,,,true,false,false,,,Ama,
-978,buttock,impundu,noun,,,false,false,false,,,In,
-979,buttocks,iimpundu,noun,,,true,false,false,,,Izin,
-980,elbow,ingqiniba,noun,,,false,false,false,,,In,
-981,elbows,iingqiniba,noun,,,true,false,false,,,Izin,
-982,forehead,ibunzi,noun,,,false,false,false,,,Ili,
-983,foreheads,amabunzi,noun,,,true,false,false,,,Ama,
-984,eyebrow,ishiya,noun,,,false,false,false,,,Ili,
-985,eyebrows,amashiya,noun,,,true,false,false,,,Ama,
-986,eyelash,umsebe,noun,,,false,false,false,,,Class3Um,
-987,eyelashes,imisebe,noun,,,true,false,false,,,Imi,
-988,backs,imihlana,noun,,,true,false,false,,,Imi,
-989,tongues,iilwimi,noun,,,true,false,false,,,Izin,
-990,fist,inqindi,noun,,,true,false,false,,,Ili,
-991,fists,amaqindi,noun,,,true,false,false,,,Ama,
-992,nail,uzipho,noun,,,false,false,false,,,Ulu,
-993,nails,iinzipho,noun,,,true,false,false,,,Izin,
-994,nipple,ingono,noun,,,false,false,false,,,In,
-995,nipples,iingono,noun,,,true,false,false,,,Izin,
-996,palm,intende,noun,,,false,false,false,,,In,Referring to the palm of a hand
-997,palms,iintende,noun,,,true,false,false,,,Izin,Referring to the palms of hands
-998,penis,umthondo,noun,,,false,false,false,,,Class3Um,
-999,penises,imithondo,noun,,,true,false,false,,,Imi,
-1000,thumb,ubhontsi,noun,,,false,false,false,,,U,
-1001,big toe,ubhontsi,noun,,,false,false,false,,,U,Referring to the large toe of the foot.
-1002,big toes,oobhontsi,noun,,,true,false,false,,,Oo,Referring to the large toe of the foot.
-1003,thumbs,oobhontsi,noun,,,true,false,false,,,Oo,
-1004,vagina,isibeleko,noun,,,false,false,false,,,Isi,
-1005,vaginas,izibeleko,noun,,,true,false,true,,,Izi,
-1006,operating theatre,icandelo loqhaqho,noun,,,false,false,false,,,Ili,
-1007,operating theatres,amacandelo oqhaqho,noun,,,true,false,false,,,Ama,
-1008,tuberculosis ,isifo sephepha,noun,,,false,false,false,,,Isi,
-1009,dot,icaphaza,noun,,,false,false,false,,,Ili,Can also be used to refer to tuberculosis 
-1010,dots,amachapaza,noun,,,true,false,false,,,Ama,Can also be used to refer to tuberculosis.
-1011,exams,iimviwo,noun,,,true,false,false,,,Izin,
-1012,serve,khonza,verb,,ukukhonza,false,false,false,either,,,
-1013,after that,emva koko,conjunction,,,false,false,false,,indicative mood,,
-1014,improve,phucuka,verb,,ukuphucuka,false,false,false,intransitive,,,
-1015,praise,ncoma,verb,,ukuncoma,false,false,false,either,,,
-1016,become used to,qhela,verb,,ukuqhela,false,true,false,either,,,
-1017,shin,uxhongo,noun,,,false,false,false,,,U,"More specifically, the tibia"
-1018,shins,ooxhongo,noun,,,true,false,false,,,Oo,"More specifically, the tibia."
-1019,soldier,ijoni,noun,,,false,false,false,,,Ili,This can also be used to refer to the immune system
-1020,soldiers,amajoni,noun,,,true,false,false,,,Ama,
-1021,ubuhlungu,pain,noun,,,false,false,false,,,Ubu,Abstract pain.
-1022,doctor's room,igumbi likagqirha,noun,,,false,false,false,,,Ili,
-1023,public,kawonke-wonke,relative,,,false,false,false,,,,
-1024,summer,ihlobo,noun,,,false,false,false,,,Ili,"The locative of ihlobo is ehlotyeni, due to palatalisation."
-1025,build,akha,verb,,ukwakha,false,false,false,either,,,
-1026,swollen,dumbile,relative,,,false,false,false,,,,
-1027,regularly,rhoqo,adverb,,,false,false,false,,,,
-1028,tool,isixhobo,noun,,,false,false,false,,,Isi,
-1029,weapon,isixhobo,noun,,,false,false,false,,,Isi,
-1030,tools,izixhobo,noun,,,true,false,false,,,Izi,
-1031,weapons,izixhobo,noun,,,true,false,false,,,Izi,
-1032,value,ixabiso,noun,,,false,false,false,,,Ili,
-1033,become full,zala,verb,,ukuzala,false,true,false,intransitive,,,
-1034,smell,ivumba,noun,,,false,false,false,,,Ili,
-1035,smells,amavumba,noun,,,true,false,false,,,Ama,
-1036,air,umoya,noun,,,false,false,false,,,Class3Um,
-1037,distance,umgama,noun,,,false,false,false,,,Class3Um,
-1038,spirit,umoya,noun,,,false,false,false,,,Class3Um,
-1039,flourish,hluma,verb,,ukuhluma,false,false,false,intransitive,,,
-1040,pink,pinki,relative,,,false,false,false,,,,
-1041,orange,orenji,relative,,,false,false,false,,,,
-1042,become fine,lunga,verb,,ukulunga,false,true,false,intransitive,,,
-1043,OK,rayithi,relative,,,false,false,false,,,,
-1044,alright,rayithi,relative,,,false,false,false,,,,
-1045,regularly,qho,adverb,,,false,false,false,,,,
-1046,strike,qhankqalaza,verb,,ukuqhankqalaza,false,false,false,intransitive,,,
-1047,protest,qhankqalaza,verb,,ukuqhankqalaza,false,false,false,intransitive,,,
-1048,give up,yeka,verb,,ukuyeka,false,false,false,intransitive,,,
-1049,vagina,umphantsi,noun,,,false,false,false,,,Class3Um,More euphemistic term.
-1050,vaginas,imiphantsi,noun,,,true,false,false,,,Imi,More euphemistic term.
-1051,penis,iphambili,noun,,,false,false,false,,,Ili,More euphemistic term.
-1052,penises,amaphambili,noun,,,true,false,false,,,Ama,More euphemistic term.
-1053,breast,ibele,noun,,,false,false,false,,,Ili,
-1054,breasts,amabele,noun,,,true,false,false,,,Ama,
-1055,paediatric ward,icandelo labantwana,noun,,,false,false,false,,,Ili,
-1056,paediatric wards,amacandelo abantwana,noun,,,true,false,false,,,Ama,
-1057,orthopaedic ward,icandelo lamathambo,noun,,,false,false,false,,,Ili,
-1058,orthopaedic wards,amacandelo amathambo,noun,,,true,false,false,,,Ama,
-1059,trauma unit,icandelo leengxwelerha,noun,,,false,false,false,,,Ili,
-1060,trauma units,amacandelo eengxwelerha,noun,,,true,false,false,,,Ama,
-1061,x-ray section,icandelo legesi,noun,,,false,false,false,,,Ili,
-1062,x-ray sections,amacandelo egesi,noun,,,true,false,false,,,Ama,
-1063,tuberculosis ward,icandelo lesifo sephepha,noun,,,false,false,false,,,Ili,
-1064,tuberculosis wards,amacandelo esifo sephepha,noun,,,true,false,false,,,Ama,
-1065,maternity ward,icandelo lokubelekisa,noun,,,false,false,false,,,Ili,
-1066,maternity wards,amacandelo okubelekisa,noun,,,true,false,false,,,Ama,
-1067,cancer ward,icandelo lomhlaza,noun,,,false,false,false,,,Ili,
-1068,cancer wards,amacandelo omhlaza,noun,,,true,false,false,,,Ama,
-1069,x-ray,igesi,noun,,,false,false,false,,,In,
-1070,x-rays,iigesi,noun,,,true,false,false,,,Izin,
-1071,waiting room,igumbi lokulindela,noun,,,false,false,false,,,Ili,
-1072,waiting rooms,amagumbi okulindela,noun,,,true,false,false,,,Ama,
-1073,examination room,igumbi lokuxilongela,noun,,,false,false,false,,,Ili,Medical examination
-1074,examination rooms,amagumbi okuxilongela,noun,,,true,false,false,,,Ama,Medical examinations
-1075,on the floor,phantsi,preposition,,,false,false,false,,,,
-1076,doctors' rooms,amagumbi oogqirha,noun,,,true,false,true,,,Ama,
-1077,blood,igazi,noun,,,false,false,false,,,Ili,
-1078,hole,umngxuma,noun,,,false,false,false,,,Class3Um,
-1079,holes,imingxuma,noun,,,true,false,false,,,Imi,
-1080,carve,xonxa,verb,,ukuxonxa,false,false,false,either,,,
-1081,advertise,bhengeza,verb,,ukubhengeza,false,false,false,either,,,
-1082,advertisement,isibhengezo,noun,,,false,false,false,,,Isi,
-1083,apart from,ngaphandle kwa-,preposition,,,false,false,false,,,,"kwa- changes to ko- before nouns starting with u- , e.g. ngaphandle kokutya - apart from the food."
-1084,without,ngaphandle kwa-,preposition,,,false,false,false,,,,"kwa- changes to ko- before nouns starting with u- , e.g. ngaphandle kokutya - apart from the food."
-1085,travel towards,bheka,verb,,ukubheka,false,false,false,intransitive,,,
-1086,dirty,brown,relative,,,false,false,false,,,,
-1087,sink,yela,verb,,ukuyela,false,false,false,intransitive,,,
-1088,evening,injikalanga,noun,,,false,false,false,,,In,
-1089,advertisements,izibhengezo,noun,,,true,false,false,,,Izi,
-1090,kind,uhlobo,noun,,,false,false,false,,,Ulu,
-1091,type,uhlobo,noun,,,false,false,false,,,Ulu,
-1092,types,iintlobo,noun,,,true,false,false,,,Izin,
-1093,kinds,iintlobo,noun,,,true,false,false,,,Izin,
-1094,shoulder,igxalaba,noun,,,false,false,false,,,Ili,
-1095,make a mistake,phazama,verb,,ukuphazama,false,false,false,either,,,
-1096,spots,amachaphaza,noun,,,true,false,false,,,Ama,
-1097,spot,ichaphaza,noun,,,false,false,false,,,Ili,
-1098,hair,unwele,noun,,,false,false,false,,,Ulu,
-1099,tend to,thanda,verb,,ukuthanda,false,false,false,transitive-only,,,
-1100,mother,umama,noun,,,false,false,false,,,U,
-1101,mothers,oomama,noun,,,true,false,false,,,Oo,
-1102,dada,swim,verb,,ukudada,false,false,false,intransitive,,,
-1103,paint,peyinta,verb,,ukupeyinta,false,false,false,either,,,
-1104,save,onga,verb,,ukonga,false,false,false,transitive-only,,,
-1105,boil,bilisa,verb,,ukubilisa,false,false,false,transitive-only,,,
-1106,pick up,chola,verb,,ukuchola,false,false,false,transitive-only,,,
-1107,women,oomama,noun,,,true,false,false,,,Oo,
-1108,eggs,amaqanda,noun,,,true,false,false,,,Ama,
-1109,spread,qaba,verb,,ukuqaba,false,false,false,transitive-only,,,
-1110,saw,sarha,verb,,ukusarha,false,false,false,transitive-only,,,
-1111,dig,peta,verb,,ukupeta,false,false,false,either,,,
-1112,collect,qokelela,verb,,ukuqokelela,false,false,false,transitive-only,,,
-1113,raise,nyusa,verb,,ukunyusa,false,false,false,transitive-only,,,
-1114,months,iinyanga,noun,,,true,false,false,,,Izin,
-1115,be quiet,thula,verb,,ukuthula,false,false,false,intransitive,,,
-1116,weed,ncothula,verb,,ukuncothula,false,false,false,transitive-only,,,
-1117,heavy,nzima,relative,,,false,false,false,,,,
-1118,window,ifestile,noun,,,false,false,false,,,In,
-1119,cow,inkomo,noun,,,false,false,false,,,In,
-1120,cows,iinkomo,noun,,,true,false,false,,,Izin,
-1121,stir,zamisa,verb,,ukuzamisa,false,false,false,transitive-only,,,
-1122,at midnight,ezinzulwini zobusuku,adverb,,,false,false,false,,,,
-1123,century,inkulungwane,noun,,,false,false,false,,,In,
-1124,centuries,iinkulungwane,noun,,,true,false,false,,,Izin,
-1125,spring,intlakohlaza,noun,,,false,false,false,,,In,
-1126,bathroom,igumbi lokuhlambela,noun,,,false,false,false,,,Ili,"This literally translates to a room used for washing. ""Indlu yangasese"" may be a more relevant term in some contexts."
-1127,bathrooms,amagumbi okuhlambela,noun,,,true,false,false,,,Ama,
-1128,baby finger,ucikicane,noun,,,false,false,false,,,U,
-1129,baby fingers,oocikicane,noun,,,true,false,false,,,Oo,
-1130,baby toe,ucikicane,noun,,,false,false,false,,,U,
-1131,baby toes,oocikicane,noun,,,true,false,false,,,Oo,
-1132,windows,iifestile,noun,,,true,false,false,,,Izin,
-1133,role,indima,noun,,,false,false,false,,,In,
-1134,Monday,uMvulo,noun,,,false,false,false,,,U,
-1135,Tuesday,uLwesibini,noun,,,false,false,false,,,U,
-1136,Wednesday,uLwesithathu,noun,,,false,false,false,,,U,
-1137,Thursday,uLwesine,noun,,,false,false,false,,,U,
-1138,Friday,uLwesihlanu,noun,,,false,false,false,,,U,
-1139,Saturday,uMgqibelo,noun,,,false,false,false,,,U,
-1140,Sunday,iCawe,noun,,,false,false,false,,,In,
-1141,brothers,oobhuthi,noun,,,true,false,false,,,Oo,
-1142,maternal aunt,umakazi,noun,,,false,false,false,,,U,
-1143,maternal aunts,oomakazi,noun,,,true,false,false,,,Oo,
-1144,paternal aunt,udadebawo,noun,,,false,false,false,,,U,
-1145,maternal aunts,oodadebawo,noun,,,true,false,false,,,Oo,
-1146,elder brother,umkhuluwa,noun,,,false,false,false,,,Class1Um,
-1147,elder brothers,abakhuluwa,noun,,,true,false,false,,,Aba,
-1148,brother-in-law,usibali,noun,,,false,false,false,,,U,
-1149,brothers-in-law,oosibali,noun,,,true,false,false,,,Oo,
-1150,va,taste,verb,,ukuva,false,false,false,either,,,
-1151,cream,krimi,relative,,,false,false,false,,,,As in the colour cream.
-1152,blue,zuba,relative,,,false,false,false,,,,
-1153,maroon,maruni,relative,,,false,false,false,,,,
-1154,ochre,mpemvu,relative,,,false,false,false,,,,As in an ochre colour.
-1155,silver,silivere,relative,,,false,false,false,,,,As in a silver colour.
-1156,yellow,mthubi,relative,,,false,false,false,,,,
-1157,yellow,tyheli,relative,,,false,false,false,,,,
-1158,speed,amendu,noun,,,false,false,false,,,Ama,
-1159,truth,inyaniso,noun,,,false,false,false,,,In,
-1160,falsehood,ubuxoki,noun,,,false,false,false,,,Ubu,
-1161,lay table,deka,verb,,ukudeka,false,false,false,transitive-only,,,
-1162,beige,lubhelu,relative,,,false,false,false,,,,
-1163,supper,isidlo sangokuhlwa,noun,,,false,false,false,,,Isi,
-1164,dinner,isidlo sangokuhlwa,noun,,,false,false,false,,,Isi,
-1165,lunch,isidlo sasemini,noun,,,false,false,false,,,Isi,
-1166,snake,inyoka,noun,,,false,false,false,,,In,
-1167,snakes,iinyoka,noun,,,true,false,false,,,Izin,
-1168,meals,izidlo,noun,,,true,false,false,,,Izi,
-1169,meal,isidlo,noun,,,false,false,false,,,Isi,
-1170,breakfast,isidlo sakusasa,noun,,,false,false,false,,,Isi,
-1171,ugly,bi,adjective,,,false,false,false,,,,
-1172,beautiful,hle,adjective,,,false,false,false,,,,"Hle changes to tle when nasalised (for instance, when used for class 9 and 10 words)."
-1173,fire,umlilo,noun,,,false,false,false,,,Class3Um,
-1174,fires,imililo,noun,,,true,false,false,,,Imi,
-1175,fireplace,iziko,noun,,,false,false,false,,,Ili,
-1176,wire,ucingo,noun,,,false,false,false,,,Ulu,
-1177,door,ucango,noun,,,false,false,false,,,Ulu,
-1178,doors,iingcango,noun,,,true,false,false,,,Izin,
-1179,wires,iingcingo,noun,,,true,false,false,,,Izin,
-1180,fireplaces,amaziko,noun,,,true,false,false,,,Ama,
-1181,centre,umbindi,noun,,,false,false,false,,,Class3Um,
-1182,centres,imibindi,noun,,,true,false,false,,,Imi,
-1183,art,ubugcisa,noun,,,false,false,false,,,Ubu,
-1184,blood pressure,ipresha yegazi,noun,,,false,false,false,,,In,
-1185,high blood pressure,ihayihayi,noun,,,false,false,false,,,Ili,
-1186,germ,intsholongwane,noun,,,false,false,false,,,In,
-1187,germs,iintsholongwane,noun,,,true,false,false,,,Izin,
-1188,card,ikhadi,noun,,,false,false,false,,,Ili,
-1189,cards,amakhadi,noun,,,true,false,false,,,Ama,
-1190,expert,ingcali,noun,,,false,false,false,,,In,
-1191,experts,iingcali,noun,,,true,false,false,,,Izin,
-1192,heel,isithende,noun,,,false,false,false,,,Isi,
-1193,heels,izithende,noun,,,true,false,false,,,Izin,
-1194,heartburn,isitshisa,noun,,,false,false,false,,,Isi,
-1195,calf,isiquluba,noun,,,false,false,false,,,Isi,
-1196,calves,iziquluba,noun,,,true,false,false,,,Izin,
-1197,wrist,isihlahla,noun,,,false,false,false,,,Isi,
-1198,wrists,izihlahla,noun,,,true,false,false,,,Izin,
-1199,illness,isigulo,noun,,,false,false,false,,,Isi,
-1200,illnesses,izigulo,noun,,,true,false,false,,,Izi,
-1201,out patient,isigulana sangaphandle,noun,,,false,false,false,,,Isi,
-1202,out patients,izigulana zangaphandle,noun,,,true,false,false,,,Izin,
-1203,disease,isifo,noun,,,false,false,false,,,Isi,
-1204,chest,isifuba,noun,,,false,false,false,,,Isi,This refers to the chest of a person.
-1205,chests,izifuba,noun,,,true,false,false,,,Izi,Refers to the chest of a person.
-1206,diseases,izifo,noun,,,true,false,false,,,Izin,
-1207,diabetes,isifo seswekile,noun,,,false,false,false,,,Isi,
-1208,nausea,isichaphuchaphu,noun,,,false,false,false,,,Isi,
-1209,corpse,isidumbu,noun,,,false,false,false,,,Isi,
-1210,corpses,izidumbu,noun,,,true,false,false,,,Izi,
-1211,liver,isibindi,noun,,,false,false,false,,,Isi,Can also be used to describe having courage.
-1212,livers,izibindi,noun,,,true,false,false,,,Izi,
-1213,report,ingxelo,noun,,,false,false,false,,,In,
-1214,reports,iingxelo,noun,,,true,false,false,,,Izin,
-1215,cold,ingqele,noun,,,false,false,false,,,In,This is in terms of the sickness.
-1216,procedures,iinkqubo,noun,,,true,false,false,,,Izin,
-1217,rheumatism,irumathizima,noun,,,false,false,false,,,In,
-1218,many types,iintlobontlobo,noun,,,true,false,false,,,Izin,
-1219,garage,igaraji,noun,,,false,false,false,,,In,This can also refer to a petrol station garage.
-1220,garages,iigaraji,noun,,,true,false,false,,,Izin,
-1221,bedroom,igumbi lokulala,noun,,,false,false,false,,,Ili,
-1222,bedrooms,amagumbi okulala,noun,,,true,false,false,,,Ama,
-1223,dining room,igumbi lokutyela,noun,,,false,false,false,,,Ili,
-1224,dining rooms,amagumbi okutyela,noun,,,true,false,false,,,Ama,
-1225,sitting room,igumbi lokuhlala,noun,,,false,false,false,,,Ili,
-1226,sitting rooms,amagumbi okuhlala,noun,,,true,false,false,,,Ama,
-1227,lounges,amagumbi okuphumla,noun,,,true,false,false,,,Ama,
-1228,lounge,igumbi lokuphumla,noun,,,false,false,false,,,Ili,
-1229,gate,iheke,noun,,,false,false,false,,,In,
-1230,gates,iiheke,noun,,,true,false,false,,,Izin,
-1231,church,icawe,noun,,,false,false,false,,,In,
-1232,churches,iicawe,noun,,,true,false,false,,,Izin,
-1233,ascend,nyuka,verb,,ukunyuka,false,false,false,intransitive,,,
-1234,ward,iwodi,noun,,,false,false,false,,,Ili,
-1235,wards,amawodi,noun,,,true,false,false,,,Ama,
-1236,neurological disease,isigulo sengqondo,noun,,,false,false,false,,,Isi,
-1237,gynecological disease,isifo sezibeleko,noun,,,false,false,false,,,Isi,
-1238,topical treatment,into yokurhaba,noun,,,false,false,false,,,In,
-1239,topical treatments,izinto zokurhaba,noun,,,true,false,false,,,Izi,
-1240,dentist,ugqirha wamazinyo,noun,,,false,false,false,,,U,
-1241,dentists,oogqirha bamazinyo,noun,,,true,false,false,,,Oo,
-1242,weight,ubunzima,noun,,,false,false,false,,,Ubu,
-1243,although,nangona,conjunction,,,false,false,false,,participial mood,,
-1244,matron,umeyitroni,noun,,,false,false,false,,,U,
-1245,matrons,oomeyitroni,noun,,,true,false,false,,,Oo,
-1246,asthma,umbefu,noun,,,false,false,false,,,Class3Um,
-1247,cough,ukhohlokhohlo,noun,,,false,false,false,,,Ulu,
-1248,cancer,umhlaza,noun,,,false,false,false,,,Class3Um,
-1249,disaster,intlekele,noun,,,false,false,false,,,In,
-1250,temperature,ubushushu,noun,,,false,false,false,,,Ubu,
-1251,as usual,njengesiqhelo,adverb,,,false,false,false,,,,
-1252,virus,ivirasi,noun,,,false,false,false,,,In,
-1253,viruses,iivirasi,noun,,,true,false,false,,,Izin,
-1254,viruses,iintsholongwane,noun,,,true,false,false,,,Izin,
-1255,hip bone,ihleza,noun,,,false,false,false,,,Ili,
-1256,hip bones,amahleza,noun,,,true,false,false,,,Ama,
-1257,announce,bhengeza,verb,,ukubhengeza,false,false,false,either,,,
-1258,hip,idywantsi,noun,,,false,false,false,,,Ili,
-1259,hips,amadywantsi,noun,,,true,false,false,,,Ama,
-1260,bodies,imizimba,noun,,,true,false,false,,,Imi,
-1261,bladder,isinyi,noun,,,false,false,false,,,Isi,
-1262,bladders,izinyi,noun,,,true,false,false,,,Izi,
-1263,cold,umkhulane,noun,,,false,false,false,,,Class3Um,
-1264,lungs,imiphunga,noun,,,true,false,false,,,Imi,
-1265,lung,umphunga,noun,,,false,false,false,,,Class3Um,
-1266,wing,iphiko,noun,,,false,false,false,,,Ili,
-1267,wings,amaphiko,noun,,,true,false,false,,,Ama,
-1268,shortness of breath,iphika,noun,,,false,false,false,,,Ili,
-1269,passage,ipaseji,noun,,,false,false,false,,,In,
-1270,passages,iipaseji,noun,,,true,false,false,,,Izin,
-1271,nurse,umongikazi,noun,,,false,false,false,,,U,
-1272,nurses,oomongikazi,noun,,,true,false,false,,,Oo,
-1273,throats,imiqala,noun,,,true,false,false,,,Imi,
-1274,mixture,umxube,noun,,,false,false,false,,,Class3Um,
-1275,mixtures,imixube,noun,,,true,false,false,,,Imi,
-1276,gold,golide,relative,,,false,false,false,,,,
-1277,social worker,unontlalontle,noun,,,false,false,false,,,U,
-1278,social workers,oonontlalontle,noun,,,true,false,false,,,Oo,
-1279,blood transfusion,unikezelo lwegazi,noun,,,false,false,false,,,Ulu,
-1280,phones,iminxeba,noun,,,true,false,false,,,Imi,
-1281,disasters,iintlekele,noun,,,true,false,false,,,Izin,
-1282,entrance,isango,noun,,,false,false,false,,,Ili,
-1283,entrances,amasango,noun,,,true,false,false,,,Ama,
-1284,navel,inkaba,noun,,,false,false,false,,,Izin,"Commonly known as a ""belly button"""
-1285,navels,iinkaba,noun,,,true,false,false,,,Izin,"Commonly known as ""belly buttons"""
-1286,HIV,isifo uGawulayo,noun,,,false,false,false,,,Isi,"Most people simply refer to this as ""iHIV"". It can also appear just as ""uGawulayo""."
-1287,part-time job,isingxungxo,noun,,,false,false,false,,,Isi,
-1288,part-time jobs,izingxungxo,noun,,,true,false,false,,,Izin,
-1289,pains,iintlugu,noun,,,true,false,false,,,Izin,
-1290,step,isitephu,noun,,,false,false,false,,,Isi,Steps of a stairway
-1291,steps,izitephu,noun,,,true,false,false,,,Izi,Steps of a stairway
-1292,faces,iimbuso,noun,,,true,false,false,,,Izin,This plural is slightly non-standard but is sometimes used.
-1293,symptom,uphawu,noun,,,false,false,false,,,Ulu,
-1294,symptoms,iimpawu,noun,,,true,false,false,,,Izin,
-1295,mumps,uqwilikane,noun,,,false,false,false,,,Ulu,
-1296,operation,uqhaqho,noun,,,false,false,false,,,Ulu,
-1297,operations,iiqhaqho,noun,,,true,false,false,,,Izin,
-1298,ice,umkhenkce,noun,,,false,false,false,,,Class3Um,
-1299,ice,imikhenkce,noun,,,true,false,false,,,Imi,
-1300,chart,itshati,noun,,,false,false,false,,,In,
-1301,charts,iitshati,noun,,,true,false,false,,,Izin,
-1302,needles,iinaliti,noun,,,true,false,false,,,Izin,
-1303,needle,inaliti,noun,,,false,false,false,,,In,
-1304,medicine,iyeza,noun,,,false,false,false,,,Ili,
-1305,treatments,iinyango,noun,,,true,false,false,,,Izin,
-1306,nostril,ithatha,noun,,,false,false,false,,,Ili,
-1307,nostrils,amathatha,noun,,,true,false,false,,,Ama,
-1308,wall,udonga,noun,,,false,false,false,,,Ulu,
-1309,walls,iindonga,noun,,,true,false,false,,,Izin,
-1310,medicines,amayeza,noun,,,true,false,false,,,Ama,
-1311,break,aphuka,verb,,ukwaphuka,false,true,false,intransitive,,,"In some dialects it is ""ophuka""."
-1312,break,aphula,verb,,ukwaphula,false,false,false,transitive-only,,,"In some dialects it is ""ophula""."
-1313,intestine,ithumbu,noun,,,false,false,false,,,Ili,
-1314,intestines,amathumbu,noun,,,true,false,false,,,Ama,
-1315,brain,ubucopho,noun,,,false,false,false,,,Ubu,
-1316,quality,umgangatho,noun,,,false,false,false,,,Class3Um,
-1317,determine,qinisekisa,verb,,ukuqinisekisa,false,false,false,transitive-only,,,
-1318,carry,thwala,verb,,ukuthwala,false,true,false,transitive-only,,,"""thwala"" is used when a particularly heavy load is being carried, usually on the head or shoulders."
-1319,board,ibhodi,noun,,,false,false,false,,,In,
-1320,boards,iibhodi,noun,,,true,false,false,,,Izin,
-1321,win,phumelela,verb,,ukuphumelela,false,false,false,intransitive,,,
-1322,go out,phuma,verb,,ukuphuma,false,false,false,either,,,
-1323,section,icandelo,noun,,,false,false,false,,,Ili,
-1324,sections,amacandelo,noun,,,true,false,false,,,Ama,
-1325,table,itafile,noun,,,false,false,false,,,In,
-1326,tables,iitafile,noun,,,true,false,false,,,Izin,
-1327,process,inkqubo,noun,,,false,false,false,,,In,
-1328,processes,iinkqubo,noun,,,true,false,false,,,Izin,
-1329,be available,fumaneka,verb,,ukufumaneka,false,false,false,intransitive,,,
-1330,teacher,utitshala,noun,,,false,false,false,,,U,"Sometimes ""utitshalakazi"" is used for a female teacher."
-1331,teachers,ootitshala,noun,,,true,false,false,,,Oo,"Sometimes ""ootitshalakazi"" is used for a female teachers."
-1332,lose,bethwa,verb,,ukubethwa,false,false,false,intransitive,,,
-1333,become old,guga,verb,,ukuguga,false,true,false,intransitive,,,
-1334,human,umntu,noun,,,false,false,false,,,Class1Um,
-1335,humans,abantu,noun,,,true,false,false,,,Aba,
-1336,treatment,unyango,noun,,,false,false,false,,,Class3Um,
-1337,cause,unobangela,noun,,,false,false,false,,,U,
-1338,causes,oonobangela,noun,,,true,false,false,,,Oo,
-1339,voice,ilizwi,noun,,,false,false,false,,,Ili,
-1340,voices,amazwi,noun,,,true,false,false,,,Ama,
-1341,inform,azisa,verb,,ukwazisa,false,false,false,transitive-only,,,
-1342,personality,isimilo,noun,,,true,false,false,,,Izi,
-1343,hearts,iintliziyo,noun,,,true,false,false,,,Izin,
-1344,party,ipati,noun,,,false,false,false,,,In,
-1345,parties,iipati,noun,,,true,false,false,,,Izin,
-1346,party,itheko,noun,,,false,false,false,,,Ili,"""ipati"" is much more common than ""itheko""."
-1347,parties,amatheko,noun,,,true,false,false,,,Ama,"""iipati"" is much more common than ""amatheko""."
-1348,argue,xabana,verb,,ukuxabana,false,false,false,intransitive,,,
-1349,lie,ubuxoki,noun,,,false,false,false,,,Ubu,
-1350,wait,linda,verb,,ukulinda,false,false,false,either,,,
-1351,sections,amacala,noun,,,true,false,false,,,Ama,
-1352,pill,ipilisi,noun,,,false,false,false,,,In,
-1353,pills,iipilisi,noun,,,true,false,false,,,Izin,
-1354,kidney,intso,noun,,,false,false,false,,,In,
-1355,kidneys,izintso,noun,,,true,false,false,,,Izin,
-1356,pancreas,injeke,noun,,,false,false,false,,,In,
-1357,pancreases,iinjeke,noun,,,true,false,false,,,Izin,
-1358,pelvis,irhorho,noun,,,false,false,false,,,Ili,
-1359,pelvises,amarhorho,noun,,,true,false,false,,,Ama,
-1360,toe,uzwane,noun,,,false,false,false,,,Ulu,
-1361,toes,iinzwane,noun,,,true,false,false,,,Izin,
-1362,epilepsy,isifo sokuwa,noun,,,false,false,false,,,Isi,
-1363,phlegm,isikhohlela,noun,,,false,false,false,,,Isi,
-1364,sputum,isikhohlela,noun,,,false,false,false,,,Isi,
-1365,extend,olula,verb,,ukolula,false,false,false,transitive-only,,,
-1366,bell,intsimbi,noun,,,false,false,false,,,In,
-1367,bells,iintsimbi,noun,,,true,false,false,,,Izin,
-1368,ring,khala,verb,,ukukhala,false,false,false,intransitive,,,
-1369,ring,khalisa,verb,,ukukhalisa,false,false,false,transitive-only,,,
-1370,iron,intsimbi,noun,,,false,false,false,,,In,
-1371,owls,izikhova,noun,,,true,false,false,,,Izi,
-1372,owl,isikhova,noun,,,false,false,false,,,Isi,
-1373,verb,isenzi,noun,,,false,false,false,,,Isi,
-1374,verbs,izenzi,noun,,,true,false,false,,,Izi,
-1375,elephant,indlovu,noun,,,false,false,false,,,In,
-1376,elephants,iindlovu,noun,,,true,false,false,,,Izin,
-1377,tortoise,ufudo,noun,,,false,false,false,,,Ulu,
-1378,tortoises,iimfudo,noun,,,true,false,false,,,Izin,
-1379,mouse,impuku,noun,,,false,false,false,,,In,
-1380,mice,iimpuku,noun,,,true,false,false,,,Izin,
-1381,cause,imbangi,noun,,,false,false,false,,,In,
-1382,causes,iimbangi,noun,,,true,false,false,,,Izin,
-1383,wound,inxeba,noun,,,false,false,false,,,In,
-1384,wounds,iinxeba,noun,,,true,false,false,,,Izin,
-1385,waist,isinqe,noun,,,false,false,false,,,Isi,
-1386,waists,izinqe,noun,,,true,false,false,,,Izi,
-1387,rib,ubambo,noun,,,false,false,false,,,Ulu,
-1388,ribs,iimbambo,noun,,,false,false,false,,,Izin,
-1389,muscle,isihlunu,noun,,,false,false,false,,,Isi,
-1390,muscles,izihlunu,noun,,,true,false,false,,,Izi,
-1391,unfortunately,ngelishwa,adverb,,,false,false,false,,,,
-1392,intend,zimisela,verb,,ukuzimisela,false,false,false,either,,,
-1393,zula,wander,verb,,ukuzula,false,false,false,either,,,
-1394,drink heavily,shusha,verb,,ukushusha,false,false,false,intransitive,,,
-1395,throb,qaqamba,verb,,ukuqaqamba,false,false,false,intransitive,,,
-1396,ache,qaqamba,verb,,ukuqaqamba,false,false,false,intransitive,,,
-1397,kiss,phuza,verb,,ukuphuza,false,false,false,transitive-only,,,
-1398,stamp,ngqisha,verb,,ukungqisha,false,false,false,transitive-only,,,
-1399,bite,luma,verb,,ukuluma,false,false,false,either,,,
-1400,protect,khusela,verb,,ukukhusela,false,false,false,transitive-only,,,
-1401,take off,khulula,verb,,ukukhulula,false,false,false,transitive-only,,,
-1402,scratch,krwempa,verb,,ukukrwempa,false,false,false,transitive-only,,,
-1403,stab,hlaba,verb,,ukuhlaba,false,false,false,either,,,
-1404,plan,cwangcisa,verb,,ukucwangcisa,false,false,false,either,,,
-1405,greet,bulisa,verb,,ukubulisa,false,false,false,transitive-only,,,
-1406,become scarce,nqaba,verb,,ukunqaba,false,false,false,intransitive,,,
-1407,request,cela,verb,,ukucela,false,false,false,either,,,This is a more polite way of asking for something than funa.
-1408,be lazy,onqena,verb,,ukonqena,false,false,false,intransitive,,,
-1409,doorway,umnyango,noun,,,false,false,false,,,Class3Um,
-1410,intersection,isiphambuka,noun,,,false,false,false,,,Isi,
+word_id,xhosa,infinitive,is_plural
+1,uncedo,,false
+3,bona,ukubona,false
+4,i-orenji,,false
+5,bonisa,ukubonisa,false
+6,ii-orenji,,true
+7,xelela,ukuxelela,false
+8,thenga,ukuthenga,false
+9,tya,ukutya,false
+10,usana,,false
+11,iintsana,,true
+12,utata,,false
+13,ootata,,true
+14,fana,ukufana,false
+15,cula,ukucula,false
+16,qala,ukuqala,false
+17,thuthuzela,ukuthuthuzela,false
+19,iimoto,,true
+20,imoto,,false
+21,bukela,ukubukela,false
+22,onakala,ukonakala,false
+23,ubawo,,false
+24,khawuleza,ukukhawuleza,false
+25,xhomekeka,ukuxhomekeka,false
+26,yala,ukuyala,false
+27,umabonakude,,false
+28,inxila,,false
+29,phumelela,ukuphumelela,false
+30,shumayela,ukushumayela,false
+31,umfo,,false
+32,malunga,,false
+33,isithandwa,,false
+34,ngathi,,false
+35,ikhwele,,false
+36,ubukhwele,,false
+37,khwela,ukukhwela,false
+38,ibala,,false
+39,ibali,,false
+40,amabali,,true
+41,amabala,,true
+42,umbala,,false
+43,imibala,,true
+44,bala,ukubala,false
+45,bhala,ukubhala,false
+46,umandlalo,,false
+47,ibhedi,,false
+48,phindeza,ukuphindeza,false
+49,phawula,ukuphawula,false
+50,isimilo,,false
+51,isityalo,,false
+52,isitiya,,false
+53,lawula,ukulawula,false
+54,isonka,,false
+55,iqanda,,false
+56,zola,ukuzola,false
+57,inkcukacha,,false
+58,ingxowa,,false
+59,khaba,ukukhaba,false
+60,diliza,ukudiliza,false
+61,izihombiso,,true
+62,incwadi,,false
+63,dlala,ukudlala,false
+64,funda,ukufunda,false
+65,inkitha ya-,,false
+66,bhafisa,ukubhafisa,false
+67,zama,ukuzama,false
+68,into,,false
+69,izinto,,true
+70,njalo,,false
+71,intatheli,,false
+72,umnqwazi,,false
+73,krazuka,ukukrazuka,false
+74,phucula,ukuphucula,false
+75,umthunzi,,false
+76,idabi,,false
+77,umzekelo,,false
+78,imizekelo,,true
+79,isicatshulwa,,false
+80,indebe,,false
+81,thuka,ukuthuka,false
+82,othuka,ukothuka,false
+83,cothisa,ukucothisa,false
+84,ngakumbi,,false
+85,ngxama,ukungxama,false
+86,thanda,ukuthanda,false
+87,goduka,ukugoduka,false
+88,pula,ukupula,false
+89,thintana na-,ukuthintana na-,false
+90,isiqhuphe,,false
+91,hleka,ukuhleka,false
+92,ingoma,,false
+93,ala,ukwala,false
+94,thi,ukuthi,false
+95,umthi,,false
+96,imithi,,true
+97,njalo,,false
+98,ilanga,,false
+99,umthombo,,false
+100,nzima,,false
+101,nzima,,false
+102,ikhulu,,false
+103,ikati,,false
+104,iikati,,true
+105,pha,ukupha,false
+106,fika,ukufika,false
+107,isipho,,false
+108,xhokonxa,ukuxhokonxa,false
+109,izipho,,true
+110,phoxa,ukuphoxa,false
+111,imbalela,,false
+112,uboya,,false
+113,tshayisana na-,ukutshayisana,false
+114,bhiyoza,ukubhiyoza,false
+115,xhaphaza,ukuxhaphaza,false
+116,ingubo,,false
+117,hluma,ukuhluma,false
+118,phathela,ukuphathela,false
+119,tsha,ukutsha,false
+120,vala,ukuvala,false
+121,qhuba,ukuqhuba,false
+122,ixabiso,,false
+123,sika,ukusika,false
+124,danisa,ukudanisa,false
+125,danisa,ukudanisa,false
+126,fa,ukufa,false
+127,enza,ukwenza,false
+128,sela,ukusela,false
+129,gqiba,ukugqiba,false
+130,libala,ukulibala,false
+131,ya,ukuya,false
+132,vuma,ukuvuma,false
+133,phendula,ukuphendula,false
+134,kholelwa,ukukholelwa,false
+135,biza,ukubiza,false
+136,khetha,ukukhetha,false
+137,umhla,,false
+138,tshintsha,ukutshintsha,false
+139,coca,ukucoca,false
+140,vula,ukuvula,false
+141,thelekisa,ukuthelekisa,false
+142,lila,ukulila,false
+143,pheka,ukupheka,false
+144,amaxabiso,,true
+145,imihla,,true
+146,nika,ukunika,false
+147,yeka,ukuyeka,false
+148,xolela,ukuxolela,false
+149,khumbula,ukukhumbula,false
+150,lungisa,ukulungisa,false
+151,fumana,ukufumana,false
+152,gcwala,ukugcwala,false
+153,lwa,ukulwa,false
+154,cacisa,ukucacisa,false
+155,xabisa,ukuxabisa,false
+156,cheba,ukucheba,false
+157,dana,ukudana,false
+158,chaza,ukuchaza,false
+159,tshabalalisa,ukutshabalalisa,false
+160,enza,ukwenza,false
+161,sweleka,ukusweleka,false
+162,phunga,ukuphunga,false
+163,wa,ukuwa,false
+164,tshisa,ukutshisa,false
+165,umdla,,false
+166,ugonyo,,false
+167,netha,ukunetha,false
+168,isandla,,false
+169,lala,ukulala,false
+170,inja,,false
+171,cebisa,ukucebisa,false
+172,krelekrele,,false
+173,izinja,,true
+174,buza,ukubuza,false
+175,qhubekeka,ukuqhubekeka,false
+176,imvula,,false
+177,khalaza,ukukhalaza,false
+178,nceda,ukunceda,false
+179,thandaza,ukuthandaza,false
+180,uthando,,false
+181,khonkotha,ukukhonkotha,false
+182,yalela,ukuyalela,false
+183,umhla wokuzalwa,,false
+184,intlango,,false
+185,thandabuza,ukuthandabuza,false
+186,gonya,ukugonya,false
+187,halala,,false
+188,tofotofo,,false
+189,utywala,,false
+190,khumbuza,ukukhumbuza,false
+191,phatha,ukuphatha,false
+192,intsholongwane,,false
+193,bhalisa,ukubhalisa,false
+194,gxininisa,ukugxininisa,false
+195,qumba,ukuqumba,false
+196,munca,ukumunca,false
+197,hlamba,ukuhlamba,false
+198,ubuthongo,,false
+199,phumla,ukuphumla,false
+200,phinda,ukuphinda,false
+201,umzimba,,false
+202,izandla,,true
+203,fihla,ukufihla,false
+204,xonxa,ukuxonxa,false
+205,isitya,,false
+206,hoya,ukuhoya,false
+207,uthuthu,,false
+208,velisa,ukuvelisa,false
+209,thatha,ukuthatha,false
+210,buya,ukubuya,false
+211,khwaza,ukukhwaza,false
+212,hlala,ukuhlala,false
+213,baleka,ukubaleka,false
+214,sala,ukusala,false
+215,shawuta,ukushawuta,false
+216,thengisa,ukuthengisa,false
+217,khupha,ukukhupha,false
+218,jula,ukujula,false
+219,inkonzo,,false
+220,gqiba,ukugqiba,false
+221,fundisa,ukufundisa,false
+222,cinga,ukucinga,false
+223,ithemba,,false
+224,ikofu,,false
+226,buyisa,ukubuyisa,false
+227,thuma,ukuthuma,false
+228,ncuma,ukuncuma,false
+229,thetha,ukuthetha,false
+230,phakama,ukuphakama,false
+231,xhasa,ukuxhasa,false
+232,sa,ukusa,false
+233,qonda,ukuqonda,false
+234,chama,ukuchama,false
+235,sebenzisa,ukusebenzisa,false
+236,funa,ukufuna,false
+237,themba,ukuthemba,false
+238,sebenza,ukusebenza,false
+239,va,ukuva,false
+240,va,ukuva,false
+241,enzakala,ukwenzakala,false
+242,enzakalisa,ukwenzakalisa,false
+243,ngcono,,false
+244,tsiba,ukutsiba,false
+245,bulala,ukubulala,false
+246,azi,ukwazi,false
+247,funda,ukufunda,false
+248,hamba,ukuhamba,false
+249,(i)mka,ukumka,false
+250,shiya,ukushiya,false
+251,ngqengqa,ukungqengqa,false
+252,thanda,ukuthanda,false
+253,xoka,ukuxoka,false
+254,jonga,ukujonga,false
+255,fudukela,ukufudukela,false
+256,bekelisa,ukubekelisa,false
+257,funa,ukufuna,false
+258,dinga,ukudinga,false
+259,bhatala,ukubhatala,false
+260,lungiselela,ukulungiselela,false
+261,cofa,cofa,false
+262,tyhala,ukutyala,false
+263,faka,ukufaka,false
+264,tsala,ukutsala,false
+265,beka,ukubeka,false
+266,zimela,ukuzimela,false
+267,bamba,ukubamba,false
+268,mamela,ukumamela,false
+269,shukumisa,ukushukumisa,false
+270,shukuma,ukushukuma,false
+271,phila,ukuphila,false
+272,hlala,ukuhlala,false
+273,enzeka,ukwenzeka,false
+274,dibana,ukudibana,false
+275,phosisa,ukuphosisa,false
+276,tyala,ukutyala,false
+277,izityalo,,true
+278,qaphela,ukuqaphela,false
+279,itapile,,false
+280,ipayina,,false
+281,amapayina,,true
+282,urhulumente wengingqi,,false
+283,oorhulumente beengingqi,,true
+284,iBhunga likaMasipala,,false
+285,usuku,,false
+286,namhlanje,,false
+287,iintsuku,,true
+288,inkundla,,false
+289,iitapile,,true
+290,izolo,,false
+291,izolo elinye,,false
+292,ithanga,,false
+293,amathanga,,true
+294,irayisi,,false
+295,iinkundla,,true
+296,ispinatshi,,false
+297,INkundla ePhezulu yeziBheno,,false
+298,INkundla yezomGaqo-siseko,,false
+299,amaBhunga ooMasipala,,true
+300,INkundla ePhakamileyo,,false
+301,itumato,,false
+302,iqunube,,false
+303,INkundla yamaBango amaNcinci,,false
+304,ivatala,,false
+305,INkundla kaMantyi,,false
+306,ngomso,,false
+307,iivatala,,false
+308,impelaveki,,false
+309,isithako,,false
+310,iitumato,,true
+311,isibheno,,false
+312,iimpelaveki,,true
+313,isicelo sebheyile,,false
+314,kwakusasa,,false
+315,amaqunube,,true
+316,inqwelomoya,,false
+317,ummangalelwa,,false
+318,abamangalelwa,,true
+319,izibheno,,true
+320,izithako,,true
+321,iibhayisekile,,true
+322,ibheyile,,false
+323,ibhayisekile,,false
+324,inqwelo,,false
+325,ukuphanga kuxhotyiwe,,false
+326,iinqwelomoya,,true
+327,izicelo zebheyile,,true
+328,ityala,,false
+329,iinqwelo,,true
+330,iimini,,true
+331,imini,,false
+332,ekuseni,,false
+333,kusasa,,false
+334,ukuphuma kwelanga,,false
+335,ngentlazane,,false
+336,ubusuku,,false
+337,inyanga,,false
+338,amatyala,,true
+339,isisele,,false
+340,amalanga,,true
+341,isikhitshana,,false
+342,izikhitshana,,true
+343,isikhephe,,false
+344,izikhephe,,true
+345,thembisa,ukuthembisa,false
+346,izisele,,true
+347,isityholo,,false
+348,ibhasi,,false
+349,izityholo,,true
+350,iibhasi,,true
+351,amalungiselelo,,true
+352,igqirha,,true
+353,isikhalazo,,false
+354,izikhalazo,,false
+355,ugqirha,,false
+356,oogqirha,,true
+357,urhwaphilizo,,false
+358,isigwebo sentambo,,false
+359,gwayimba,ukugwayimba,false
+360,ubungqina,,false
+361,isiyobisi,,false
+362,isilenge,,false
+363,abamangalelwa,,true
+364,cranes,,true
+365,ummangalelwa,,false
+366,ummangali,,false
+367,abamangali,,true
+368,amagqirha,,true
+369,iintlanzi,,true
+370,ikhetshi,,false
+371,ubugebenga,,false
+372,iziyobisi,,true
+373,isihlawuliso,,false
+374,iveni,,false
+375,umkhumbi,,false
+376,ihelikhopta,,false
+377,izithuthuthu,,true
+378,izihlawuliso,,true
+379,imidliwo,,true
+380,urhwaphilizo,,false
+381,isithuthuthu,,false
+382,loba,ukuloba,false
+383,isithuthi sikawonke-wonke,,false
+384,iihelikhopta,,true
+385,umphangi,,false
+386,abakhweli,,true
+387,umdliwo,,false
+388,isikrelemnqa,,false
+389,umkhweli,,false
+390,izikrelemnqa,,false
+391,inqanawe,,false
+392,iiveni ,,true
+393,abaphangi,,true
+394,iinqanawe,,true
+395,indlala,,false
+396,ityala,,false
+397,imini emaqanda,,false
+398,emva kwemini,,false
+399,emalanga,,false
+400,tshona,ukutshona,false
+401,phuma,ukuphuma,false
+402,phuma,ukuphuma,false
+403,isithuthi,,false
+404,izithuthi,,true
+405,matshona,,false
+406,intlanzi,,false
+407,isipheke-pheke,,false
+408,izipheke-pheke,,true
+409,amaqhinga,,true
+410,iqhinga,,false
+411,phambili,,false
+412,phezulu,,false
+413,phantsi,,false
+414,phantsi,,false
+415,canda,ukucanda,false
+416,canda,ukucanda,false
+417,galela,ukugalela,false
+418,ulusu,,false
+419,ulusu,,false
+420,ncwela,ukuncwela,false
+421,ncwela,ukuncwela,false
+422,hamba,ukuhamba,false
+423,idlala,,false
+424,umnakwethu,,false
+425,umninawa,,false
+426,hayi,,false
+427,ewe,,false
+428,ulwimi,,false
+429,iilwimi,,true
+430,ubuso,,false
+431,ihashe,,false
+432,ihashe,,false
+433,idlala,,false
+434,iKapa,,false
+435,ukuba,,false
+436,phesheya,,false
+437,phaya,,false
+438,apho,,false
+439,apha,,false
+440,ngorhatya,,false
+441,kodwa,,false
+442,ilizwe,,false
+443,imali,,false
+444,kungenzeka,,false
+445,phantse,,false
+446,ifuthe,,false
+447,amafuthe,,true
+448,amafutha,,false
+449,lahleka,ukulahleka,false
+450,lahla,ukulahla,false
+451,imfazwe,,false
+452,phezulu,,false
+453,inkonxa,,false
+454,amasi,,false
+455,ukuqala,,false
+456,umzuzu,,false
+457,imizuzu,,true
+458,iyure,,false
+459,umzuzwana,,false
+460,imizuzwana,,true
+461,iiyure,,true
+462,isibini,,false
+463,uluntu,,false
+464,qhwaba,ukuqhwaba,false
+465,iinkonzo,,true
+466,uluntu,,false
+467,(i)za,ukuza,false
+468,qhwaba,ukuqhwaba,false
+469,umfundisi,,false
+470,umgqomo,,false
+471,kha,ukukha,false
+472,sala,ukusala,false
+474,umgodi,,false
+475,umntu,,false
+476,noxa,,false
+477,thetha,ukuthetha,false
+478,mbi,,false
+479,mbi,,false
+480,abantu,,true
+481,imo,,false
+482,imeko,,false
+483,imo,,false
+484,imo,,false
+485,umongameli,,false
+486,umongameli,,false
+487,intombi,,false
+488,inenekazi,,false
+489,ninzi,,false
+490,iphupha,,false
+491,mva nje,,false
+492,iindlela,,true
+493,iindlela,,true
+494,indlela,,false
+495,indlela,,false
+496,ikhaya,,false
+497,ninzi,,false
+498,indoda,,false
+499,umfazi,,false
+500,umnumzana,,false
+501,umhlekazi,,false
+502,nakho,ukuba nakho,false
+503,kwazi uku-,ukukwazi,false
+504,ixesha,,false
+505,amaxesha,,true
+506,unyaka,,false
+507,abafazi,,true
+508,amadoda,,true
+509,iminyaka,,true
+510,nye,,false
+511,phandle,,false
+512,phakathi,,false
+513,phakathi,,false
+514,emva,,false
+515,phambili,,false
+516,phambili,,false
+517,emva,,false
+518,amacala,,true
+519,ecaleni,,false
+520,ekunene,,false
+521,ekhohlo,,false
+522,nye,,false
+523,ukuze,,false
+524,ukuba,,false
+525,thabatha,ukuthabatha,false
+526,fumana,ukufumana,false
+527,zisa,ukuzisa,false
+528,qha,,false
+529,kuphela,,false
+530,ngoku,,false
+531,kwaye,,false
+532,phupha,ukuphupha,false
+533,ntoni?,,false
+534,okokoko,,false
+535,soloko,ukusoloko,false
+536,imigqomo,,true
+537,imbali,,false
+538,inkcubeko,,false
+539,vumela,ukuvumela,false
+540,inkolo,,false
+541,fana,ukufana,false
+542,phi?,,false
+543,impilo,,false
+544,ubomi,,false
+545,impilo,,false
+546,njani?,,false
+547,mnandi,,false
+548,kakuhle,,false
+549,umhlaba,,false
+550,umzi,,false
+551,indlu,,false
+552,izindlu,,true
+553,kuba,,false
+554,isikolo,,false
+555,iyunivesithi,,false
+556,funda,ukufunda,false
+557,iiyunivesithi,,true
+558,izikolo,,true
+559,umntwana,,false
+560,abantwana,,true
+561,va,ukuva,false
+562,iingxaki,,true
+563,umhlaba,,false
+564,indawo,,false
+565,iindawo,,true
+566,mbalwa,,false
+567,jika,ukujika,false
+568,ngqo,,false
+569,chitha,ukuchitha,false
+570,chitha,ukuchitha,false
+571,buthathaka,,false
+572,ihlabathi,,false
+573,umhlobo,,false
+574,iwele,,false
+575,iingxangxasi,,true
+576,caphula,ukucaphula,false
+577,amakhaya,,true
+578,ingxangxasi,,false
+579,logama,,false
+580,nye,,false
+581,icala,,false
+582,chitha,ukuchitha,false
+583,ingxaki,,false
+584,imizi,,true
+585,inyanga,,false
+586,iveki,,false
+587,imimiselo,,true
+588,imiqathango,,true
+589,umyeni,,false
+590,umfazi,,false
+591,amandla,,false
+592,imimiselo nemiqathango,,true
+593,amandla,,false
+595,iiveki,,true
+596,umnxeba,,false
+597,unomathotholo,,false
+598,umlambo,,false
+599,usiba,,false
+600,iintsiba,,true
+601,usiba,,false
+602,iintsiba,,true
+603,intliziyo,,false
+604,ulwandle,,false
+605,molo,,false
+606,sala kakuhle,,false
+607,molweni,,true
+608,hamba kakuhle,,false
+609,ngaphantsi,,false
+610,ulwandle,,false
+611,imilambo,,true
+612,abefundisi,,true
+613,ekunxele,,false
+614,ingalo,,false
+615,oyika,ukoyika,false
+616,uxolo,,false
+617,namhla,,false
+618,amasimi,,false
+619,uxolo,,false
+620,ingxolo,,false
+621,naphi na,,false
+622,nabani na,,false
+623,ubuhle,,false
+624,ibhegi,,false
+625,yeka,ukuyeka,false
+626,umgangatho,,false
+627,layita,ukulayita,false
+628,vuya,ukuvuya,false
+629,umva,,false
+630,unxweme,,false
+631,ingalo,,false
+632,iingalo,,true
+633,iingalo,,true
+634,ngxola,ukungxola,false
+635,intsimi,,false
+636,amasimi,,true
+637,lunga,ukulunga,false
+638,cima,ukucima,false
+639,gula,ukugula,false
+640,lamba,ukulamba,false
+641,umqolo,,false
+642,phaka,ukuphaka,false
+643,ngasemva,,false
+644,ukutya,,false
+645,umculo,,false
+646,okukuqala,,false
+647,thuthuzela,ukuthuthuzela,false
+648,cima,ukucima,false
+649,layita,ukulayita,false
+650,isiqalo,,false
+651,ekuqaleni,,false
+652,isibane,,false
+653,izibane,,true
+654,umfundi,,false
+655,abafundi,,true
+656,ekugqibeleni,,false
+657,ekugqibeleni,,false
+658,bi,,false
+659,amagama,,true
+660,igama,,false
+661,inkqubo,,false
+662,inkqubo,,false
+663,amazwe,,true
+664,ilitha,,false
+665,izithili,,true
+666,isizwe,,false
+667,isithili,,false
+668,isiqhamo,,false
+669,iziqhamo,,true
+670,landela,ukulandela,false
+671,iliso,,false
+672,amehlo,,true
+673,izizwe,,true
+674,isixeko,,false
+675,izixeko,,true
+676,ingingqi,,false
+677,umgama,,false
+678,ummandla,,false
+679,incwadi,,false
+680,imimandla,,true
+681,umfino,,false
+682,imifuno,,true
+683,swela,ukuswela,false
+684,ezantsi,,false
+685,kunye,,false
+686,idolophu,,false
+687,inkqubo,,false
+688,ulwaphulo-mthetho ,,false
+689,(i)ma,ukuma,false
+690,(i)ma,ukuma,false
+691,isitulo,,false
+692,izitulo,,true
+693,ngakanani,,false
+694,iqela,,false
+695,amaqela,,true
+696,iqela,,false
+697,amaqela,,true
+698,iqela lezopolitiko,,false
+699,amaqela ezopolitiko,,true
+700,urhulumente,,false
+701,oorhulumente,,true
+702,intloko,,false
+703,iintloko,,true
+704,igumbi,,false
+705,amagumbi,,true
+706,imigangatho,,true
+707,iklasi,,false
+708,iiklasi,,true
+709,isakhiwo,,false
+710,indlu yangasese,,false
+711,izakhiwo,,true
+712,udidi,,false
+713,iindidi,,true
+714,iGoli,,false
+715,intolongo,,false
+716,iintolongo,,true
+717,umbanjwa,,false
+718,ababanjwa,,true
+719,hambani kakuhle,,true
+720,salani kakuhle,,true
+721,ngaphi,,false
+722,kambe ke,,false
+723,phela,ukuphela,false
+724,inkwenkwe,,false
+725,amakhwenkwe,,true
+726,kutheni,,false
+727,amanzi,,false
+728,umfanekiso,,false
+729,imifanekiso,,true
+730,umbuzo,,false
+731,imibuzo,,true
+732,umhlana,,false
+733,gcina,ukugcina,false
+734,bamba,ukubamba,false
+735,amagama,,true
+736,bhomboloza,ukubhomboloza,false
+737,bamba,ukubamba,false
+738,igama,,false
+739,izinyo,,false
+740,qina,ukuqina,false
+741,imvume,,false
+742,icandelo,,false
+743,icandelo,,false
+744,amacandelo,,true
+745,amacandelo,,true
+746,isebe,,false
+747,amasebe,,true
+748,ulwimi,,false
+749,amazinyo,,true
+750,umhlaba,,false
+751,ilitye,,false
+752,amatye,,true
+753,isitena,,false
+754,izitena,,true
+755,indlebe,,false
+756,iindlebe,,true
+757,igadi,,false
+758,phola,ukuphola,false
+759,umdlalo,,false
+760,hombisa,ukuhombisa,false
+761,imfundo,,false
+762,bhafa,ukubhafa,false
+763,qhwanyaza,ukuqhwanyaza,false
+764,ngaphinde,,false
+765,phoxa,ukuphoxa,false
+766,isisu,,false
+767,thimla,ukuthimla,false
+768,unyawo,,false
+769,iinyawo,,true
+770,ngxamiseka,ukungxamiseka,false
+771,ngokungxamisekileyo,,false
+772,iincwadi,,true
+773,iincwadi,,true
+774,enkosi,,false
+775,bulela,ukubulela,false
+776,ziqhelisa,ukuziqhelisa,false
+777,uhlalo lwabiwo mali,,false
+778,iqabane,,false
+779,amaqabane,,true
+780,iqabane,,false
+781,amaqabane,,true
+782,ngokukhawuleza,,false
+783,khohlakala,ukukhohlakala,false
+784,uvavanyo,,false
+785,iimvavanyo,,true
+786,uvavanyo,,false
+787,iimvavanyo,,true
+788,uviwo,,false
+789,iimviwo,,true
+790,isigwebo sokufa,,false
+791,banda,ukubanda,false
+792,godola,ukugodola,false
+793,funga,ukufunga,false
+794,bhafa,ukubhafa,false
+795,ala,ukwala,false
+796,inyawo,,false
+797,umlenze,,false
+798,imilenze,,true
+799,iqatha,,false
+800,iqatha,,false
+801,amaqatha,,true
+802,amaqatha,,true
+803,umnwe,,false
+804,iminwe,,true
+806,izisu,,true
+807,igqala,,false
+808,umnwe,,false
+809,iminwe,,true
+810,inzuzo,,false
+811,umdlalo weqonga,,false
+812,hluma,ukuhluma,false
+813,uviwo,,false
+814,ngokukhawuzela,,false
+815,yonke imihla,,false
+816,khala,ukukhala,false
+817,khalisa,ukukhalisa,false
+818,gcwalisa,ukugcwalisa,false
+819,wisa,ukuwisa,false
+820,qhubeka,ukuqhubeka,false
+821,umsindo,,false
+822,bhitya,ukubhitya,false
+823,qho,,false
+824,tshata,ukutshata,false
+825,va,ukuva,false
+826,dinwa,ukudinwa,false
+827,vuka,ukuvuka,false
+828,susa,ukususa,false
+829,zoba,ukuzoba,false
+830,intaka,,false
+831,bhaka,ukubhaka,false
+832,khonza,ukukhonza,false
+833,ukrebe,,false
+834,ookrebe,,true
+835,gqibezela,ukugqibezela,false
+836,phangela,ukuphangela,false
+837,ingqina,,false
+838,iqanda,,false
+839,iintaka,,true
+840,vela,ukuvela,false
+841,suka,ukusuka,false
+842,hlawula,ukuhlawula,false
+843,betha,ukubetha,false
+844,hlala,ukuhlala,false
+845,themba,ukuthemba,false
+846,hayi,,false
+847,ubuhlwempu,,false
+848,intombi,,false
+849,isiphumo,,false
+850,xa,,false
+851,impazamo,,false
+852,iimpazamo,,true
+853,kamnandi,,false
+854,umama,,false
+855,utata,,false
+856,indawo,,false
+857,nini?,,false
+858,ngcamla,ukungcamla,false
+859,incasa,,false
+860,onwaba,ukonwaba,false
+861,sula,ukusula,false
+862,ngapha,,false
+863,irediyo,,false
+864,ipen,,false
+865,itshomi,,false
+866,xa,,false
+867,isono,,false
+868,izono,,false
+869,ona,ukona,false
+870,dumba,ukudumba,false
+871,jongana na-,ukujongana na-,false
+872,cofa,ukucofa,false
+873,iziko,,false
+874,ubhuti,,false
+875,umqala,,false
+876,isebe,,false
+877,unyana,,false
+878,iRhawuti,,false
+879,phazamisa,ukuphazama,false
+880,lingana,ukulingana,false
+881,kutshanje,,false
+882,nuka,ukunuka,false
+883,kruneka,ukukruneka,false
+884,ingwenya,,false
+885,umsebenzi,,false
+886,umsebenzi,,false
+887,khohlela,ukukhohlela,false
+888,imbewu,,false
+889,khula,ukukhula,false
+890,igusha,,false
+891,isilwanyana,,false
+892,iimbewu,,true
+893,izilwanyana,,true
+894,usapho,,false
+895,umgangatho,,false
+896,ingca,,false
+897,amagusha,,true
+898,nkcenkceshela,ukunkcenkceshela,false
+899,ufele,,false
+900,omile,,false
+901,ekuhlaleni,,false
+902,ngoxolo,,false
+903,bomvu,,false
+904,blowu,,false
+905,intsasa,,false
+906,ngwevu,,false
+907,mnyama,,false
+908,mdaka,,false
+909,inyembezi,,false
+910,iinyembezi,,true
+911,umthetho,,false
+912,imithetho,,false
+913,iintsapho,,true
+914,isihombiso,,false
+915,mhlophe,,false
+916,luhlaza,,false
+917,ubisi,,false
+918,umoya,,false
+919,vukisa,ukuvukisa,false
+920,umtshato,,false
+921,oja,ukoja,false
+922,iinqununu,,true
+923,inqununu,,false
+924,nyamezela,ukunyamezela,false
+925,dibanisa,ukudibanisa,false
+926,galela,ukugalela,false
+927,phuma,ukuphuma,false
+928,Inokuba/inoba,,false
+929,shiyeka,ukushiyeka,false
+930,ncokola,ukuncokola,false
+931,geza,ukugeza,false
+932,goodbye,,false
+933,omelele,,false
+934,amasebe,,true
+935,gqabhuka,ukugqabhuka,false
+936,tyeba,ukutyeba,false
+937,iTV,,false
+938,shushu,,false
+939,uloliwe,,false
+940,oololiwe,,true
+941,isigulana,,false
+942,izigulana,,true
+943,isibhedlele,,false
+944,izibhedlele,,true
+945,intwasahlobo,,false
+946,ubusika,,false
+947,umbhali,,false
+948,ababhali,,true
+949,umpu,,false
+950,imipu,,true
+951,ukwindla,,false
+952,uluvo,,false
+953,impumlo,,false
+954,iimpumlo,,true
+955,iflu,,false
+956,ifiva,,false
+957,impendulo,,false
+958,iimpendulo,,true
+959,umlomo,,false
+960,amathanga,,true
+961,ithanga,,false
+962,shoulders,,true
+963,iligxa,,false
+964,iintamo,,true
+965,intamo,,false
+966,ithambo,,false
+967,amathambo,,false
+968,umlebe,,false
+969,imilebe,,true
+970,idolo,,false
+971,isidlele,,false
+972,izidlele,,true
+973,iinwele,,true
+974,isilevu,,false
+975,izilevu,,false
+976,imilomo,,true
+977,amadolo,,true
+978,impundu,,false
+979,iimpundu,,true
+980,ingqiniba,,false
+981,iingqiniba,,true
+982,ibunzi,,false
+983,amabunzi,,true
+984,ishiya,,false
+985,amashiya,,true
+986,umsebe,,false
+987,imisebe,,true
+988,imihlana,,true
+989,iilwimi,,true
+990,inqindi,,true
+991,amaqindi,,true
+992,uzipho,,false
+993,iinzipho,,true
+994,ingono,,false
+995,iingono,,true
+996,intende,,false
+997,iintende,,true
+998,umthondo,,false
+999,imithondo,,true
+1000,ubhontsi,,false
+1001,ubhontsi,,false
+1002,oobhontsi,,true
+1003,oobhontsi,,true
+1004,isibeleko,,false
+1005,izibeleko,,true
+1006,icandelo loqhaqho,,false
+1007,amacandelo oqhaqho,,true
+1008,isifo sephepha,,false
+1009,icaphaza,,false
+1010,amachapaza,,true
+1011,iimviwo,,true
+1012,khonza,ukukhonza,false
+1013,emva koko,,false
+1014,phucuka,ukuphucuka,false
+1015,ncoma,ukuncoma,false
+1016,qhela,ukuqhela,false
+1017,uxhongo,,false
+1018,ooxhongo,,true
+1019,ijoni,,false
+1020,amajoni,,true
+1021,pain,,false
+1022,igumbi likagqirha,,false
+1023,kawonke-wonke,,false
+1024,ihlobo,,false
+1025,akha,ukwakha,false
+1026,dumbile,,false
+1027,rhoqo,,false
+1028,isixhobo,,false
+1029,isixhobo,,false
+1030,izixhobo,,true
+1031,izixhobo,,true
+1032,ixabiso,,false
+1033,zala,ukuzala,false
+1034,ivumba,,false
+1035,amavumba,,true
+1036,umoya,,false
+1037,umgama,,false
+1038,umoya,,false
+1039,hluma,ukuhluma,false
+1040,pinki,,false
+1041,orenji,,false
+1042,lunga,ukulunga,false
+1043,rayithi,,false
+1044,rayithi,,false
+1045,qho,,false
+1046,qhankqalaza,ukuqhankqalaza,false
+1047,qhankqalaza,ukuqhankqalaza,false
+1048,yeka,ukuyeka,false
+1049,umphantsi,,false
+1050,imiphantsi,,true
+1051,iphambili,,false
+1052,amaphambili,,true
+1053,ibele,,false
+1054,amabele,,true
+1055,icandelo labantwana,,false
+1056,amacandelo abantwana,,true
+1057,icandelo lamathambo,,false
+1058,amacandelo amathambo,,true
+1059,icandelo leengxwelerha,,false
+1060,amacandelo eengxwelerha,,true
+1061,icandelo legesi,,false
+1062,amacandelo egesi,,true
+1063,icandelo lesifo sephepha,,false
+1064,amacandelo esifo sephepha,,true
+1065,icandelo lokubelekisa,,false
+1066,amacandelo okubelekisa,,true
+1067,icandelo lomhlaza,,false
+1068,amacandelo omhlaza,,true
+1069,igesi,,false
+1070,iigesi,,true
+1071,igumbi lokulindela,,false
+1072,amagumbi okulindela,,true
+1073,igumbi lokuxilongela,,false
+1074,amagumbi okuxilongela,,true
+1075,phantsi,,false
+1076,amagumbi oogqirha,,true
+1077,igazi,,false
+1078,umngxuma,,false
+1079,imingxuma,,true
+1080,xonxa,ukuxonxa,false
+1081,bhengeza,ukubhengeza,false
+1082,isibhengezo,,false
+1083,ngaphandle kwa-,,false
+1084,ngaphandle kwa-,,false
+1085,bheka,ukubheka,false
+1086,brown,,false
+1087,yela,ukuyela,false
+1088,injikalanga,,false
+1089,izibhengezo,,true
+1090,uhlobo,,false
+1091,uhlobo,,false
+1092,iintlobo,,true
+1093,iintlobo,,true
+1094,igxalaba,,false
+1095,phazama,ukuphazama,false
+1096,amachaphaza,,true
+1097,ichaphaza,,false
+1098,unwele,,false
+1099,thanda,ukuthanda,false
+1100,umama,,false
+1101,oomama,,true
+1102,swim,ukudada,false
+1103,peyinta,ukupeyinta,false
+1104,onga,ukonga,false
+1105,bilisa,ukubilisa,false
+1106,chola,ukuchola,false
+1107,oomama,,true
+1108,amaqanda,,true
+1109,qaba,ukuqaba,false
+1110,sarha,ukusarha,false
+1111,peta,ukupeta,false
+1112,qokelela,ukuqokelela,false
+1113,nyusa,ukunyusa,false
+1114,iinyanga,,true
+1115,thula,ukuthula,false
+1116,ncothula,ukuncothula,false
+1117,nzima,,false
+1118,ifestile,,false
+1119,inkomo,,false
+1120,iinkomo,,true
+1121,zamisa,ukuzamisa,false
+1122,ezinzulwini zobusuku,,false
+1123,inkulungwane,,false
+1124,iinkulungwane,,true
+1125,intlakohlaza,,false
+1126,igumbi lokuhlambela,,false
+1127,amagumbi okuhlambela,,true
+1128,ucikicane,,false
+1129,oocikicane,,true
+1130,ucikicane,,false
+1131,oocikicane,,true
+1132,iifestile,,true
+1133,indima,,false
+1134,uMvulo,,false
+1135,uLwesibini,,false
+1136,uLwesithathu,,false
+1137,uLwesine,,false
+1138,uLwesihlanu,,false
+1139,uMgqibelo,,false
+1140,iCawe,,false
+1141,oobhuthi,,true
+1142,umakazi,,false
+1143,oomakazi,,true
+1144,udadebawo,,false
+1145,oodadebawo,,true
+1146,umkhuluwa,,false
+1147,abakhuluwa,,true
+1148,usibali,,false
+1149,oosibali,,true
+1150,taste,ukuva,false
+1151,krimi,,false
+1152,zuba,,false
+1153,maruni,,false
+1154,mpemvu,,false
+1155,silivere,,false
+1156,mthubi,,false
+1157,tyheli,,false
+1158,amendu,,false
+1159,inyaniso,,false
+1160,ubuxoki,,false
+1161,deka,ukudeka,false
+1162,lubhelu,,false
+1163,isidlo sangokuhlwa,,false
+1164,isidlo sangokuhlwa,,false
+1165,isidlo sasemini,,false
+1166,inyoka,,false
+1167,iinyoka,,true
+1168,izidlo,,true
+1169,isidlo,,false
+1170,isidlo sakusasa,,false
+1171,bi,,false
+1172,hle,,false
+1173,umlilo,,false
+1174,imililo,,true
+1175,iziko,,false
+1176,ucingo,,false
+1177,ucango,,false
+1178,iingcango,,true
+1179,iingcingo,,true
+1180,amaziko,,true
+1181,umbindi,,false
+1182,imibindi,,true
+1183,ubugcisa,,false
+1184,ipresha yegazi,,false
+1185,ihayihayi,,false
+1186,intsholongwane,,false
+1187,iintsholongwane,,true
+1188,ikhadi,,false
+1189,amakhadi,,true
+1190,ingcali,,false
+1191,iingcali,,true
+1192,isithende,,false
+1193,izithende,,true
+1194,isitshisa,,false
+1195,isiquluba,,false
+1196,iziquluba,,true
+1197,isihlahla,,false
+1198,izihlahla,,true
+1199,isigulo,,false
+1200,izigulo,,true
+1201,isigulana sangaphandle,,false
+1202,izigulana zangaphandle,,true
+1203,isifo,,false
+1204,isifuba,,false
+1205,izifuba,,true
+1206,izifo,,true
+1207,isifo seswekile,,false
+1208,isichaphuchaphu,,false
+1209,isidumbu,,false
+1210,izidumbu,,true
+1211,isibindi,,false
+1212,izibindi,,true
+1213,ingxelo,,false
+1214,iingxelo,,true
+1215,ingqele,,false
+1216,iinkqubo,,true
+1217,irumathizima,,false
+1218,iintlobontlobo,,true
+1219,igaraji,,false
+1220,iigaraji,,true
+1221,igumbi lokulala,,false
+1222,amagumbi okulala,,true
+1223,igumbi lokutyela,,false
+1224,amagumbi okutyela,,true
+1225,igumbi lokuhlala,,false
+1226,amagumbi okuhlala,,true
+1227,amagumbi okuphumla,,true
+1228,igumbi lokuphumla,,false
+1229,iheke,,false
+1230,iiheke,,true
+1231,icawe,,false
+1232,iicawe,,true
+1233,nyuka,ukunyuka,false
+1234,iwodi,,false
+1235,amawodi,,true
+1236,isigulo sengqondo,,false
+1237,isifo sezibeleko,,false
+1238,into yokurhaba,,false
+1239,izinto zokurhaba,,true
+1240,ugqirha wamazinyo,,false
+1241,oogqirha bamazinyo,,true
+1242,ubunzima,,false
+1243,nangona,,false
+1244,umeyitroni,,false
+1245,oomeyitroni,,true
+1246,umbefu,,false
+1247,ukhohlokhohlo,,false
+1248,umhlaza,,false
+1249,intlekele,,false
+1250,ubushushu,,false
+1251,njengesiqhelo,,false
+1252,ivirasi,,false
+1253,iivirasi,,true
+1254,iintsholongwane,,true
+1255,ihleza,,false
+1256,amahleza,,true
+1257,bhengeza,ukubhengeza,false
+1258,idywantsi,,false
+1259,amadywantsi,,true
+1260,imizimba,,true
+1261,isinyi,,false
+1262,izinyi,,true
+1263,umkhulane,,false
+1264,imiphunga,,true
+1265,umphunga,,false
+1266,iphiko,,false
+1267,amaphiko,,true
+1268,iphika,,false
+1269,ipaseji,,false
+1270,iipaseji,,true
+1271,umongikazi,,false
+1272,oomongikazi,,true
+1273,imiqala,,true
+1274,umxube,,false
+1275,imixube,,true
+1276,golide,,false
+1277,unontlalontle,,false
+1278,oonontlalontle,,true
+1279,unikezelo lwegazi,,false
+1280,iminxeba,,true
+1281,iintlekele,,true
+1282,isango,,false
+1283,amasango,,true
+1284,inkaba,,false
+1285,iinkaba,,true
+1286,isifo uGawulayo,,false
+1287,isingxungxo,,false
+1288,izingxungxo,,true
+1289,iintlugu,,true
+1290,isitephu,,false
+1291,izitephu,,true
+1292,iimbuso,,true
+1293,uphawu,,false
+1294,iimpawu,,true
+1295,uqwilikane,,false
+1296,uqhaqho,,false
+1297,iiqhaqho,,true
+1298,umkhenkce,,false
+1299,imikhenkce,,true
+1300,itshati,,false
+1301,iitshati,,true
+1302,iinaliti,,true
+1303,inaliti,,false
+1304,iyeza,,false
+1305,iinyango,,true
+1306,ithatha,,false
+1307,amathatha,,true
+1308,udonga,,false
+1309,iindonga,,true
+1310,amayeza,,true
+1311,aphuka,ukwaphuka,false
+1312,aphula,ukwaphula,false
+1313,ithumbu,,false
+1314,amathumbu,,true
+1315,ubucopho,,false
+1316,umgangatho,,false
+1317,qinisekisa,ukuqinisekisa,false
+1318,thwala,ukuthwala,false
+1319,ibhodi,,false
+1320,iibhodi,,true
+1321,phumelela,ukuphumelela,false
+1322,phuma,ukuphuma,false
+1323,icandelo,,false
+1324,amacandelo,,true
+1325,itafile,,false
+1326,iitafile,,true
+1327,inkqubo,,false
+1328,iinkqubo,,true
+1329,fumaneka,ukufumaneka,false
+1330,utitshala,,false
+1331,ootitshala,,true
+1332,bethwa,ukubethwa,false
+1333,guga,ukuguga,false
+1334,umntu,,false
+1335,abantu,,true
+1336,unyango,,false
+1337,unobangela,,false
+1338,oonobangela,,true
+1339,ilizwi,,false
+1340,amazwi,,true
+1341,azisa,ukwazisa,false
+1342,isimilo,,true
+1343,iintliziyo,,true
+1344,ipati,,false
+1345,iipati,,true
+1346,itheko,,false
+1347,amatheko,,true
+1348,xabana,ukuxabana,false
+1349,ubuxoki,,false
+1350,linda,ukulinda,false
+1351,amacala,,true
+1352,ipilisi,,false
+1353,iipilisi,,true
+1354,intso,,false
+1355,izintso,,true
+1356,injeke,,false
+1357,iinjeke,,true
+1358,irhorho,,false
+1359,amarhorho,,true
+1360,uzwane,,false
+1361,iinzwane,,true
+1362,isifo sokuwa,,false
+1363,isikhohlela,,false
+1364,isikhohlela,,false
+1365,olula,ukolula,false
+1366,intsimbi,,false
+1367,iintsimbi,,true
+1368,khala,ukukhala,false
+1369,khalisa,ukukhalisa,false
+1370,intsimbi,,false
+1371,izikhova,,true
+1372,isikhova,,false
+1373,isenzi,,false
+1374,izenzi,,true
+1375,indlovu,,false
+1376,iindlovu,,true
+1377,ufudo,,false
+1378,iimfudo,,true
+1379,impuku,,false
+1380,iimpuku,,true
+1381,imbangi,,false
+1382,iimbangi,,true
+1383,inxeba,,false
+1384,iinxeba,,true
+1385,isinqe,,false
+1386,izinqe,,true
+1387,ubambo,,false
+1388,iimbambo,,false
+1389,isihlunu,,false
+1390,izihlunu,,true
+1391,ngelishwa,,false
+1392,zimisela,ukuzimisela,false
+1393,wander,ukuzula,false
+1394,shusha,ukushusha,false
+1395,qaqamba,ukuqaqamba,false
+1396,qaqamba,ukuqaqamba,false
+1397,phuza,ukuphuza,false
+1398,ngqisha,ukungqisha,false
+1399,luma,ukuluma,false
+1400,khusela,ukukhusela,false
+1401,khulula,ukukhulula,false
+1402,krwempa,ukukrwempa,false
+1403,hlaba,ukuhlaba,false
+1404,cwangcisa,ukucwangcisa,false
+1405,bulisa,ukubulisa,false
+1406,nqaba,ukunqaba,false
+1407,cela,ukucela,false
+1408,onqena,ukonqena,false
+1409,umnyango,,false
+1410,isiphambuka,,false
