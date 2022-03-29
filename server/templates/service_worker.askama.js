@@ -45,6 +45,7 @@ self.addEventListener("activate", (event) => {
         })()
     );
 
+    console.log("I am a service worker with cache from unix epoch [[ STATIC_LAST_CHANGED ]]");
     self.clients.claim();
 });
 

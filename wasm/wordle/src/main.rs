@@ -171,13 +171,18 @@ impl Component for Game {
         let list: Vec<_> = csv::Reader::from_reader(CSV)
             .deserialize::<WordRecord>()
             .flatten()
-            .filter(|word| !word.is_plural)
             .collect();
 
-        let process = |str: String| {
-            iter::once(str)
-                .filter(|s| s.len() == WORD_LENGTH)
-                .map(|mut s| {
+        let process = |word: String, infinitive: String| {
+            iter::once((word, infinitive))
+                .filter(|(word, inf)| word.len() == WORD_LENGTH || inf.len() == WORD_LENGTH)
+                .map(|(word, infinitive)| {
+                    let mut s = if word.len() == WORD_LENGTH {
+                        word
+                    } else {
+                        infinitive
+                    };
+
                     s.make_ascii_uppercase();
                     s
                 })
@@ -186,13 +191,21 @@ impl Component for Game {
         };
 
         let dictionary: Vec<GuessWord> = list
+            .iter()
+            .map(|word| (word.word_id, word.xhosa.clone(), word.infinitive.clone()))
+            .filter_map(|(word_id, word, infinitive)| process(word, infinitive).map(|text| GuessWord { word_id, text }))
+            .collect();
+
+        // Targets exclude infinitives and plurals
+        let targets: Vec<_> = list
             .into_iter()
+            .filter(|word| !word.is_plural)
             .map(|word| (word.word_id, word.xhosa))
-            .filter_map(|(word_id, str)| process(str).map(|text| GuessWord { word_id, text }))
+            .filter_map(|(word_id, word)| process(word, String::new()).map(|text| GuessWord { word_id, text }))
             .collect();
 
         let mut rng = rand::thread_rng();
-        let word = dictionary.choose(&mut rng).unwrap().clone();
+        let word = targets.choose(&mut rng).unwrap().clone();
 
         let rows = ["QWERTYUIOP", "|ASDFGHJKL|", "\nZXCVBNM\x08"];
         let keys: Vec<Vec<Key>> = rows.into_iter().map(|row| {
@@ -302,8 +315,6 @@ impl Component for Game {
                 _ => return,
             };
 
-            log::debug!("{}", msg);
-
             callback.emit(msg);
         });
 
@@ -356,6 +367,7 @@ fn main() {
 struct WordRecord {
     word_id: u64,
     xhosa: String,
+    infinitive: String,
     is_plural: bool,
 }
 
