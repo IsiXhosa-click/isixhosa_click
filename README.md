@@ -15,4 +15,6 @@ Ubuntu and Oracle Linux, the config file will be stored in `~/.config/isixhosa_c
 ## Building
 
 You will need `wasm-bindgen`, [`wasm-opt`](https://github.com/WebAssembly/binaryen/releases), GNU Make, and a recent
-version of cargo and rustc stable. To run, simply run `make run`. For release, run `make run profile=release`.
+version of cargo and rustc stable. You will also need to have the `wasm32-unknown-unknown` target installed.
+
+To run the server, simply run `make run`. For release, run `make run profile=release`.

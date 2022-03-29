@@ -11,7 +11,10 @@ fn get_last_changed(path: &str) -> String {
 
 fn main() {
     println!("cargo:rerun-if-changed=static/");
-    println!("cargo:rustc-env=STATIC_LAST_CHANGED={}", get_last_changed("static"));
+    println!(
+        "cargo:rustc-env=STATIC_LAST_CHANGED={}",
+        get_last_changed("static")
+    );
     println!(
         "cargo:rustc-env=STATIC_BIN_FILES_LAST_CHANGED={}",
         get_last_changed("static/**/*.{png,svg,woff2,ico}")
