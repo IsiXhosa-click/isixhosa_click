@@ -8,12 +8,17 @@ use rand::prelude::*;
 use tinyvec::ArrayVec;
 use wasm_bindgen::JsCast;
 use yew::{Callback, Component, Context, function_component, Html, html, Properties};
+use wasm_bindgen::prelude::*;
 
-const  SEED: u64 = 11530789889988543622;
-
-const CSV: &[u8] = include_bytes!("../words.csv");
+const SEED: u64 = 11530789889988543623;
+static CSV: &[u8] = include_bytes!("../words.csv");
 const WORD_LENGTH: usize = 5;
 const GUESSES: usize = 6;
+
+#[wasm_bindgen(module = "/wordle.js")]
+extern "C" {
+    fn share(text: String);
+}
 
 #[derive(Clone, PartialEq)]
 struct Key {
@@ -79,6 +84,12 @@ fn keyboard(props: &KeyboardProps) -> Html {
     }).collect()
 }
 
+enum Message {
+    Key(AsciiChar),
+    CloseModal,
+    Share,
+}
+
 struct Game {
     dictionary: Vec<GuessWord>,
     word: GuessWord,
@@ -87,6 +98,8 @@ struct Game {
     keyboard: Vec<Vec<Key>>,
     kbd_listener: Option<EventListener>,
     nth_wordle: u32,
+    modal_open: bool,
+    shared: bool,
 }
 
 impl Game {
@@ -146,12 +159,12 @@ impl Game {
 
         if result.iter().all(|r| *r == CharGuessResult::Correct) {
             self.state = GameState::Won;
-            log::debug!("\n{}", self);
+            self.modal_open = true;
             return;
         }
 
         self.state = if self.guesses.len() == GUESSES {
-            log::debug!("\n{}", self);
+            self.modal_open = true;
             GameState::Lost
         } else {
             self.guesses.push(Guess::default());
@@ -180,7 +193,10 @@ impl Display for Game {
         write!(f, "IsiXhosa Wordle {} {}/{}\n", self.nth_wordle + 1, score, GUESSES)?;
 
         for guess in self.guesses {
-            let result = self.evaluate_guess(&guess).unwrap();
+            let result = match self.evaluate_guess(&guess) {
+                Some(r) => r,
+                None => continue,
+            };
 
             for char in result {
                 write!(f, "{}", char)?;
@@ -193,10 +209,8 @@ impl Display for Game {
     }
 }
 
-fn id<T>(v: T) -> T { v }
-
 impl Component for Game {
-    type Message = AsciiChar;
+    type Message = Message;
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
@@ -229,7 +243,7 @@ impl Component for Game {
             .collect();
 
         // Targets exclude infinitives and plurals
-        let targets: Vec<_> = list
+        let targets: Vec<GuessWord> = list
             .into_iter()
             .filter(|word| !word.is_plural)
             .map(|word| (word.word_id, word.xhosa))
@@ -268,32 +282,47 @@ impl Component for Game {
             keyboard: keys,
             kbd_listener: None,
             nth_wordle: nth_wordle as u32,
+            modal_open: false,
+            shared: false
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: AsciiChar) -> bool {
-        if self.state != GameState::Continue {
-            return false;
-        }
-
-        match msg.into() {
-            '\x08' => self.current_guess_mut().letters.pop().is_some(),
-            '\n' => {
-                if self.current_guess_mut().letters.len() == WORD_LENGTH {
-                    self.guess();
-                    true
-                } else {
-                    false
+    fn update(&mut self, _ctx: &Context<Self>, msg: Message) -> bool {
+        match msg {
+            Message::CloseModal => {
+                self.modal_open = false;
+                true
+            }
+            Message::Share => {
+                share(format!("{}", self));
+                self.shared = true;
+                true
+            }
+            Message::Key(key) => {
+                if self.state != GameState::Continue {
+                    return false;
                 }
-            },
-            _ => {
-                let guess = &mut self.current_guess_mut().letters;
 
-                if guess.len() < WORD_LENGTH {
-                    guess.push(msg.to_ascii_uppercase().into());
-                    true
-                } else {
-                    false
+                match key.into() {
+                    '\x08' => self.current_guess_mut().letters.pop().is_some(),
+                    '\n' => {
+                        if self.current_guess_mut().letters.len() == WORD_LENGTH {
+                            self.guess();
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                    _ => {
+                        let guess = &mut self.current_guess_mut().letters;
+
+                        if guess.len() < WORD_LENGTH {
+                            guess.push(key.to_ascii_uppercase().into());
+                            true
+                        } else {
+                            false
+                        }
+                    }
                 }
             }
         }
@@ -323,6 +352,28 @@ impl Component for Game {
             }
         }).collect::<Html>();
 
+        let message = if self.state == GameState::Won {
+            "Congratulations! A new wordle will be available tomorrow."
+        } else {
+            "Unlucky... try again tomorrow."
+        };
+
+        let modal_classes = if self.modal_open {
+            "modal open"
+        } else {
+            "modal"
+        };
+
+        let shared = if self.shared {
+            "Copied!"
+        } else {
+            ""
+        };
+
+        let on_key = ctx.link().callback(|key| Message::Key(key));
+        let on_share = ctx.link().callback(|_| Message::Share);
+        let on_close = ctx.link().callback(|_| Message::CloseModal);
+
         html! {
             <>
                 <h1>{ "Xhosa Wordle (beta)" }</h1>
@@ -330,7 +381,27 @@ impl Component for Game {
                 <div id="guesses">{ guesses }</div>
 
                 <div id="keyboard">
-                    <Keyboard keys={ self.keyboard.clone() } on_click={ ctx.link().callback(id) }/>
+                    <Keyboard keys={ self.keyboard.clone() } on_click={ on_key }/>
+                </div>
+
+                <div id="wordle_modal" class={ modal_classes }>
+                    <div class="column_list">
+                        <button id="close_modal" class="material-icons" onclick={ on_close }>{ "close" }</button>
+                        <p id="result">{ message }</p>
+
+                        <p id="todays_word">
+                            { "Today's word was " }
+                            <a href={ format!("/word/{}", self.word.word_id) } target="_blank" rel="noreferrer noopener">
+                                { format!("{}.", self.word.text.to_ascii_lowercase()) }
+                            </a>
+                        </p>
+
+                        <button id="share" onclick={ on_share }>
+                            { "Share with your friends" }
+                            <span class="material-icons">{ "share" }</span>
+                        </button>
+                        <p id="shared">{{ shared }}</p>
+                    </div>
                 </div>
             </>
         }
@@ -343,7 +414,7 @@ impl Component for Game {
 
         let document = gloo::utils::document();
 
-        let callback = ctx.link().callback(|c: char| AsciiChar::new(c));
+        let callback = ctx.link().callback(|c: char| Message::Key(AsciiChar::new(c)));
         let listener = EventListener::new(&document, "keydown", move |event| {
             let event = event.dyn_ref::<web_sys::KeyboardEvent>().unwrap();
 
