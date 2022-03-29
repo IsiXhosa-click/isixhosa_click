@@ -86,28 +86,20 @@ struct Game {
     state: GameState,
     keyboard: Vec<Vec<Key>>,
     kbd_listener: Option<EventListener>,
+    nth_wordle: u32,
 }
 
 impl Game {
-    fn guess(&mut self) {
-        log::debug!("{:?} is the target", self.word);
-        let guess = self.current_guess().letters;
+    fn evaluate_guess(&self, guess: &Guess) -> Option<[CharGuessResult; WORD_LENGTH]> {
+        let guess = &guess.letters;
         let guess_str: AsciiString = guess.iter().map(|l| l.letter).collect();
 
-        if self.state != GameState::Continue {
-            log::debug!("State not continue");
-            return;
-        }
-
         if !self.dictionary.iter().any(|word| word.text == guess_str) {
-            log::debug!("{} is not in dictionary", guess_str);
-            return;
+            return None;
         }
 
         let mut result = [CharGuessResult::Incorrect; WORD_LENGTH];
         let mut remaining_letters: AsciiString = self.word.text.clone();
-
-        log::debug!("First round of removals");
 
         let mut removal_cursor = 0;
         for idx in 0..WORD_LENGTH {
@@ -119,20 +111,26 @@ impl Game {
             }
         }
 
-        log::debug!("{:?}", result);
-
-        log::debug!("Second round of removals");
-
         for (idx, res) in result.iter_mut().enumerate().filter(|(_, res)| **res == CharGuessResult::Incorrect) {
-            log::debug!("Index: {}. Result: {:?}. Guess: {}. Remaining: {}", idx, res, guess[idx].letter, remaining_letters);
             if let Some(idx) = remaining_letters.as_str().find(char::from(guess[idx].letter)) {
-                log::debug!("  Found wrong place");
                 *res = CharGuessResult::WrongPlace;
                 remaining_letters.remove(idx);
             }
         }
 
-        log::debug!("Assigning state");
+        Some(result)
+    }
+
+    fn guess(&mut self) {
+        if self.state != GameState::Continue {
+            return;
+        }
+
+        let result = match self.evaluate_guess(self.current_guess()) {
+            Some(r) => r,
+            None => return,
+        };
+
         let guess = self.guesses.last_mut().unwrap();
         for (letter, state) in guess.letters.iter_mut().zip(result.iter()) {
             letter.state = Some(*state);
@@ -148,10 +146,12 @@ impl Game {
 
         if result.iter().all(|r| *r == CharGuessResult::Correct) {
             self.state = GameState::Won;
+            log::debug!("\n{}", self);
             return;
         }
 
         self.state = if self.guesses.len() == GUESSES {
+            log::debug!("\n{}", self);
             GameState::Lost
         } else {
             self.guesses.push(Guess::default());
@@ -159,8 +159,37 @@ impl Game {
         };
     }
 
-    fn current_guess(&mut self) -> &mut Guess {
+    fn current_guess(&self) -> &Guess {
+        self.guesses.last().unwrap()
+    }
+
+    fn current_guess_mut(&mut self) -> &mut Guess {
         self.guesses.last_mut().unwrap()
+    }
+}
+
+impl Display for Game {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let guesses = self.guesses.len();
+        let score = if self.state == GameState::Won {
+            &guesses as &dyn Display
+        } else {
+            &"X" as &dyn Display
+        };
+
+        write!(f, "IsiXhosa Wordle {} {}/{}\n", self.nth_wordle + 1, score, GUESSES)?;
+
+        for guess in self.guesses {
+            let result = self.evaluate_guess(&guess).unwrap();
+
+            for char in result {
+                write!(f, "{}", char)?;
+            }
+
+            write!(f, "\n")?;
+        }
+
+        write!(f, "https://isixhosa.click/wordle/")
     }
 }
 
@@ -214,8 +243,9 @@ impl Component for Game {
 
         let now = NaiveDateTime::from_timestamp(since_epoch, 0);
         let now = Local.from_local_datetime(&now).unwrap().date();
+        let nth_wordle = (now - start_date).num_days();
 
-        for _ in 0..(now - start_date).num_days() {
+        for _ in 0..nth_wordle {
             let _ = targets.choose(&mut rng).unwrap();
         }
 
@@ -236,7 +266,8 @@ impl Component for Game {
             guesses,
             state: GameState::Continue,
             keyboard: keys,
-            kbd_listener: None
+            kbd_listener: None,
+            nth_wordle: nth_wordle as u32,
         }
     }
 
@@ -246,9 +277,9 @@ impl Component for Game {
         }
 
         match msg.into() {
-            '\x08' => self.current_guess().letters.pop().is_some(),
+            '\x08' => self.current_guess_mut().letters.pop().is_some(),
             '\n' => {
-                if self.current_guess().letters.len() == WORD_LENGTH {
+                if self.current_guess_mut().letters.len() == WORD_LENGTH {
                     self.guess();
                     true
                 } else {
@@ -256,7 +287,7 @@ impl Component for Game {
                 }
             },
             _ => {
-                let guess = &mut self.current_guess().letters;
+                let guess = &mut self.current_guess_mut().letters;
 
                 if guess.len() < WORD_LENGTH {
                     guess.push(msg.to_ascii_uppercase().into());
