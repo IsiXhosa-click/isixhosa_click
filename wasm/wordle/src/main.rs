@@ -243,27 +243,25 @@ impl Component for Game {
             .collect();
 
         // Targets exclude infinitives and plurals
-        let targets: Vec<GuessWord> = list
+        let mut targets: Vec<GuessWord> = list
             .into_iter()
             .filter(|word| !word.is_plural)
             .map(|word| (word.word_id, word.xhosa))
             .filter_map(|(word_id, word)| process(word, String::new()).map(|text| GuessWord { word_id, text }))
             .collect();
 
-        let start_date = Local.from_utc_date(&NaiveDate::from_ymd(2022, 3, 29));
         let mut rng = StdRng::seed_from_u64(SEED);
+        targets.sort_unstable_by(|a, b| a.text.cmp(&b.text));
+        targets.dedup_by(|a, b| a.text == b.text);
+        targets.shuffle(&mut rng);
 
+        let start_date = Local.from_utc_date(&NaiveDate::from_ymd(2022, 3, 29));
         let since_epoch = (js_sys::Date::now() / 1000.0) as i64;
 
         let now = NaiveDateTime::from_timestamp(since_epoch, 0);
         let now = Local.from_local_datetime(&now).unwrap().date();
-        let nth_wordle = (now - start_date).num_days();
-
-        for _ in 0..nth_wordle {
-            let _ = targets.choose(&mut rng).unwrap();
-        }
-
-        let word = targets.choose(&mut rng).unwrap().clone();
+        let nth_wordle = (now - start_date).num_days() as usize;
+        let word = targets[targets.len() - 1 - nth_wordle].clone();
 
         let rows = ["QWERTYUIOP", "|ASDFGHJKL|", "\nZXCVBNM\x08"];
         let keys: Vec<Vec<Key>> = rows.into_iter().map(|row| {
