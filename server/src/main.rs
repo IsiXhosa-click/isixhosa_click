@@ -72,7 +72,6 @@ mod database;
 mod details;
 mod edit;
 mod export;
-mod language;
 mod moderation;
 mod search;
 mod serialization;
