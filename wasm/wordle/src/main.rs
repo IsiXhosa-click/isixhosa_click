@@ -220,6 +220,9 @@ impl Component for Game {
             .collect();
 
         let process = |word: String, infinitive: String| {
+            let word = word.replace("(i)", "i");
+            let word = word.replace('?', "");
+
             iter::once((word, infinitive))
                 .filter(|(word, inf)| word.len() == WORD_LENGTH || inf.len() == WORD_LENGTH)
                 .map(|(word, infinitive)| {
