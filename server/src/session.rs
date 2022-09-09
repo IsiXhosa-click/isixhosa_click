@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
 use xtra::prelude::*;
+use crate::spawn_send_interval;
 
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,
@@ -40,11 +41,10 @@ impl LiveSearchSession {
 
 #[async_trait::async_trait]
 impl Actor for LiveSearchSession {
+    type Stop = ();
+
     async fn started(&mut self, ctx: &mut Context<Self>) {
-        tokio::spawn(
-            ctx.notify_interval(Duration::from_secs(15), || Heartbeat)
-                .unwrap(),
-        );
+        spawn_send_interval(ctx.weak_address(), Duration::from_secs(15), Heartbeat);
     }
 
     async fn stopped(mut self) {
@@ -52,33 +52,28 @@ impl Actor for LiveSearchSession {
     }
 }
 
+#[derive(Copy, Clone, Default)]
 pub struct Heartbeat;
-
-impl Message for Heartbeat {
-    type Result = ();
-}
 
 #[async_trait::async_trait]
 impl Handler<Heartbeat> for LiveSearchSession {
+    type Return = ();
+
     async fn handle(&mut self, _hb: Heartbeat, ctx: &mut Context<Self>) {
         if self.heartbeat.elapsed() > Duration::from_secs(30) {
-            ctx.stop();
+            ctx.stop_self();
         }
     }
 }
 
-pub struct WsMessage(pub Result<ws::Message, warp::Error>);
-
-impl Message for WsMessage {
-    type Result = ();
-}
-
 #[async_trait::async_trait]
-impl Handler<WsMessage> for LiveSearchSession {
-    async fn handle(&mut self, message: WsMessage, ctx: &mut Context<Self>) {
-        let msg = match message.0 {
+impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
+    type Return = ();
+
+    async fn handle(&mut self, message: Result<ws::Message, warp::Error>, ctx: &mut Context<Self>) {
+        let msg = match message {
             Ok(msg) => msg,
-            Err(_) => return ctx.stop(),
+            Err(_) => return ctx.stop_self(),
         };
 
         self.heartbeat = Instant::now();
@@ -134,7 +129,7 @@ impl Handler<WsMessage> for LiveSearchSession {
             };
 
             if self.sender.send(ws::Message::text(json)).await.is_err() {
-                ctx.stop();
+                ctx.stop_self();
             }
         }
     }

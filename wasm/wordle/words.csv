@@ -418,7 +418,7 @@ word_id,xhosa,infinitive,is_plural
 420,ncwela,ukuncwela,false
 421,ncwela,ukuncwela,false
 422,hamba,ukuhamba,false
-423,idlala,,false
+423,idladla,,false
 424,umnakwethu,,false
 425,umninawa,,false
 426,hayi,,false
@@ -428,7 +428,7 @@ word_id,xhosa,infinitive,is_plural
 430,ubuso,,false
 431,ihashe,,false
 432,ihashe,,false
-433,idlala,,false
+433,idladla,,false
 434,iKapa,,false
 435,ukuba,,false
 436,phesheya,,false
@@ -674,7 +674,7 @@ word_id,xhosa,infinitive,is_plural
 678,ummandla,,false
 679,incwadi,,false
 680,imimandla,,true
-681,umfino,,false
+681,umfuno,,false
 682,imifuno,,true
 683,swela,ukuswela,false
 684,ezantsi,,false
@@ -757,7 +757,6 @@ word_id,xhosa,infinitive,is_plural
 761,imfundo,,false
 762,bhafa,ukubhafa,false
 763,qhwanyaza,ukuqhwanyaza,false
-764,ngaphinde,,false
 765,phoxa,ukuphoxa,false
 766,isisu,,false
 767,thimla,ukuthimla,false
@@ -856,7 +855,7 @@ word_id,xhosa,infinitive,is_plural
 861,sula,ukusula,false
 862,ngapha,,false
 863,irediyo,,false
-864,ipen,,false
+864,ipeni,,false
 865,itshomi,,false
 866,xa,,false
 867,isono,,false
@@ -889,7 +888,7 @@ word_id,xhosa,infinitive,is_plural
 894,usapho,,false
 895,umgangatho,,false
 896,ingca,,false
-897,amagusha,,true
+897,iigusha,,true
 898,nkcenkceshela,ukunkcenkceshela,false
 899,ufele,,false
 900,omile,,false
@@ -1013,7 +1012,7 @@ word_id,xhosa,infinitive,is_plural
 1018,ooxhongo,,true
 1019,ijoni,,false
 1020,amajoni,,true
-1021,pain,,false
+1021,ubuhlungu,,false
 1022,igumbi likagqirha,,false
 1023,kawonke-wonke,,false
 1024,ihlobo,,false
@@ -1078,7 +1077,7 @@ word_id,xhosa,infinitive,is_plural
 1083,ngaphandle kwa-,,false
 1084,ngaphandle kwa-,,false
 1085,bheka,ukubheka,false
-1086,brown,,false
+1086,mdaka,,false
 1087,yela,ukuyela,false
 1088,injikalanga,,false
 1089,izibhengezo,,true
@@ -1142,7 +1141,7 @@ word_id,xhosa,infinitive,is_plural
 1147,abakhuluwa,,true
 1148,usibali,,false
 1149,oosibali,,true
-1150,taste,ukuva,false
+1150,va,ukuva,false
 1151,krimi,,false
 1152,zuba,,false
 1153,maruni,,false
@@ -1334,7 +1333,7 @@ word_id,xhosa,infinitive,is_plural
 1339,ilizwi,,false
 1340,amazwi,,true
 1341,azisa,ukwazisa,false
-1342,isimilo,,true
+1342,isimilo,,false
 1343,iintliziyo,,true
 1344,ipati,,false
 1345,iipati,,true
@@ -1385,7 +1384,7 @@ word_id,xhosa,infinitive,is_plural
 1390,izihlunu,,true
 1391,ngelishwa,,false
 1392,zimisela,ukuzimisela,false
-1393,wander,ukuzula,false
+1393,zula,ukuzula,false
 1394,shusha,ukushusha,false
 1395,qaqamba,ukuqaqamba,false
 1396,qaqamba,ukuqaqamba,false
@@ -1403,3 +1402,101 @@ word_id,xhosa,infinitive,is_plural
 1408,onqena,ukonqena,false
 1409,umnyango,,false
 1410,isiphambuka,,false
+1411,iziphambuka,,true
+1412,kamsinyane,,false
+1413,ivenkile,,false
+1414,iivenkile,,true
+1415,dlula,ukudlula,false
+1416,imela,,false
+1417,ipensile ,,false
+1418,unombombiya,,false
+1419,umvundla,,false
+1420,faneleka,ukufaneleka,false
+1421,igathara,,false
+1422,iigathara,,true
+1423,zalisa,ukuzalisa,false
+1424,isitshixo,,false
+1425,izitshixo,,true
+1426,isihlangu,,false
+1427,izihlangu,,true
+1428,iimela,,true
+1429,usisi,,false
+1430,oosisi,,true
+1431,intaba,,false
+1432,iintaba,,true
+1433,ixesha ebelidlula,,false
+1434,ixesha eladlulayo,,false
+1435,ixesha elalidlula,,false
+1436,isimntwiso,,false
+1437,iimvubu,,true
+1438,iindlulamthi,,true
+1439,imisundululu,,true
+1440,rhola,ukurhola,false
+1441,indlulamthi,,false
+1442,idyasi,,false
+1443,intyatyambo,,false
+1444,iintyatyambo,,true
+1445,idyasi,,false
+1446,intlonipho,,false
+1447,hlonipha,ukuhlonipha,false
+1448,imivundla,,true
+1449,oonombombiya,,true
+1450,imvubu,,false
+1451,iipeni,,false
+1452,indaba,,false
+1453,inkonyana,,false
+1454,iinkonyana,,true
+1455,nxila,ukunxila,false
+1456,xhentsa,ukuxhentsa,false
+1457,bopha,ukubhopa,false
+1458,isitofu,,false
+1459,izitofu,,true
+1460,icala,,false
+1461,nikezela,ukunikezela,false
+1462,iminyango,,true
+1463,tshixa,ukutshixa,false
+1464,isivumelanisi,,false
+1465,injongosenzi,,false
+1466,isivumelanisi senjongosenzi,,false
+1467,iindaba,,true
+1468,ilifu,,false
+1469,isivumelanisi sentloko,,false
+1470,ihlengisi,,false
+1471,amahlengisi,,true
+1472,isimelabizo,,false
+1473,izimelabizo,,true
+1474,amafu,,true
+1475,iliza,,false
+1476,isango,,false
+1477,amasango,,true
+1478,ixesha elidlulileyo,,false
+1479,muncu,,false
+1480,ummeli ,,true
+1481,umsundululu,,false
+1482,ibhabhatane,,false
+1483,abameli,,true
+1484,icephe,,false
+1485,amacephe,,true
+1486,ifolokhwe,,false
+1487,iifolokhwe,,true
+1488,amaza,,true
+1489,umqeshi,,false
+1490,abaqeshi,,true
+1491,umchako,,false
+1492,manyanisa,ukumanyanisa,false
+1493,uqhoqhoqho,,false
+1494,ginya,ukuginya,false
+1495,intlekele,,false
+1496,igqabi,,false
+1497,amagqabi,,true
+1498,nxiba,ukunxiba,false
+1499,unomeva,,false
+1500,ibhere,,false
+1501,ikama,,false
+1502,iikama,,true
+1503,kama,ukukama,false
+1504,ixhala,,false
+1505,opha,ukopha,false
+1506,phefumla,ukuphefumla,false
+1507,isiNgesi,,false
+1508,amabhere,,true

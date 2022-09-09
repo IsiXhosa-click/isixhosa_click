@@ -22,7 +22,7 @@ use crate::auth::*;
 use crate::database::suggestion::SuggestedWord;
 use crate::search::{IncludeResults, TantivyClient};
 use crate::serialization::false_fn;
-use crate::session::{LiveSearchSession, WsMessage};
+use crate::session::LiveSearchSession;
 use askama::Template;
 use auth::auth;
 use chrono::{DateTime, Utc};
@@ -48,6 +48,7 @@ use std::num::NonZeroU64;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use submit::submit;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, instrument, Span};
@@ -64,8 +65,7 @@ use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
 use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
-use xtra::spawn::TokioGlobalSpawnExt;
-use xtra::Actor;
+use xtra::{Handler, WeakAddress};
 
 mod auth;
 mod database;
@@ -766,7 +766,7 @@ fn live_search(
     params: LiveSearchParams,
     auth: Auth,
     _db: impl PublicAccessDb,
-) -> impl warp::Reply {
+) -> impl Reply {
     ws.on_upgrade(move |websocket| {
         let (sender, stream) = websocket.split();
         let include_suggestions_from_user = if params.include_own_suggestions.unwrap_or(false) {
@@ -775,16 +775,33 @@ fn live_search(
             None
         };
 
-        let addr = LiveSearchSession::new(
+        let actor = LiveSearchSession::new(
             sender,
             tantivy,
             include_suggestions_from_user,
             auth.has_permissions(Permissions::Moderator),
-        )
-        .create(Some(4))
-        .spawn_global();
+        );
 
-        tokio::spawn(addr.attach_stream(stream.map(WsMessage)));
+        let addr = xtra::spawn_tokio(actor, Some(4));
+
+        tokio::spawn(stream.map(Ok).forward(addr.into_sink()));
         futures::future::ready(())
     })
+}
+
+fn spawn_send_interval<A, M>(addr: WeakAddress<A>, interval: Duration, msg: M)
+    where A: Handler<M>,
+          M: Clone + Send + Sync + 'static,
+{
+    let addr_clone = addr.clone();
+    let fut = async move {
+        let mut interval = tokio::time::interval(interval);
+        loop {
+            interval.tick().await;
+            if addr.send(msg.clone()).await.is_err() {
+                return;
+            }
+        }
+    };
+    tokio::spawn(xtra::scoped(&addr_clone, fut));
 }

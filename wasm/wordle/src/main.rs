@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::fmt::{self, Display, Formatter, Write};
 use std::iter;
 use ascii::{AsciiChar, AsciiString, IntoAsciiString};
-use chrono::{Local, NaiveDate, NaiveDateTime, TimeZone};
+use chrono::{Local, NaiveDate, TimeZone};
 use gloo::events::EventListener;
 use rand::prelude::*;
 use tinyvec::ArrayVec;
@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 
 const SEED: u64 = 11530789889988543623;
 static CSV: &[u8] = include_bytes!("../words.csv");
-const WORD_LENGTH: usize = 5;
+const WORD_LENGTH: usize = 6;
 const GUESSES: usize = 6;
 
 #[wasm_bindgen(module = "/wordle.js")]
@@ -190,7 +190,7 @@ impl Display for Game {
             &"X" as &dyn Display
         };
 
-        write!(f, "IsiXhosa Wordle {} {}/{}\n", self.nth_wordle + 1, score, GUESSES)?;
+        write!(f, "IsiXhosa Wordle v2 {} {}/{}\n", self.nth_wordle + 1, score, GUESSES)?;
 
         for guess in self.guesses {
             let result = match self.evaluate_guess(&guess) {
@@ -258,12 +258,30 @@ impl Component for Game {
         targets.dedup_by(|a, b| a.text == b.text);
         targets.shuffle(&mut rng);
 
-        let start_date = Local.from_utc_date(&NaiveDate::from_ymd(2022, 3, 29));
-        let since_epoch = (js_sys::Date::now() / 1000.0) as i64;
+        log::info!("{}", targets.len());
 
-        let now = NaiveDateTime::from_timestamp(since_epoch, 0);
-        let now = Local.from_local_datetime(&now).unwrap().date();
+        let start_date = Local.from_local_date(&NaiveDate::from_ymd(2022, 9, 9)).unwrap();
+        let js_date = js_sys::Date::new_0();
+        let naive_date = NaiveDate::from_ymd(
+            js_date.get_full_year() as i32,
+            js_date.get_month() + 1, // Month starts at 0 in JS
+            js_date.get_date()
+        );
+        let now = Local.from_local_date(&naive_date).unwrap();
+
         let nth_wordle = (now - start_date).num_days() as usize;
+
+        let cycle = nth_wordle / targets.len();
+        let nth_wordle = nth_wordle % targets.len();
+
+        for _ in 0..cycle {
+            targets.shuffle(&mut rng);
+        }
+
+        log::info!("{:?}", now - start_date);
+        log::info!("{}", nth_wordle);
+        log::info!("{:?}", now);
+
         let word = targets[targets.len() - 1 - nth_wordle].clone();
 
         let rows = ["QWERTYUIOP", "|ASDFGHJKL|", "\nZXCVBNM\x08"];

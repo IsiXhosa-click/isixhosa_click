@@ -30,9 +30,7 @@ use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{doc, LeasedItem, Searcher};
 use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
 use tracing::{debug_span, info, info_span, instrument, Span};
-use xtra::prelude::InstrumentedExt;
-use xtra::spawn::TokioGlobalSpawnExt;
-use xtra::{Actor, Address, Handler, Message};
+use xtra::prelude::*;
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;
@@ -70,22 +68,23 @@ impl TantivyClient {
             .num_searchers(num_searchers)
             .try_into()?;
 
-        let (searchers, mut ctx) = xtra::Context::new(Some(32));
+        let (searchers, ctx) = xtra::Context::new(Some(32));
 
         let writer = index.writer_with_num_threads(1, TANTIVY_WRITER_HEAP)?;
+        let tokenizer = index.tokenizer_for_field(schema_info.english).unwrap();
+        let writer = WriterActor::new(writer, schema_info.clone());
+        let writer = xtra::spawn_tokio(writer, Some(16));
 
         let client = TantivyClient {
-            schema_info: schema_info.clone(),
-            tokenizer: index.tokenizer_for_field(schema_info.english).unwrap(),
-            writer: WriterActor::new(writer, schema_info)
-                .create(Some(16))
-                .spawn_global(),
+            schema_info,
+            tokenizer,
+            writer,
             searchers,
         };
         let client = Arc::new(client);
 
         for _ in 0..num_searchers {
-            tokio::spawn(ctx.attach(SearcherActor::new(reader.clone(), client.clone())));
+            tokio::spawn(ctx.clone().run(SearcherActor::new(reader.clone(), client.clone())));
         }
 
         if reindex {
@@ -138,21 +137,29 @@ impl TantivyClient {
         }
     }
 
+    #[instrument(
+        name = "Search for a word",
+        fields(
+            query = %query,
+            include = ?include,
+            exact = duplicate,
+        )
+        skip_all,
+    )]
     pub async fn search(
         &self,
         query: String,
         include: IncludeResults,
         duplicate: bool,
     ) -> Result<Vec<WordHit>> {
+        eprintln!("Search!");
+
         self.searchers
-            .send(
-                SearchRequest {
-                    query,
-                    include,
-                    duplicate,
-                }
-                .instrumented_child(),
-            )
+            .send(SearchRequest {
+                query,
+                include,
+                duplicate,
+            })
             .await
             .map_err(Into::into)
     }
@@ -194,31 +201,19 @@ impl TantivyClient {
         .await
         .unwrap();
 
-        self.writer
-            .send(ReindexWords(docs).instrumented_child())
-            .await
-            .unwrap();
+        self.writer.send(ReindexWords(docs)).await.unwrap();
     }
 
     pub async fn add_new_word(&self, word: WordDocument) {
-        self.writer
-            .send(IndexWord(word).instrumented_child())
-            .await
-            .unwrap()
+        self.writer.send(IndexWord(word)).await.unwrap()
     }
 
     pub async fn edit_word(&self, word: WordDocument) {
-        self.writer
-            .send(EditWord(word).instrumented_child())
-            .await
-            .unwrap()
+        self.writer.send(EditWord(word)).await.unwrap()
     }
 
     pub async fn delete_word(&self, id: WordOrSuggestionId) {
-        self.writer
-            .send(DeleteWord(id).instrumented_child())
-            .await
-            .unwrap()
+        self.writer.send(DeleteWord(id)).await.unwrap()
     }
 }
 
@@ -270,38 +265,29 @@ impl WriterActor {
     }
 }
 
-impl Actor for WriterActor {}
+#[async_trait]
+impl Actor for WriterActor {
+    type Stop = ();
+
+    async fn stopped(self) {}
+}
 
 #[derive(Debug)]
 pub struct DeleteWord(WordOrSuggestionId);
 
-impl Message for DeleteWord {
-    type Result = ();
-}
-
 #[derive(Debug)]
 pub struct EditWord(WordDocument);
-
-impl Message for EditWord {
-    type Result = ();
-}
 
 #[derive(Debug)]
 pub struct ReindexWords(Vec<WordDocument>);
 
-impl Message for ReindexWords {
-    type Result = ();
-}
-
 #[derive(Debug)]
 pub struct IndexWord(WordDocument);
 
-impl Message for IndexWord {
-    type Result = ();
-}
-
 #[async_trait::async_trait]
 impl Handler<ReindexWords> for WriterActor {
+    type Return = ();
+
     async fn handle(&mut self, docs: ReindexWords, _ctx: &mut xtra::Context<Self>) {
         let writer = self.writer.clone();
         let schema_info = self.schema_info.clone();
@@ -323,6 +309,8 @@ impl Handler<ReindexWords> for WriterActor {
 
 #[async_trait::async_trait]
 impl Handler<IndexWord> for WriterActor {
+    type Return = ();
+
     #[instrument(
         name = "Add a word to tantivy",
         fields(
@@ -348,6 +336,8 @@ impl Handler<IndexWord> for WriterActor {
 
 #[async_trait::async_trait]
 impl Handler<EditWord> for WriterActor {
+    type Return = ();
+
     #[instrument(
         name = "Edit a word in tantivy",
         fields(
@@ -381,6 +371,8 @@ impl Handler<EditWord> for WriterActor {
 
 #[async_trait::async_trait]
 impl Handler<DeleteWord> for WriterActor {
+    type Return = ();
+
     #[instrument(name = "Delete a word from tantivy", fields(id = ?delete.0), skip_all)]
     async fn handle(&mut self, delete: DeleteWord, _ctx: &mut xtra::Context<Self>) {
         let writer = self.writer.clone();
@@ -415,7 +407,12 @@ impl SearcherActor {
     }
 }
 
-impl Actor for SearcherActor {}
+#[async_trait::async_trait]
+impl Actor for SearcherActor {
+    type Stop = ();
+
+    async fn stopped(self) {}
+}
 
 // TODO need to add duplicate_of: Option<thingie> or a separate live search idk
 
@@ -431,10 +428,6 @@ pub enum IncludeResults {
     AcceptedOnly,
     AcceptedAndSuggestionsFrom(NonZeroU64),
     AcceptedAndAllSuggestions,
-}
-
-impl Message for SearchRequest {
-    type Result = Vec<WordHit>;
 }
 
 impl SearcherActor {
@@ -528,15 +521,8 @@ impl SearcherActor {
 
 #[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
-    #[instrument(
-        name = "Search for a word",
-        fields(
-            query = %req.query,
-            include = ?req.include,
-            exact = req.duplicate,
-        )
-        skip_all,
-    )]
+    type Return = Vec<WordHit>;
+
     async fn handle(
         &mut self,
         mut req: SearchRequest,

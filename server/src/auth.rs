@@ -1,5 +1,5 @@
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{spawn_blocking_child, Config, DebugBoxedExt, DebugExt};
+use crate::{spawn_blocking_child, Config, DebugBoxedExt, DebugExt, spawn_send_interval};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
@@ -24,8 +24,7 @@ use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-use xtra::spawn::TokioGlobalSpawnExt;
-use xtra::{Actor, Address, Context, Handler, Message};
+use xtra::{Actor, Address, Context, Handler};
 
 type OpenIDClient = Address<OidcActor>;
 
@@ -72,20 +71,23 @@ impl OidcActor {
 
 #[async_trait::async_trait]
 impl Actor for OidcActor {
+    type Stop = ();
+
     async fn started(&mut self, ctx: &mut Context<Self>) {
         const INTERVAL: Duration = Duration::from_secs(60 * 60 * 24); // 24 hours
-        tokio::spawn(ctx.notify_interval(INTERVAL, || RefreshClient).unwrap());
+        spawn_send_interval(ctx.weak_address(), INTERVAL, RefreshClient);
     }
+
+    async fn stopped(self) {}
 }
 
+#[derive(Copy, Clone, Default)]
 struct RefreshClient;
-
-impl Message for RefreshClient {
-    type Result = ();
-}
 
 #[async_trait::async_trait]
 impl Handler<RefreshClient> for OidcActor {
+    type Return = ();
+
     async fn handle(&mut self, _msg: RefreshClient, _ctx: &mut Context<Self>) {
         self.client = Self::new_client(
             &self.client_id,
@@ -99,12 +101,10 @@ impl Handler<RefreshClient> for OidcActor {
 
 struct GetAuthUrl(Options);
 
-impl Message for GetAuthUrl {
-    type Result = Url;
-}
-
 #[async_trait::async_trait]
 impl Handler<GetAuthUrl> for OidcActor {
+    type Return = Url;
+
     async fn handle(&mut self, options: GetAuthUrl, _: &mut Context<Self>) -> Url {
         self.client.auth_url(&options.0)
     }
@@ -115,17 +115,11 @@ struct RequestToken {
     nonce: String,
 }
 
-impl Message for RequestToken {
-    type Result = anyhow::Result<Option<(Token, Userinfo)>>;
-}
-
 #[async_trait::async_trait]
 impl Handler<RequestToken> for OidcActor {
-    async fn handle(
-        &mut self,
-        req: RequestToken,
-        _: &mut Context<Self>,
-    ) -> anyhow::Result<Option<(Token, Userinfo)>> {
+    type Return = anyhow::Result<Option<(Token, Userinfo)>>;
+
+    async fn handle(&mut self, req: RequestToken, _: &mut Context<Self>) -> Self::Return {
         let mut token: Token = self.client.request_token(&req.code).await?.into();
 
         if let Some(id_token) = token.id_token.as_mut() {
@@ -295,9 +289,9 @@ pub async fn auth(
         redirect,
         issuer,
     )
-    .await
-    .create(Some(32))
-    .spawn_global();
+    .await;
+
+    let client = xtra::spawn_tokio(client, Some(32));
 
     let (host, https_port) = (cfg.host.clone(), cfg.https_port);
     let with_client_host = warp::any()
