@@ -701,7 +701,7 @@ async fn query_search(
             hits: results,
         };
 
-        Ok(askama_warp::reply(&template, "html"))
+        Ok(askama_warp::reply(&template))
     } else {
         Ok(reply::json(&results).into_response())
     }

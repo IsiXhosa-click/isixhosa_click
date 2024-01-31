@@ -3,6 +3,7 @@ members = [
     "server",
     "common",
 ]
+resolver = "2"
 
 exclude = ["wasm"]
 

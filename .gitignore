@@ -8,5 +8,6 @@ tls/
 log/
 isixhosa_click_export/
 dummy_www/
-/pwa/out/
+wasm/pwa/out/
+wasm/target
 server/static/wasm/

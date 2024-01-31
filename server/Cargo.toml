@@ -15,8 +15,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 futures = "0.3"
 warp = { version = "0.3", features = ["tls", "compression"] }
 # TODO pinned to rev to stop need for random .clone()s in templates - waiting for askama 0.11
-askama = { git = "https://github.com/djc/askama", rev = "af552ee", features = ["serde-json"] }
-askama_warp = { git = "https://github.com/djc/askama", rev = "af552ee" }
+askama = { version = "0.12.1", features = ["serde-json"] }
+askama_warp = { version = "0.13.0" }
 warp-reverse-proxy = "0.4.0"
 html-minifier = "3.0.14"
 minifier = "0.0.41"
