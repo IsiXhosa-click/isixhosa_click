@@ -12,7 +12,7 @@ ascii = "1.0"
 yew = "0.19.3"
 log = "0.4.6"
 wasm-logger = "0.2.0"
-wasm-bindgen = "0.2.79"
+wasm-bindgen = "0.2.90"
 web-sys = { version = "0.3.56", features = ["Document", "Element"] }
 js-sys = "0.3.56"
 gloo = "0.6.0"
