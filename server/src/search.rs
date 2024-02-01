@@ -68,23 +68,24 @@ impl TantivyClient {
             .num_searchers(num_searchers)
             .try_into()?;
 
-        let (searchers, ctx) = xtra::Context::new(Some(32));
+        let (searchers, mailbox) = Mailbox::bounded(32);
 
         let writer = index.writer_with_num_threads(1, TANTIVY_WRITER_HEAP)?;
         let tokenizer = index.tokenizer_for_field(schema_info.english).unwrap();
         let writer = WriterActor::new(writer, schema_info.clone());
-        let writer = xtra::spawn_tokio(writer, Some(16));
+        let writer = xtra::spawn_tokio(writer, Mailbox::bounded(16));
 
         let client = TantivyClient {
             schema_info,
             tokenizer,
             writer,
-            searchers,
+            searchers: searchers.clone(),
         };
         let client = Arc::new(client);
 
         for _ in 0..num_searchers {
-            tokio::spawn(ctx.clone().run(SearcherActor::new(reader.clone(), client.clone())));
+            let actor = SearcherActor::new(reader.clone(), client.clone());
+            xtra::spawn_tokio(actor, (searchers.clone(), mailbox.clone()));
         }
 
         if reindex {
@@ -265,7 +266,6 @@ impl WriterActor {
     }
 }
 
-#[async_trait]
 impl Actor for WriterActor {
     type Stop = ();
 
@@ -284,7 +284,6 @@ pub struct ReindexWords(Vec<WordDocument>);
 #[derive(Debug)]
 pub struct IndexWord(WordDocument);
 
-#[async_trait::async_trait]
 impl Handler<ReindexWords> for WriterActor {
     type Return = ();
 
@@ -307,7 +306,6 @@ impl Handler<ReindexWords> for WriterActor {
     }
 }
 
-#[async_trait::async_trait]
 impl Handler<IndexWord> for WriterActor {
     type Return = ();
 
@@ -334,7 +332,6 @@ impl Handler<IndexWord> for WriterActor {
     }
 }
 
-#[async_trait::async_trait]
 impl Handler<EditWord> for WriterActor {
     type Return = ();
 
@@ -369,7 +366,6 @@ impl Handler<EditWord> for WriterActor {
     }
 }
 
-#[async_trait::async_trait]
 impl Handler<DeleteWord> for WriterActor {
     type Return = ();
 
@@ -407,7 +403,6 @@ impl SearcherActor {
     }
 }
 
-#[async_trait::async_trait]
 impl Actor for SearcherActor {
     type Stop = ();
 
@@ -519,7 +514,6 @@ impl SearcherActor {
     }
 }
 
-#[async_trait::async_trait]
 impl Handler<SearchRequest> for SearcherActor {
     type Return = Vec<WordHit>;
 

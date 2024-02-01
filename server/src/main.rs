@@ -65,7 +65,7 @@ use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
 use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
-use xtra::{Handler, WeakAddress};
+use xtra::{Handler, Mailbox, WeakAddress};
 
 mod auth;
 mod database;
@@ -782,7 +782,7 @@ fn live_search(
             auth.has_permissions(Permissions::Moderator),
         );
 
-        let addr = xtra::spawn_tokio(actor, Some(4));
+        let addr = xtra::spawn_tokio(actor, Mailbox::bounded(4));
 
         tokio::spawn(stream.map(Ok).forward(addr.into_sink()));
         futures::future::ready(())

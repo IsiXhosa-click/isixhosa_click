@@ -39,12 +39,12 @@ impl LiveSearchSession {
     }
 }
 
-#[async_trait::async_trait]
 impl Actor for LiveSearchSession {
     type Stop = ();
 
-    async fn started(&mut self, ctx: &mut Context<Self>) {
-        spawn_send_interval(ctx.weak_address(), Duration::from_secs(15), Heartbeat);
+    async fn started(&mut self, mailbox: &Mailbox<Self>) -> Result<(), ()> {
+        spawn_send_interval(mailbox.address(), Duration::from_secs(15), Heartbeat);
+        Ok(())
     }
 
     async fn stopped(mut self) {
@@ -55,7 +55,6 @@ impl Actor for LiveSearchSession {
 #[derive(Copy, Clone, Default)]
 pub struct Heartbeat;
 
-#[async_trait::async_trait]
 impl Handler<Heartbeat> for LiveSearchSession {
     type Return = ();
 
@@ -66,7 +65,6 @@ impl Handler<Heartbeat> for LiveSearchSession {
     }
 }
 
-#[async_trait::async_trait]
 impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
     type Return = ();
 

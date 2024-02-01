@@ -24,7 +24,7 @@ use warp::{
     http::{Response, StatusCode},
     reject, Filter, Rejection, Reply,
 };
-use xtra::{Actor, Address, Context, Handler};
+use xtra::{Actor, Address, Context, Handler, Mailbox};
 
 type OpenIDClient = Address<OidcActor>;
 
@@ -69,13 +69,13 @@ impl OidcActor {
     }
 }
 
-#[async_trait::async_trait]
 impl Actor for OidcActor {
     type Stop = ();
 
-    async fn started(&mut self, ctx: &mut Context<Self>) {
+    async fn started(&mut self, mailbox: &Mailbox<Self>) -> Result<(), ()> {
         const INTERVAL: Duration = Duration::from_secs(60 * 60 * 24); // 24 hours
-        spawn_send_interval(ctx.weak_address(), INTERVAL, RefreshClient);
+        spawn_send_interval(mailbox.address(), INTERVAL, RefreshClient);
+        Ok(())
     }
 
     async fn stopped(self) {}
@@ -84,7 +84,6 @@ impl Actor for OidcActor {
 #[derive(Copy, Clone, Default)]
 struct RefreshClient;
 
-#[async_trait::async_trait]
 impl Handler<RefreshClient> for OidcActor {
     type Return = ();
 
@@ -101,7 +100,6 @@ impl Handler<RefreshClient> for OidcActor {
 
 struct GetAuthUrl(Options);
 
-#[async_trait::async_trait]
 impl Handler<GetAuthUrl> for OidcActor {
     type Return = Url;
 
@@ -115,7 +113,6 @@ struct RequestToken {
     nonce: String,
 }
 
-#[async_trait::async_trait]
 impl Handler<RequestToken> for OidcActor {
     type Return = anyhow::Result<Option<(Token, Userinfo)>>;
 
@@ -291,7 +288,7 @@ pub async fn auth(
     )
     .await;
 
-    let client = xtra::spawn_tokio(client, Some(32));
+    let client = xtra::spawn_tokio(client, Mailbox::bounded(32));
 
     let (host, https_port) = (cfg.host.clone(), cfg.https_port);
     let with_client_host = warp::any()
