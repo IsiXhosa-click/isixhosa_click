@@ -35,21 +35,16 @@ impl SubmitTemplate {
     }
 }
 
-#[derive(Deserialize, Debug, Copy, Clone)]
+#[derive(Deserialize, Debug, Default, Copy, Clone)]
 enum SubmitFormAction {
     EditSuggestion {
         suggestion_id: u64,
         existing_id: Option<u64>,
         suggestion_anchor_ord: u32,
     },
+    #[default]
     SubmitNewWord,
     EditExisting(u64),
-}
-
-impl Default for SubmitFormAction {
-    fn default() -> Self {
-        SubmitFormAction::SubmitNewWord
-    }
 }
 
 impl Display for SubmitFormAction {

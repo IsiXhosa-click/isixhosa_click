@@ -280,7 +280,7 @@ async fn accept_deletion(
     suggestion: u64,
 ) -> bool {
     let word_id = WordDeletionSuggestion::fetch_word_id_for_suggestion(db, suggestion);
-    Span::current().record("word_id", &word_id);
+    Span::current().record("word_id", word_id);
     let db = db.clone();
 
     spawn_blocking_child(move || ExistingWord::delete(&db, word_id))

@@ -137,8 +137,8 @@ impl Reject for TemplateError {}
 pub struct Config {
     database_path: PathBuf,
     tantivy_path: PathBuf,
-    cert_path: PathBuf,
-    key_path: PathBuf,
+    cert_path: Option<PathBuf>,
+    key_path: Option<PathBuf>,
     static_site_files: PathBuf,
     other_static_files: PathBuf,
     log_path: PathBuf,
@@ -162,8 +162,8 @@ impl Default for Config {
         Config {
             database_path: PathBuf::from("isixhosa_click.db"),
             tantivy_path: PathBuf::from("tantivy_data/"),
-            cert_path: PathBuf::from("tls/cert.pem"),
-            key_path: PathBuf::from("tls/key.rsa"),
+            cert_path: Some(PathBuf::from("tls/cert.pem")),
+            key_path: Some(PathBuf::from("tls/key.rsa")),
             static_site_files: PathBuf::from("static/"),
             other_static_files: PathBuf::from("dummy_www/"),
             log_path: PathBuf::from("log/"),
@@ -210,8 +210,8 @@ where
     let unminified = std::str::from_utf8(&bytes).unwrap();
     let minified = minify(unminified).unwrap();
 
-    span.record("unminified", &unminified.len());
-    span.record("minified", &minified.len());
+    span.record("unminified", unminified.len());
+    span.record("minified", minified.len());
 
     let saving = if !unminified.is_empty() {
         (1.0 - (minified.len() as f64 / unminified.len() as f64)) * 100.0
@@ -219,7 +219,7 @@ where
         0.0
     };
 
-    span.record("saving", &format!("{:.2}%", saving).as_str());
+    span.record("saving", format!("{:.2}%", saving));
 
     Ok(Response::from_parts(parts, minified.into()))
 }
@@ -593,9 +593,12 @@ async fn server(cfg: Config) {
             )
         }));
 
-    let http_redirect = warp::serve(http_redirect);
+    let has_reverse_proxy = cfg.cert_path.is_none() || cfg.key_path.is_none();
 
-    tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
+    if !has_reverse_proxy {
+        let http_redirect = warp::serve(http_redirect);
+        tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
+    }
 
     // Add post filters such as minification, logging, and gzip
     let serve = jaeger_proxy
@@ -604,12 +607,18 @@ async fn server(cfg: Config) {
             warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
         })));
 
-    warp::serve(serve)
-        .tls()
-        .cert_path(cfg.cert_path)
-        .key_path(cfg.key_path)
-        .run(([0, 0, 0, 0], cfg.https_port))
-        .await
+    if has_reverse_proxy {
+        warp::serve(serve)
+            .run(([0, 0, 0, 0], cfg.http_port))
+            .await
+    } else {
+        warp::serve(serve)
+            .tls()
+            .cert_path(cfg.cert_path.unwrap())
+            .key_path(cfg.key_path.unwrap())
+            .run(([0, 0, 0, 0], cfg.https_port))
+            .await
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]

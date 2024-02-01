@@ -78,7 +78,7 @@ impl WordDeletionSuggestion {
             .query_row(params![suggestion], |row| row.get("word_id"))
             .unwrap();
 
-        Span::current().record("word_id", &word_id);
+        Span::current().record("word_id", word_id);
 
         word_id
     }

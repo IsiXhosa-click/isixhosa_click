@@ -510,7 +510,7 @@ impl SearcherActor {
 
         out.extend(iter);
 
-        Span::current().record("results", &count);
+        Span::current().record("results", count);
     }
 }
 
@@ -565,7 +565,7 @@ impl Handler<SearchRequest> for SearcherActor {
             }
         }
 
-        req.query = req.query.to_lowercase().replace('(', "").replace(')', "");
+        req.query = req.query.to_lowercase().replace(['(', ')'], "");
         req.query.truncate(64);
 
         let mut searcher = self.reader.searcher();

@@ -68,7 +68,7 @@ fn export(cfg: &Config, src: &Connection) {
             "-m",
             &format!(
                 "Daily backup for {}\n>\n>\non-behalf-of: @IsiXhosa-click <restiosondev@gmail.com>",
-                Utc::now().date()
+                Utc::now().date_naive()
             ),
         ])
         .output()
