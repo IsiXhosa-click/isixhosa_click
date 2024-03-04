@@ -28,7 +28,7 @@ pub struct ExistingWord {
 
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: PartOfSpeech,
+    pub part_of_speech: Option<PartOfSpeech>,
 
     pub xhosa_tone_markings: String,
     pub infinitive: String,
@@ -51,7 +51,7 @@ pub struct WordHit {
     pub id: u64,
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: SerOnlyDisplay<PartOfSpeech>,
+    pub part_of_speech: Option<SerOnlyDisplay<PartOfSpeech>>,
     pub is_plural: bool,
     pub is_inchoative: bool,
     pub is_informal: bool,
@@ -66,7 +66,7 @@ impl WordHit {
             id: 0,
             english: String::new(),
             xhosa: String::new(),
-            part_of_speech: SerOnlyDisplay(PartOfSpeech::Interjection),
+            part_of_speech: Some(SerOnlyDisplay(PartOfSpeech::Interjection)),
             is_plural: false,
             is_inchoative: false,
             is_informal: false,

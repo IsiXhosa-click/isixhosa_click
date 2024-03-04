@@ -170,7 +170,7 @@
                                     window.addEventListener("DOMContentLoaded", function () {
                                         let select = document.getElementById("part_of_speech");
                                         for (let option of select.options) {
-                                            if (option.value === {{ part|json }}) {
+                                            if (option.value === {{ part|json|safe }}) {
                                                 if (option.value === "adjective") {
                                                     option.hidden = false;
                                                     option.disabled = false;
@@ -376,8 +376,8 @@
                 window.addEventListener("load", function() {
                     {%- let this_word_id = self.this_word_id_js() -%}
 
-                    addExamples({{ word.examples|json }});
-                    addLinkedWords({{ word.linked_words|json }}, {{ this_word_id }});
+                    addExamples({{ word.examples|json|safe }});
+                    addLinkedWords({{ word.linked_words|json|safe }}, {{ this_word_id }});
                     partOfSpeechChange(); /* Refresh part of speech sections */
                     addDuplicateSearchFor("english", {{ this_word_id }});
                     addDuplicateSearchFor("xhosa", {{ this_word_id }});

@@ -2,8 +2,8 @@ const OFFLINE_URL = "/offline";
 const STATIC_FILES_CACHE = "isixhosa_click_site_files_[[ STATIC_LAST_CHANGED ]]";
 const STATIC_BIN_FILES_CACHE = "isixhosa_click_site_bin_files_[[ STATIC_BIN_FILES_LAST_CHANGED ]]";
 
-const SITE_FILES = [[ static_files|json ]];
-const BIN_FILES = [[ static_bin_files|json ]];
+const SITE_FILES = [[ static_files|json|safe ]];
+const BIN_FILES = [[ static_bin_files|json|safe ]];
 
 self.addEventListener("install", (event) => {
     console.log("Install!");
