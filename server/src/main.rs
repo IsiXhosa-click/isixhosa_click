@@ -218,26 +218,24 @@ where
     F: FnOnce(&str) -> Result<String, E>,
     E: Debug,
 {
-    // let span = Span::current();
-    // let (parts, body) = response.into_parts();
-    // let bytes = warp::hyper::body::to_bytes(body).await.unwrap();
-    // let unminified = std::str::from_utf8(&bytes).unwrap();
-    // let minified = minify(unminified).unwrap();
-    //
-    // span.record("unminified", unminified.len());
-    // span.record("minified", minified.len());
-    //
-    // let saving = if !unminified.is_empty() {
-    //     (1.0 - (minified.len() as f64 / unminified.len() as f64)) * 100.0
-    // } else {
-    //     0.0
-    // };
-    //
-    // span.record("saving", format!("{:.2}%", saving));
-    //
-    // Ok(Response::from_parts(parts, minified.into()))
+    let span = Span::current();
+    let (parts, body) = response.into_parts();
+    let bytes = warp::hyper::body::to_bytes(body).await.unwrap();
+    let unminified = std::str::from_utf8(&bytes).unwrap();
+    let minified = minify(unminified).unwrap();
 
-    Ok(response)
+    span.record("unminified", unminified.len());
+    span.record("minified", minified.len());
+
+    let saving = if !unminified.is_empty() {
+        (1.0 - (minified.len() as f64 / unminified.len() as f64)) * 100.0
+    } else {
+        0.0
+    };
+
+    span.record("saving", format!("{:.2}%", saving));
+
+    Ok(Response::from_parts(parts, minified.into()))
 }
 
 async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
