@@ -45,7 +45,7 @@ use std::collections::HashSet;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::num::NonZeroU64;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -72,6 +72,7 @@ mod database;
 mod details;
 mod edit;
 mod export;
+mod import_zulu;
 mod moderation;
 mod search;
 mod serialization;
@@ -217,24 +218,26 @@ where
     F: FnOnce(&str) -> Result<String, E>,
     E: Debug,
 {
-    let span = Span::current();
-    let (parts, body) = response.into_parts();
-    let bytes = warp::hyper::body::to_bytes(body).await.unwrap();
-    let unminified = std::str::from_utf8(&bytes).unwrap();
-    let minified = minify(unminified).unwrap();
+    // let span = Span::current();
+    // let (parts, body) = response.into_parts();
+    // let bytes = warp::hyper::body::to_bytes(body).await.unwrap();
+    // let unminified = std::str::from_utf8(&bytes).unwrap();
+    // let minified = minify(unminified).unwrap();
+    //
+    // span.record("unminified", unminified.len());
+    // span.record("minified", minified.len());
+    //
+    // let saving = if !unminified.is_empty() {
+    //     (1.0 - (minified.len() as f64 / unminified.len() as f64)) * 100.0
+    // } else {
+    //     0.0
+    // };
+    //
+    // span.record("saving", format!("{:.2}%", saving));
+    //
+    // Ok(Response::from_parts(parts, minified.into()))
 
-    span.record("unminified", unminified.len());
-    span.record("minified", minified.len());
-
-    let saving = if !unminified.is_empty() {
-        (1.0 - (minified.len() as f64 / unminified.len() as f64)) * 100.0
-    } else {
-        0.0
-    };
-
-    span.record("saving", format!("{:.2}%", saving));
-
-    Ok(Response::from_parts(parts, minified.into()))
+    Ok(response)
 }
 
 async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
@@ -334,6 +337,8 @@ fn main() {
         export::run_daily_tasks(cfg);
     } else if flag.map(|s| s == "--restore-from-backup").unwrap_or(false) {
         export::restore(cfg);
+    } else if flag.map(|s| s == "--import-zulu-lsp").unwrap_or(false) {
+        import_zulu::import_zulu_lsp(cfg, Path::new(&std::env::args().nth(2).unwrap())).unwrap();
     } else if let Some(flag) = flag {
         eprintln!(
             "Unknown flag: {}. Accepted values are --run-backup and --restore-from-backup.",

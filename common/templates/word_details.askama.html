@@ -74,12 +74,16 @@
                                 <caption>Word information</caption>
 
                                 <tbody>
-                                    <tr>
-                                        <th scope="row">Part of speech</th>
-                                        <td>{{ word.part_of_speech }}</td>
-                                    </tr>
+                                    {% match word.part_of_speech %}
+                                        {%- when Some with (part_of_speech) -%}
+                                            <tr>
+                                                <th scope="row">Part of speech</th>
+                                                <td>{{ part_of_speech }}</td>
+                                            </tr>
+                                        {%- when None -%}
+                                    {%- endmatch -%}
 
-                                    {%- if word.part_of_speech == PartOfSpeech::Noun || word.is_plural -%}
+                                    {%- if word.part_of_speech == Some(PartOfSpeech::Noun) || word.is_plural -%}
                                         <tr>
                                             <th scope="row">Plurality</th>
                                             <td>
@@ -108,7 +112,7 @@
                                         </tr>
                                     {%- endif -%}
 
-                                    {%- if word.part_of_speech == PartOfSpeech::Verb  -%}
+                                    {%- if word.part_of_speech == Some(PartOfSpeech::Verb)  -%}
                                         <tr>
                                             <th scope="row" tabindex="0"
                                                  {#-#} data-descr="An inchoative (stative) verb takes the perfect tense

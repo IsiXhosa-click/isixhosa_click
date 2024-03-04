@@ -1499,6 +1499,7 @@ dependencies = [
  "html-minifier",
  "isixhosa",
  "isixhosa_common",
+ "itertools",
  "lazy_static",
  "minifier",
  "num_cpus",
