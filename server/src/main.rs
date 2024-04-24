@@ -234,13 +234,13 @@ async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
     if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
         let mime = &content_type.to_str().unwrap().to_owned();
 
+        // TODO: we can't use minifier as it breaks the WASM bindgen wrapper:
+        // https://github.com/GuillaumeGomez/minifier-rs/issues/108
         let mut response = if mime.starts_with("text/html") {
             #[allow(clippy::redundant_closure)] // lifetime issue
             process_body(response, |s| html_minifier::minify(s)).await?
-        } else if starts_with(mime, &["text/javascript", "application/javascript"]) {
-            process_body(response, |s| Ok::<String, ()>(minifier::js::minify(s))).await?
         } else if mime.starts_with("text/css") {
-            process_body(response, minifier::css::minify).await?
+            process_body(response, |s| minifier::css::minify(s).map(|s| s.to_string())).await?
         } else {
             response
         };
@@ -489,6 +489,8 @@ async fn server(cfg: Config) {
             })
             .filter(|entry: &String| !entry.contains("LICENSE"))
             .partition::<Vec<_>, _>(|entry| ends_with(entry, &["png", "svg", "woff2", "ico"]));
+
+        println!("sfiles {:?}", static_files);
 
         let last_modified_static = walk()
             .filter_map(|entry| entry.metadata().ok())

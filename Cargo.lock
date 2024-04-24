@@ -1402,7 +1402,7 @@ dependencies = [
  "isixhosa_common",
  "itertools",
  "lazy_static",
- "minifier 0.0.41",
+ "minifier 0.3.0",
  "num_cpus",
  "num_enum",
  "openid",
@@ -1614,21 +1614,18 @@ dependencies = [
 
 [[package]]
 name = "minifier"
-version = "0.0.41"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5594542d20834f2b974f5e5fb8e0cf1c67a2119dcadc29ef5d93a081fb30cc08"
-dependencies = [
- "macro-utils",
-]
-
-[[package]]
-name = "minifier"
 version = "0.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d81352bda6f4d04af1720afaa762054f66e16caffd93c1f86461a1c0ac4e695e"
 dependencies = [
  "macro-utils",
 ]
+
+[[package]]
+name = "minifier"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95bbbf96b9ac3482c2a25450b67a15ed851319bc5fabf3b40742ea9066e84282"
 
 [[package]]
 name = "minimal-lexical"

@@ -153,8 +153,6 @@ impl TantivyClient {
         include: IncludeResults,
         duplicate: bool,
     ) -> Result<Vec<WordHit>> {
-        eprintln!("Search!");
-
         self.searchers
             .send(SearchRequest {
                 query,

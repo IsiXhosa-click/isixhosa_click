@@ -220,6 +220,7 @@ impl Component for Game {
             .collect();
 
         let process = |word: String, infinitive: String| {
+            let (word, infinitive) = (word.trim(), infinitive.trim());
             let word = word.replace("(i)", "i");
             let word = word.replace('?', "");
 
@@ -229,7 +230,7 @@ impl Component for Game {
                     let mut s = if word.len() == WORD_LENGTH {
                         word
                     } else {
-                        infinitive
+                        infinitive.to_owned()
                     };
 
                     s.make_ascii_uppercase();

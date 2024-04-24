@@ -19,7 +19,7 @@ askama = { version = "0.12.1", features = ["serde-json"] }
 askama_warp = { version = "0.13.0" }
 warp-reverse-proxy = "0.4.0"
 html-minifier = "3.0.14"
-minifier = "0.0.41"
+minifier = "0.3.0"
 rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly
 tracing = { version = "0.1.29", features = ["attributes"] }
 tracing-subscriber = "0.3.1"
