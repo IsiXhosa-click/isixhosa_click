@@ -1,4 +1,5 @@
 use crate::auth::{random_string_token, FullUser, StaySignedInToken};
+use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
 use isixhosa_common::auth::Permissions;
@@ -52,7 +53,7 @@ impl FullUser {
             .optional()
             .unwrap();
 
-        Span::current().record("found", &user.is_some());
+        Span::current().record("found", user.is_some());
 
         user
     }
@@ -80,7 +81,7 @@ impl FullUser {
             .optional()
             .unwrap();
 
-        Span::current().record("found", &user.is_some());
+        Span::current().record("found", user.is_some());
 
         user
     }
@@ -135,7 +136,7 @@ impl StaySignedInToken {
 
         let argon2 = Argon2::default();
         let token = random_string_token();
-        let salt = random_string_token();
+        let salt = SaltString::generate(rand::thread_rng());
 
         let token_hash = argon2.hash_password(token.as_bytes(), &salt).unwrap();
 

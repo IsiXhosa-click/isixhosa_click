@@ -1,14 +1,14 @@
-use serde::Deserialize;
-use std::fmt::{self, Display, Formatter, Write};
-use std::iter;
 use ascii::{AsciiChar, AsciiString, IntoAsciiString};
 use chrono::{Local, NaiveDate, TimeZone};
 use gloo::events::EventListener;
 use rand::prelude::*;
+use serde::Deserialize;
+use std::fmt::{self, Display, Formatter, Write};
+use std::iter;
 use tinyvec::ArrayVec;
-use wasm_bindgen::JsCast;
-use yew::{Callback, Component, Context, function_component, Html, html, Properties};
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use yew::{function_component, html, Callback, Component, Context, Html, Properties};
 
 const SEED: u64 = 11530789889988543623;
 static CSV: &[u8] = include_bytes!("../words.csv");
@@ -34,10 +34,7 @@ impl Key {
 
 impl From<AsciiChar> for Key {
     fn from(key: AsciiChar) -> Self {
-        Key {
-            key,
-            state: None,
-        }
+        Key { key, state: None }
     }
 }
 
@@ -53,9 +50,9 @@ fn keyboard(props: &KeyboardProps) -> Html {
         let row = row.iter().map(|key| {
             let on_click = {
                 let on_click = props.on_click.clone();
-                let key = key.key.clone();
+                let key = key.key;
                 Callback::from(move |_| {
-                    on_click.emit(key.clone());
+                    on_click.emit(key);
                 })
             };
 
@@ -124,8 +121,15 @@ impl Game {
             }
         }
 
-        for (idx, res) in result.iter_mut().enumerate().filter(|(_, res)| **res == CharGuessResult::Incorrect) {
-            if let Some(idx) = remaining_letters.as_str().find(char::from(guess[idx].letter)) {
+        for (idx, res) in result
+            .iter_mut()
+            .enumerate()
+            .filter(|(_, res)| **res == CharGuessResult::Incorrect)
+        {
+            if let Some(idx) = remaining_letters
+                .as_str()
+                .find(char::from(guess[idx].letter))
+            {
                 *res = CharGuessResult::WrongPlace;
                 remaining_letters.remove(idx);
             }
@@ -190,7 +194,13 @@ impl Display for Game {
             &"X" as &dyn Display
         };
 
-        write!(f, "IsiXhosa Wordle v2 {} {}/{}\n", self.nth_wordle + 1, score, GUESSES)?;
+        writeln!(
+            f,
+            "IsiXhosa Wordle v2 {} {}/{}",
+            self.nth_wordle + 1,
+            score,
+            GUESSES
+        )?;
 
         for guess in self.guesses {
             let result = match self.evaluate_guess(&guess) {
@@ -202,7 +212,7 @@ impl Display for Game {
                 write!(f, "{}", char)?;
             }
 
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
 
         write!(f, "https://isixhosa.click/wordle/")
@@ -243,7 +253,9 @@ impl Component for Game {
         let dictionary: Vec<GuessWord> = list
             .iter()
             .map(|word| (word.word_id, word.xhosa.clone(), word.infinitive.clone()))
-            .filter_map(|(word_id, word, infinitive)| process(word, infinitive).map(|text| GuessWord { word_id, text }))
+            .filter_map(|(word_id, word, infinitive)| {
+                process(word, infinitive).map(|text| GuessWord { word_id, text })
+            })
             .collect();
 
         // Targets exclude infinitives and plurals
@@ -251,7 +263,9 @@ impl Component for Game {
             .into_iter()
             .filter(|word| !word.is_plural)
             .map(|word| (word.word_id, word.xhosa))
-            .filter_map(|(word_id, word)| process(word, String::new()).map(|text| GuessWord { word_id, text }))
+            .filter_map(|(word_id, word)| {
+                process(word, String::new()).map(|text| GuessWord { word_id, text })
+            })
             .collect();
 
         let mut rng = StdRng::seed_from_u64(SEED);
@@ -261,12 +275,14 @@ impl Component for Game {
 
         log::info!("{}", targets.len());
 
-        let start_date = Local.from_local_date(&NaiveDate::from_ymd(2022, 9, 9)).unwrap();
+        let start_date = Local
+            .from_local_date(&NaiveDate::from_ymd(2022, 9, 9))
+            .unwrap();
         let js_date = js_sys::Date::new_0();
         let naive_date = NaiveDate::from_ymd(
             js_date.get_full_year() as i32,
             js_date.get_month() + 1, // Month starts at 0 in JS
-            js_date.get_date()
+            js_date.get_date(),
         );
         let now = Local.from_local_date(&naive_date).unwrap();
 
@@ -286,9 +302,10 @@ impl Component for Game {
         let word = targets[targets.len() - 1 - nth_wordle].clone();
 
         let rows = ["QWERTYUIOP", "|ASDFGHJKL|", "\nZXCVBNM\x08"];
-        let keys: Vec<Vec<Key>> = rows.into_iter().map(|row| {
-            row.chars().map(|c| Key::from(AsciiChar::new(c))).collect()
-        }).collect();
+        let keys: Vec<Vec<Key>> = rows
+            .into_iter()
+            .map(|row| row.chars().map(|c| Key::from(AsciiChar::new(c))).collect())
+            .collect();
 
         let mut guesses = ArrayVec::default();
 
@@ -303,7 +320,7 @@ impl Component for Game {
             kbd_listener: None,
             nth_wordle: nth_wordle as u32,
             modal_open: false,
-            shared: false
+            shared: false,
         }
     }
 
@@ -332,7 +349,7 @@ impl Component for Game {
                         } else {
                             false
                         }
-                    },
+                    }
                     _ => {
                         let guess = &mut self.current_guess_mut().letters;
 
@@ -349,28 +366,31 @@ impl Component for Game {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let guesses_padded = self.guesses
+        let guesses_padded = self
+            .guesses
             .iter()
             .copied()
             .chain(iter::repeat(Guess::default()))
             .take(GUESSES);
 
-        let guesses = guesses_padded.map(|guess| {
-            let letters_padded = guess
-                .letters
-                .iter()
-                .copied()
-                .chain(iter::repeat(GuessLetter::default()))
-                .take(WORD_LENGTH);
+        let guesses = guesses_padded
+            .map(|guess| {
+                let letters_padded = guess
+                    .letters
+                    .iter()
+                    .copied()
+                    .chain(iter::repeat(GuessLetter::default()))
+                    .take(WORD_LENGTH);
 
-            let guess = letters_padded.map(|letter| {
+                let guess = letters_padded.map(|letter| {
                 html! { <div class="guess_letter" style={ letter.css() }>{ letter.letter }</div>}
             }).collect::<Html>();
 
-            html! {
-                <div class="guess">{ guess }</div>
-            }
-        }).collect::<Html>();
+                html! {
+                    <div class="guess">{ guess }</div>
+                }
+            })
+            .collect::<Html>();
 
         let message = if self.state == GameState::Won {
             "Congratulations! A new wordle will be available tomorrow."
@@ -384,13 +404,9 @@ impl Component for Game {
             "modal"
         };
 
-        let shared = if self.shared {
-            "Copied!"
-        } else {
-            ""
-        };
+        let shared = if self.shared { "Copied!" } else { "" };
 
-        let on_key = ctx.link().callback(|key| Message::Key(key));
+        let on_key = ctx.link().callback(Message::Key);
         let on_share = ctx.link().callback(|_| Message::Share);
         let on_close = ctx.link().callback(|_| Message::CloseModal);
 
@@ -434,7 +450,9 @@ impl Component for Game {
 
         let document = gloo::utils::document();
 
-        let callback = ctx.link().callback(|c: char| Message::Key(AsciiChar::new(c)));
+        let callback = ctx
+            .link()
+            .callback(|c: char| Message::Key(AsciiChar::new(c)));
         let listener = EventListener::new(&document, "keydown", move |event| {
             let event = event.dyn_ref::<web_sys::KeyboardEvent>().unwrap();
 

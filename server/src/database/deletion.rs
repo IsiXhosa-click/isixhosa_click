@@ -57,7 +57,7 @@ impl WordDeletionSuggestion {
             .collect()
             .unwrap();
 
-        Span::current().record("results", &x.len());
+        Span::current().record("results", x.len());
 
         x
     }
@@ -153,7 +153,7 @@ impl ExampleDeletionSuggestion {
             })
             .unwrap();
 
-        Span::current().record("results", &map.len());
+        Span::current().record("results", map.len());
 
         map.into_iter()
     }
@@ -174,7 +174,7 @@ impl ExampleDeletionSuggestion {
             .query_row(params![suggestion], |row| row.get("example_id"))
             .unwrap();
 
-        Span::current().record("example_id", &example_id);
+        Span::current().record("example_id", example_id);
 
         example_id
     }
@@ -225,7 +225,7 @@ impl LinkedWordDeletionSuggestion {
     ) -> Result<Self, rusqlite::Error> {
         let suggestion_id = row.get::<&str, i64>("suggestion_id")? as u64;
 
-        Span::current().record("suggestion_id", &suggestion_id);
+        Span::current().record("suggestion_id", suggestion_id);
 
         Ok(LinkedWordDeletionSuggestion {
             suggestion_id,
@@ -274,7 +274,7 @@ impl LinkedWordDeletionSuggestion {
             })
             .unwrap();
 
-        Span::current().record("results", &map.len());
+        Span::current().record("results", map.len());
 
         map.into_iter()
     }
@@ -295,7 +295,7 @@ impl LinkedWordDeletionSuggestion {
             .query_row(params![suggestion], |row| row.get("linked_word_id"))
             .unwrap();
 
-        Span::current().record("link_id", &link_id);
+        Span::current().record("link_id", link_id);
 
         link_id
     }

@@ -1,6 +1,6 @@
-use std::error::Error;
-use std::fmt::{self, Formatter, Display};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::error::Error;
+use std::fmt::{self, Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct DiscrimOutOfRange(pub i64, pub &'static str);
@@ -34,15 +34,18 @@ impl<T: Display> Display for SerOnlyDisplay<T> {
 
 impl<T: Display> Serialize for SerOnlyDisplay<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&format!("{}", self.0))
     }
 }
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for SerOnlyDisplay<T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         T::deserialize(deserializer).map(SerOnlyDisplay)
     }
 }

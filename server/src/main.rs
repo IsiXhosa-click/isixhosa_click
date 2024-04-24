@@ -34,8 +34,8 @@ use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb};
 use isixhosa_common::format::DisplayHtml;
 use isixhosa_common::types::{ExistingWord, WordHit};
 use moderation::moderation;
-use opentelemetry::global;
-use opentelemetry::sdk::propagation::TraceContextPropagator;
+use opentelemetry::{global, KeyValue};
+use opentelemetry_sdk::Resource;
 use percent_encoding::NON_ALPHANUMERIC;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -178,10 +178,17 @@ impl Default for Config {
 }
 
 fn init_tracing() {
-    global::set_text_map_propagator(TraceContextPropagator::new());
-    let tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name("isixhosa.click")
-        .install_batch(opentelemetry::runtime::Tokio)
+    global::set_text_map_propagator(opentelemetry_jaeger_propagator::Propagator::new());
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(opentelemetry_otlp::new_exporter().tonic())
+        .with_trace_config(
+            opentelemetry_sdk::trace::config().with_resource(Resource::new(vec![KeyValue::new(
+                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                "isixhosa-click",
+            )])),
+        )
+        .install_batch(opentelemetry_sdk::runtime::Tokio)
         .unwrap();
 
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
@@ -240,7 +247,10 @@ async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
             #[allow(clippy::redundant_closure)] // lifetime issue
             process_body(response, |s| html_minifier::minify(s)).await?
         } else if mime.starts_with("text/css") {
-            process_body(response, |s| minifier::css::minify(s).map(|s| s.to_string())).await?
+            process_body(response, |s| {
+                minifier::css::minify(s).map(|s| s.to_string())
+            })
+            .await?
         } else {
             response
         };
@@ -309,7 +319,7 @@ async fn handle_error(err: Rejection) -> Result<Response, Rejection> {
 }
 
 fn main() {
-    let cfg: Config = confy::load("isixhosa_click").unwrap();
+    let cfg: Config = confy::load("isixhosa_click", None).unwrap();
 
     let flag = std::env::args().nth(1);
     let flag = flag.as_ref();
@@ -610,9 +620,7 @@ async fn server(cfg: Config) {
         })));
 
     if has_reverse_proxy {
-        warp::serve(serve)
-            .run(([0, 0, 0, 0], cfg.http_port))
-            .await
+        warp::serve(serve).run(([0, 0, 0, 0], cfg.http_port)).await
     } else {
         warp::serve(serve)
             .tls()
@@ -801,8 +809,9 @@ fn live_search(
 }
 
 fn spawn_send_interval<A, M>(addr: WeakAddress<A>, interval: Duration, msg: M)
-    where A: Handler<M>,
-          M: Clone + Send + Sync + 'static,
+where
+    A: Handler<M>,
+    M: Clone + Send + Sync + 'static,
 {
     let addr_clone = addr.clone();
     let fut = async move {

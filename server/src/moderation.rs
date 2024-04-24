@@ -64,27 +64,19 @@ impl WordAssociatedEdits {
         let mut map: HashMap<WordId, WordAssociatedEdits> = HashMap::new();
 
         for (id, suggestions) in example_suggestions {
-            map.entry(id)
-                .or_insert_with(Default::default)
-                .example_suggestions = suggestions;
+            map.entry(id).or_default().example_suggestions = suggestions;
         }
 
         for (id, deletions) in example_deletions {
-            map.entry(id)
-                .or_insert_with(Default::default)
-                .example_deletion_suggestions = deletions;
+            map.entry(id).or_default().example_deletion_suggestions = deletions;
         }
 
         for (id, suggestions) in linked_word_suggestions {
-            map.entry(id)
-                .or_insert_with(Default::default)
-                .linked_word_suggestions = suggestions;
+            map.entry(id).or_default().linked_word_suggestions = suggestions;
         }
 
         for (id, deletions) in linked_word_deletion_suggestions {
-            map.entry(id)
-                .or_insert_with(Default::default)
-                .linked_word_deletion_suggestions = deletions;
+            map.entry(id).or_default().linked_word_deletion_suggestions = deletions;
         }
 
         let mut vec: Vec<(WordHit, WordAssociatedEdits)> = map
@@ -92,7 +84,7 @@ impl WordAssociatedEdits {
             .map(|(id, assoc)| (WordHit::fetch_from_db(db, id.into()).unwrap(), assoc))
             .collect();
 
-        Span::current().record("relevant_words", &vec.len());
+        Span::current().record("relevant_words", vec.len());
 
         vec.sort_by_key(|(hit, _)| hit.id);
         vec

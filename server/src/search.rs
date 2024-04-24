@@ -22,13 +22,12 @@ use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
 use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{
-    Field, FieldValue, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED,
-    STORED,
+    Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED,
 };
 use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
-use tantivy::{doc, LeasedItem, Searcher};
-use tantivy::{Document, Index, IndexReader, IndexWriter, Term};
+use tantivy::{doc, Searcher};
+use tantivy::{Index, IndexReader, IndexWriter, TantivyDocument, Term};
 use tracing::{debug_span, info, info_span, instrument, Span};
 use xtra::prelude::*;
 
@@ -59,14 +58,13 @@ impl TantivyClient {
         let reindex = !Index::exists(&dir)?;
         let index = Index::open_or_create(dir, schema_info.schema.clone())?;
 
-        let lowercaser = TextAnalyzer::from(SimpleTokenizer).filter(LowerCaser);
+        let lowercaser = TextAnalyzer::builder(SimpleTokenizer::default())
+            .filter(LowerCaser)
+            .build();
         index.tokenizers().register("lowercaser", lowercaser);
 
         let num_searchers = num_cpus::get();
-        let reader = index
-            .reader_builder()
-            .num_searchers(num_searchers)
-            .try_into()?;
+        let reader = index.reader_builder().try_into()?;
 
         let (searchers, mailbox) = Mailbox::bounded(32);
 
@@ -229,7 +227,11 @@ impl WriterActor {
         }
     }
 
-    fn add_word(writer: &mut IndexWriter, schema_info: &SchemaInfo, doc: WordDocument) {
+    fn add_word(
+        writer: &mut IndexWriter,
+        schema_info: &SchemaInfo,
+        doc: WordDocument,
+    ) -> Result<()> {
         let stemmed = if doc.part_of_speech == PartOfSpeech::Noun {
             isixhosa::noun::guess_noun_base(&doc.xhosa, doc.noun_class)
         } else {
@@ -250,17 +252,19 @@ impl WriterActor {
             schema_info.noun_class => doc.noun_class.map(|x| x as u64).unwrap_or(255),
         );
 
-        let id = match doc.id {
+        let (id_field, suggestion) = match doc.id {
             WordOrSuggestionId::Suggested { suggestion_id } => {
-                FieldValue::new(schema_info.suggestion_id, Value::U64(suggestion_id))
+                (schema_info.suggestion_id, suggestion_id)
             }
             WordOrSuggestionId::ExistingWord { existing_id } => {
-                FieldValue::new(schema_info.existing_id, Value::U64(existing_id))
+                (schema_info.existing_id, existing_id)
             }
         };
 
-        tantivy_doc.add(id);
-        writer.add_document(tantivy_doc);
+        tantivy_doc.add_u64(id_field, suggestion);
+        writer.add_document(tantivy_doc)?;
+
+        Ok(())
     }
 }
 
@@ -294,7 +298,7 @@ impl Handler<ReindexWords> for WriterActor {
             writer.delete_all_documents().unwrap();
 
             for doc in docs.0 {
-                Self::add_word(&mut writer, &schema_info, doc);
+                Self::add_word(&mut writer, &schema_info, doc).unwrap();
             }
 
             writer.commit().unwrap();
@@ -322,7 +326,7 @@ impl Handler<IndexWord> for WriterActor {
 
         spawn_blocking_child(move || {
             let mut writer = writer.lock().unwrap();
-            Self::add_word(&mut writer, &schema_info, doc.0);
+            Self::add_word(&mut writer, &schema_info, doc.0).unwrap();
             writer.commit().unwrap();
         })
         .await
@@ -356,7 +360,7 @@ impl Handler<EditWord> for WriterActor {
                 }
             };
             writer.delete_term(term);
-            Self::add_word(&mut writer, &schema_info, edit.0);
+            Self::add_word(&mut writer, &schema_info, edit.0).unwrap();
             writer.commit().unwrap();
         })
         .await
@@ -433,13 +437,14 @@ impl SearcherActor {
         skip_all
     )]
     fn query_terms(
-        searcher: &mut LeasedItem<Searcher>,
+        searcher: &mut Searcher,
         client: &TantivyClient,
+        tokenizer: &mut TextAnalyzer,
         search_level: u8,
         req: &SearchRequest,
         out: &mut HashSet<WordHit>,
     ) {
-        let mut tokenized = client.tokenizer.token_stream(&req.query);
+        let mut tokenized = tokenizer.token_stream(&req.query);
         let mut queries: Vec<Box<dyn Query + 'static>> = Vec::with_capacity(3);
         tokenized.process(&mut |token| {
             let distance = match token.text.len() {
@@ -568,11 +573,19 @@ impl Handler<SearchRequest> for SearcherActor {
 
         let mut searcher = self.reader.searcher();
         let client = self.client.clone();
+        let mut tokenizer = self.client.tokenizer.clone();
         let mut results = HashSet::with_capacity(10);
 
         spawn_blocking_child(move || {
             for level in 0..=2 {
-                SearcherActor::query_terms(&mut searcher, &client, level, &req, &mut results);
+                SearcherActor::query_terms(
+                    &mut searcher,
+                    &client,
+                    &mut tokenizer,
+                    level,
+                    &req,
+                    &mut results,
+                );
 
                 if results.len() >= RESULTS {
                     break;
@@ -643,14 +656,14 @@ pub struct WordDocument {
 }
 
 trait WordHitExt {
-    fn try_deserialize(schema_info: &SchemaInfo, doc: Document) -> Result<WordHit>;
+    fn try_deserialize(schema_info: &SchemaInfo, doc: TantivyDocument) -> Result<WordHit>;
 }
 
 impl WordHitExt for WordHit {
-    fn try_deserialize(schema_info: &SchemaInfo, doc: Document) -> Result<WordHit> {
+    fn try_deserialize(schema_info: &SchemaInfo, doc: TantivyDocument) -> Result<WordHit> {
         let pos_ord = doc
             .get_first(schema_info.part_of_speech)
-            .and_then(Value::u64_value)
+            .and_then(|v| v.as_u64())
             .with_context(|| {
                 format!(
                     "Invalid value for field `part_of_speech` in document {:#?}",
@@ -661,7 +674,7 @@ impl WordHitExt for WordHit {
 
         let is_suggestion = doc
             .get_first(schema_info.suggesting_user)
-            .and_then(Value::u64_value)
+            .and_then(|v| v.as_u64())
             .map(|v| v != 0)
             .with_context(|| {
                 format!(
@@ -676,10 +689,10 @@ impl WordHitExt for WordHit {
             schema_info.existing_id
         };
 
-        fn get_str(document: &Document, field: Field, name: &str) -> anyhow::Result<String> {
+        fn get_str(document: &TantivyDocument, field: Field, name: &str) -> anyhow::Result<String> {
             document
                 .get_first(field)
-                .and_then(Value::text)
+                .and_then(|v| v.as_str())
                 .map(ToOwned::to_owned)
                 .with_context(|| {
                     format!(
@@ -689,10 +702,10 @@ impl WordHitExt for WordHit {
                 })
         }
 
-        fn get_bool(document: &Document, field: Field, name: &str) -> anyhow::Result<bool> {
+        fn get_bool(document: &TantivyDocument, field: Field, name: &str) -> anyhow::Result<bool> {
             document
                 .get_first(field)
-                .and_then(Value::u64_value)
+                .and_then(|v| v.as_u64())
                 .map(|v| v == 1)
                 .with_context(|| {
                     format!(
@@ -702,21 +715,21 @@ impl WordHitExt for WordHit {
                 })
         }
 
-        fn get_with_sentinel<T>(document: &Document, field: Field) -> Option<T>
+        fn get_with_sentinel<T>(document: &TantivyDocument, field: Field) -> Option<T>
         where
             T: TryFromPrimitive,
             T::Primitive: TryFrom<u64>,
         {
             document
                 .get_first(field)
-                .and_then(Value::u64_value)
+                .and_then(|v| v.as_u64())
                 .and_then(|ord| T::try_from_primitive(ord.try_into().ok()?).ok())
         }
 
         Ok(WordHit {
             id: doc
                 .get_first(id_field)
-                .and_then(Value::u64_value)
+                .and_then(|v| v.as_u64())
                 .with_context(|| format!("Invalid value for id field in document {:#?}", doc))?,
             english: get_str(&doc, schema_info.english, "english")?,
             xhosa: get_str(&doc, schema_info.xhosa, "xhosa")?,

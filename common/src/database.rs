@@ -1,18 +1,20 @@
-use std::num::NonZeroU64;
-use std::str::FromStr;
-use serde::{Serialize, Deserialize};
-use fallible_iterator::FallibleIterator;
-use isixhosa::noun::NounClass;
-use r2d2::{Pool, PooledConnection};
-use rusqlite::{OptionalExtension, ToSql};
-use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{params, Row};
-use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef};
-use tracing::{instrument, Span};
-use num_enum::TryFromPrimitive;
-use crate::language::{ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType};
+use crate::language::{
+    ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType,
+};
 use crate::serialization::{DiscrimOutOfRange, SerOnlyDisplay, WithDeleteSentinel};
 use crate::types::{ExistingExample, ExistingLinkedWord, ExistingWord, PublicUserInfo, WordHit};
+use fallible_iterator::FallibleIterator;
+use isixhosa::noun::NounClass;
+use num_enum::TryFromPrimitive;
+use r2d2::{Pool, PooledConnection};
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, ValueRef};
+use rusqlite::{params, Row};
+use rusqlite::{OptionalExtension, ToSql};
+use serde::{Deserialize, Serialize};
+use std::num::NonZeroU64;
+use std::str::FromStr;
+use tracing::{instrument, Span};
 
 #[derive(Clone)]
 pub struct DbBase(pub Pool<SqliteConnectionManager>);
@@ -24,9 +26,9 @@ impl DbBase {
 }
 
 pub mod db_impl {
+    use super::*;
     use r2d2::PooledConnection;
     use r2d2_sqlite::SqliteConnectionManager;
-    use super::*;
 
     #[derive(Clone)]
     pub struct DbImpl(pub Pool<SqliteConnectionManager>);
@@ -47,7 +49,6 @@ pub trait PublicAccessDb: Clone + Send + Sync + 'static {
 
 pub trait UserAccessDb: PublicAccessDb {}
 pub trait ModeratorAccessDb: UserAccessDb {}
-
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -153,12 +154,12 @@ impl ExistingExample {
         let rows = query.query(params![word_id]).unwrap();
 
         #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-            let examples: Vec<Self> = rows
+        let examples: Vec<Self> = rows
             .map(|row| ExistingExample::try_from(row))
             .collect()
             .unwrap();
 
-        Span::current().record("results", &examples.len());
+        Span::current().record("results", examples.len());
 
         examples
     }
@@ -175,14 +176,14 @@ impl ExistingExample {
 
         let conn = db.get().unwrap();
         #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-            let opt = conn
+        let opt = conn
             .prepare(SELECT)
             .unwrap()
             .query_row(params![example_id], |row| ExistingExample::try_from(row))
             .optional()
             .unwrap();
 
-        Span::current().record("found", &opt.is_some());
+        Span::current().record("found", opt.is_some());
 
         opt
     }
@@ -200,7 +201,6 @@ impl TryFrom<&Row<'_>> for ExistingExample {
         })
     }
 }
-
 
 impl ExistingLinkedWord {
     #[instrument(
@@ -224,7 +224,7 @@ impl ExistingLinkedWord {
             .collect()
             .unwrap();
 
-        Span::current().record("results", &vec.len());
+        Span::current().record("results", vec.len());
 
         vec.sort_by_key(|l| l.link_type);
         vec
@@ -256,7 +256,7 @@ impl ExistingLinkedWord {
             .optional()
             .unwrap();
 
-        Span::current().record("found", &opt.is_some());
+        Span::current().record("found", opt.is_some());
 
         opt
     }
@@ -277,7 +277,7 @@ impl ExistingLinkedWord {
 
         let link_id = row.get("link_id")?;
 
-        Span::current().record("link_id", &link_id);
+        Span::current().record("link_id", link_id);
 
         Ok(ExistingLinkedWord {
             link_id,
@@ -299,16 +299,16 @@ impl ExistingWord {
             word.contributors = PublicUserInfo::fetch_public_contributors_for_word(db, id);
         }
 
-        Span::current().record("found", &word.is_some());
+        Span::current().record("found", word.is_some());
 
         word
     }
 
     #[instrument(
-    level = "trace",
-    name = "Fetch just existing word",
-    fields(found),
-    skip(db)
+        level = "trace",
+        name = "Fetch just existing word",
+        fields(found),
+        skip(db)
     )]
     pub fn fetch_alone(db: &impl PublicAccessDb, id: u64) -> Option<ExistingWord> {
         const SELECT_ORIGINAL: &str = "
@@ -322,14 +322,14 @@ impl ExistingWord {
         let conn = db.get().unwrap();
 
         #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-            let opt = conn
+        let opt = conn
             .prepare(SELECT_ORIGINAL)
             .unwrap()
             .query_row(params![id], |row| ExistingWord::try_from(row))
             .optional()
             .unwrap();
 
-        Span::current().record("found", &opt.is_some());
+        Span::current().record("found", opt.is_some());
 
         opt
     }
@@ -341,7 +341,7 @@ impl ExistingWord {
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
         let found = modified_rows == 1;
-        Span::current().record("found", &found);
+        Span::current().record("found", found);
         found
     }
 
@@ -356,12 +356,11 @@ impl ExistingWord {
             .query_row(params![], |row| row.get(0))
             .unwrap();
 
-        Span::current().record("results", &count);
+        Span::current().record("results", count);
 
         count
     }
 }
-
 
 impl WordHit {
     pub fn try_from_row_and_id(
@@ -385,10 +384,10 @@ impl WordHit {
     }
 
     #[instrument(
-    level = "trace",
-    name = "Fetch word hit from database",
-    fields(found),
-    skip(db)
+        level = "trace",
+        name = "Fetch word hit from database",
+        fields(found),
+        skip(db)
     )]
     pub fn fetch_from_db(db: &impl PublicAccessDb, id: WordOrSuggestionId) -> Option<WordHit> {
         const SELECT_EXISTING: &str = "
@@ -415,7 +414,7 @@ impl WordHit {
 
         // WTF rustc?
         #[allow(clippy::redundant_closure)] // implementation of FnOnce is not general enough
-            let v = conn
+        let v = conn
             .prepare(stmt)
             .unwrap()
             .query_row(params![id.inner()], |row| {
@@ -424,12 +423,11 @@ impl WordHit {
             .optional()
             .unwrap();
 
-        Span::current().record("found", &v.is_some());
+        Span::current().record("found", v.is_some());
 
         v
     }
 }
-
 
 impl PublicUserInfo {
     pub fn fetch_public_contributors_for_word(
@@ -448,7 +446,7 @@ impl PublicUserInfo {
         let mut query = conn.prepare(SELECT).unwrap();
 
         #[allow(clippy::redundant_closure)] // lifetime issue
-            query
+        query
             .query(params![word])
             .unwrap()
             .map(|row| PublicUserInfo::try_from(row))
@@ -456,7 +454,6 @@ impl PublicUserInfo {
             .unwrap()
     }
 }
-
 
 impl TryFrom<&Row<'_>> for PublicUserInfo {
     type Error = rusqlite::Error;
@@ -547,9 +544,9 @@ impl ToSql for WordLinkType {
 }
 
 impl<T> FromSql for WithDeleteSentinel<T>
-    where
-        T: TryFromPrimitive,
-        T::Primitive: TryFrom<i64>,
+where
+    T: TryFromPrimitive,
+    T::Primitive: TryFrom<i64>,
 {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
         let v = value.as_i64()?;
@@ -571,9 +568,9 @@ pub trait GetWithSentinelExt<T> {
 }
 
 impl<'a, T> GetWithSentinelExt<T> for Row<'a>
-    where
-        T: TryFromPrimitive,
-        T::Primitive: TryFrom<i64>,
+where
+    T: TryFromPrimitive,
+    T::Primitive: TryFrom<i64>,
 {
     fn get_with_sentinel(&self, idx: &str) -> rusqlite::Result<Option<T>> {
         let opt = self.get::<&str, Option<WithDeleteSentinel<T>>>(idx)?;

@@ -2,7 +2,7 @@ use std::process::Command;
 
 fn get_last_changed(path: &str) -> String {
     let output = Command::new("bash")
-        .args(&["-c", &format!("stat -c %Y {path} | sort -n | head -1")])
+        .args(["-c", &format!("stat -c %Y {path} | sort -n | head -1")])
         .output()
         .unwrap();
 

@@ -1,8 +1,8 @@
-use askama::Template;
 use crate::auth::{Auth, Permissions};
-use crate::types::ExistingWord;
-use crate::language::*;
 use crate::format::DisplayHtml;
+use crate::language::*;
+use crate::types::ExistingWord;
+use askama::Template;
 
 #[derive(Template)]
 #[template(path = "word_details.askama.html")]

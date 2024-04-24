@@ -44,7 +44,7 @@ where
 {
     match value {
         Some(v) if value != template => ToSqlOutput::Owned(Value::Integer(v.into() as i64)),
-        None if template != None => 255u8.to_sql().unwrap(),
+        None if template.is_some() => 255u8.to_sql().unwrap(),
         _ => None::<u8>.to_sql().unwrap(),
     }
 }
@@ -175,8 +175,8 @@ pub async fn submit_suggestion(
         };
 
         let span = Span::current();
-        span.record("changes", &any_changes);
-        span.record("suggestion_id", &suggested_word_id);
+        span.record("changes", any_changes);
+        span.record("suggestion_id", suggested_word_id);
 
         let suggested_word_id_if_new = suggested_word_id.filter(|_| w.existing_id.is_none());
 
@@ -405,10 +405,10 @@ fn process_linked_words(
     }
 
     let span = Span::current();
-    span.record("added", &w.linked_words.0.len());
-    span.record("edited", &edited);
-    span.record("deleted", &deleted);
-    span.record("skipped", &skipped);
+    span.record("added", w.linked_words.0.len());
+    span.record("edited", edited);
+    span.record("deleted", deleted);
+    span.record("skipped", skipped);
 }
 
 #[instrument(
@@ -571,10 +571,10 @@ fn process_examples(
     }
 
     let span = Span::current();
-    span.record("added", &w.examples.len());
-    span.record("edited", &edited);
-    span.record("deleted", &deleted);
-    span.record("skipped", &skipped);
+    span.record("added", w.examples.len());
+    span.record("edited", edited);
+    span.record("deleted", deleted);
+    span.record("skipped", skipped);
 }
 
 #[derive(Default, Debug)]

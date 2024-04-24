@@ -1,8 +1,8 @@
-use std::borrow::Cow;
 use crate::format::{DisplayHtml, HtmlFormatter};
 use isixhosa::noun::NounClass;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::str::FromStr;
 
@@ -90,6 +90,12 @@ impl AsRef<str> for ConjunctionFollowedBy {
     }
 }
 
+impl Display for ConjunctionFollowedBy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(self.as_ref(), f)
+    }
+}
+
 impl DisplayHtml for ConjunctionFollowedBy {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         f.write_text(self.as_ref())
@@ -123,7 +129,9 @@ impl FromStr for ConjunctionFollowedBy {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Serialize, Deserialize,
+)]
 #[repr(u8)]
 pub enum Transitivity {
     Transitive,

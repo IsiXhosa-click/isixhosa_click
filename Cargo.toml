@@ -9,3 +9,6 @@ exclude = ["wasm"]
 
 [profile.release]
 lto = "fat"
+
+[profile.dev.package.argon2]
+opt-level = 3

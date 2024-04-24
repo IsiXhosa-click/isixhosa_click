@@ -1,10 +1,9 @@
-
 use crate::language::{NounClassExt, NounClassPrefixes};
+use crate::serialization::SerOnlyDisplay;
+use crate::types::{PublicUserInfo, WordHit};
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
 use std::fmt::{self, Display, Formatter};
-use crate::serialization::SerOnlyDisplay;
-use crate::types::{PublicUserInfo, WordHit};
 
 fn escape(s: &str) -> MarkupDisplay<Html, &str> {
     MarkupDisplay::new_unsafe(s, Html)

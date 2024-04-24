@@ -87,7 +87,7 @@ impl SuggestedWord {
             .collect()
             .unwrap();
 
-        Span::current().record("results", &results.len());
+        Span::current().record("results", results.len());
 
         results
     }
@@ -121,7 +121,7 @@ impl SuggestedWord {
             .optional()
             .unwrap();
 
-        Span::current().record("found", &word.is_some());
+        Span::current().record("found", word.is_some());
 
         word
     }
@@ -135,7 +135,7 @@ impl SuggestedWord {
             w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, id);
         }
 
-        Span::current().record("found", &word.is_some());
+        Span::current().record("found", word.is_some());
 
         word
     }
@@ -199,7 +199,7 @@ impl SuggestedWord {
 
         add_attribution(db, &self.suggesting_user, WordId(id));
 
-        Span::current().record("accepted_id", &id);
+        Span::current().record("accepted_id", id);
 
         id
     }
@@ -268,7 +268,7 @@ impl SuggestedWord {
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
         let found = modified_rows == 1;
 
-        Span::current().record("found", &found);
+        Span::current().record("found", found);
 
         found
     }
@@ -345,7 +345,7 @@ impl SuggestedWord {
             .query_row(params![suggestion], |row| row.get("existing_word_id"))
             .unwrap();
 
-        Span::current().record("word_id", &word_id.to_debug().as_str());
+        Span::current().record("word_id", word_id.to_debug().as_str());
 
         word_id
     }
@@ -406,7 +406,7 @@ impl SuggestedExample {
             })
             .unwrap();
 
-        Span::current().record("results", &map.len());
+        Span::current().record("results", map.len());
 
         map.into_iter()
     }
@@ -439,7 +439,7 @@ impl SuggestedExample {
             .collect()
             .unwrap();
 
-        Span::current().record("results", &examples.len());
+        Span::current().record("results", examples.len());
 
         examples
     }
@@ -465,7 +465,7 @@ impl SuggestedExample {
             .optional()
             .unwrap();
 
-        Span::current().record("found", &ex.is_some());
+        Span::current().record("found", ex.is_some());
 
         ex
     }
@@ -509,7 +509,7 @@ impl SuggestedExample {
         add_attribution(db, &self.suggesting_user, WordId(word));
         SuggestedExample::delete(db, self.suggestion_id);
 
-        Span::current().record("accepted_id", &id);
+        Span::current().record("accepted_id", id);
 
         id
     }
@@ -521,7 +521,7 @@ impl SuggestedExample {
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
         let found = modified_rows == 1;
-        Span::current().record("found", &found);
+        Span::current().record("found", found);
         found
     }
 
@@ -611,7 +611,7 @@ impl SuggestedLinkedWord {
             .collect()
             .unwrap();
 
-        Span::current().record("results", &vec.len());
+        Span::current().record("results", vec.len());
         vec.sort_by_key(|link| *link.link_type.current());
         vec
     }
@@ -681,7 +681,7 @@ impl SuggestedLinkedWord {
             })
             .unwrap();
 
-        Span::current().record("results", &map.len());
+        Span::current().record("results", map.len());
 
         map.into_iter()
     }
@@ -731,7 +731,7 @@ impl SuggestedLinkedWord {
         add_attribution(db, &self.suggesting_user, WordId(second));
         SuggestedLinkedWord::delete(db, self.suggestion_id);
 
-        Span::current().record("accepted_id", &id);
+        Span::current().record("accepted_id", id);
 
         id
     }
@@ -770,7 +770,7 @@ impl SuggestedLinkedWord {
         let conn = db.get().unwrap();
         let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
         let found = modified_rows == 1;
-        Span::current().record("found", &found);
+        Span::current().record("found", found);
         found
     }
 
@@ -858,7 +858,7 @@ impl SuggestedLinkedWord {
 
         let suggestion_id = row.get("suggestion_id").unwrap();
 
-        Span::current().record("suggestion_id", &suggestion_id);
+        Span::current().record("suggestion_id", suggestion_id);
 
         SuggestedLinkedWord {
             suggesting_user: PublicUserInfo::try_from(row).unwrap(),

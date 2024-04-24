@@ -1,5 +1,5 @@
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{spawn_blocking_child, Config, DebugBoxedExt, DebugExt, spawn_send_interval};
+use crate::{spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration};
@@ -122,7 +122,7 @@ impl Handler<RequestToken> for OidcActor {
         if let Some(id_token) = token.id_token.as_mut() {
             self.client.decode_token(id_token)?;
             self.client
-                .validate_token(id_token, Some(&req.nonce), None)?;
+                .validate_token(id_token, Some(req.nonce.as_str()), None)?;
         } else {
             return Ok(None);
         }
@@ -237,19 +237,19 @@ pub struct FullUser {
     pub locked: bool,
 }
 
-impl Into<isixhosa_common::auth::User> for FullUser {
-    fn into(self) -> isixhosa_common::auth::User {
+impl From<FullUser> for isixhosa_common::auth::User {
+    fn from(user: FullUser) -> isixhosa_common::auth::User {
         isixhosa_common::auth::User {
-            user_id: self.id,
-            username: self.username,
-            permissions: self.permissions,
+            user_id: user.id,
+            username: user.username,
+            permissions: user.permissions,
         }
     }
 }
 
-impl Into<Auth> for FullUser {
-    fn into(self) -> Auth {
-        let user: isixhosa_common::auth::User = self.into();
+impl From<FullUser> for Auth {
+    fn from(user: FullUser) -> Auth {
+        let user: isixhosa_common::auth::User = user.into();
         user.into()
     }
 }
@@ -380,12 +380,12 @@ async fn reply_authorize(
         .await
         .unwrap();
 
-    let session_id_cookie = Cookie::build(SIGN_IN_SESSION_ID, &session_id.0)
+    let session_id_cookie = Cookie::build((SIGN_IN_SESSION_ID, &session_id.0))
         .path("/")
         .http_only(true)
         .secure(true)
         .expires(Expiration::Session)
-        .finish()
+        .build()
         .to_string();
 
     IN_PROGRESS_SIGN_INS.insert(
@@ -444,15 +444,13 @@ async fn request_token(
         return Err(SignInInvalid::CsrfToken.into());
     }
 
-    let res = oidc_client
+    oidc_client
         .send(RequestToken {
             code: openid_query.code.clone(),
             nonce,
         })
         .await
-        .unwrap();
-
-    res
+        .unwrap()
 }
 
 async fn reply_login(
@@ -538,15 +536,15 @@ async fn reply_insert_session(
     let token = spawn_blocking_child(move || StaySignedInToken::new(&db, user.id.get()))
         .await
         .unwrap();
-    let authorization_cookie = Cookie::build(
+    let authorization_cookie = Cookie::build((
         STAY_LOGGED_IN_COOKIE,
         serde_json::to_string(&(token.token, token.token_id)).unwrap(),
-    )
+    ))
     .path("/")
     .http_only(true)
     .secure(true)
     .expires(OffsetDateTime::now_utc() + SIX_MONTHS)
-    .finish()
+    .build()
     .to_string();
 
     IN_PROGRESS_SIGN_INS.remove(&session_id);
@@ -636,12 +634,12 @@ async fn reply_logout(
     db: impl UserAccessDb,
     token: StaySignedInToken,
 ) -> Result<impl warp::Reply, Infallible> {
-    let deleted_cookie = Cookie::build(STAY_LOGGED_IN_COOKIE, "")
+    let deleted_cookie = Cookie::build((STAY_LOGGED_IN_COOKIE, ""))
         .path("/")
         .http_only(true)
         .secure(true)
         .expires(OffsetDateTime::now_utc())
-        .finish()
+        .build()
         .to_string();
 
     spawn_blocking_child(move || token.delete(&db));
@@ -689,33 +687,33 @@ async fn extract_user(
             if let Some(user) = stay_signed_in.verify_token(&db) {
                 let user = FullUser::fetch_by_id(&db, user).unwrap();
 
-                span.record("id", &user.id);
-                span.record("name", &user.username.as_str());
+                span.record("id", user.id);
+                span.record("name", user.username.as_str());
 
                 if !user.locked {
-                    span.record("success", &true);
+                    span.record("success", true);
                     debug!("User successfully authenticated");
                     Ok(user)
                 } else {
                     let reason = UnauthorizedReason::Locked;
-                    span.record("success", &false);
-                    span.record("fail_reason", &reason.to_debug().as_str());
+                    span.record("success", false);
+                    span.record("fail_reason", reason.to_debug().as_str());
                     debug!("User locked");
 
                     Err(warp::reject::custom(Unauthorized { reason, redirect }))
                 }
             } else {
                 let reason = UnauthorizedReason::NotLoggedIn;
-                span.record("success", &false);
-                span.record("fail_reason", &reason.to_debug().as_str());
+                span.record("success", false);
+                span.record("fail_reason", reason.to_debug().as_str());
                 debug!("Invalid token");
 
                 Err(warp::reject::custom(Unauthorized { reason, redirect }))
             }
         } else {
             let reason = UnauthorizedReason::NotLoggedIn;
-            span.record("success", &false);
-            span.record("fail_reason", &reason.to_debug().as_str());
+            span.record("success", false);
+            span.record("fail_reason", reason.to_debug().as_str());
             debug!("No token");
 
             Err(warp::reject::custom(Unauthorized { reason, redirect }))

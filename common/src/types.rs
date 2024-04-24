@@ -1,8 +1,10 @@
-use std::num::NonZeroU64;
-use isixhosa::noun::NounClass;
-use serde::{Serialize, Deserialize};
-use crate::language::{ConjunctionFollowedBy, NounClassPrefixes, PartOfSpeech, Transitivity, WordLinkType};
+use crate::language::{
+    ConjunctionFollowedBy, NounClassPrefixes, PartOfSpeech, Transitivity, WordLinkType,
+};
 use crate::serialization::SerOnlyDisplay;
+use isixhosa::noun::NounClass;
+use serde::{Deserialize, Serialize};
+use std::num::NonZeroU64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExistingExample {

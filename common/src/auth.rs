@@ -48,7 +48,9 @@ impl Auth {
     }
 
     pub fn has_permissions(&self, permissions: Permissions) -> bool {
-        self.user().map(|user| user.permissions.contains(permissions)).unwrap_or_default()
+        self.user()
+            .map(|user| user.permissions.contains(permissions))
+            .unwrap_or_default()
     }
 
     pub fn username(&self) -> Option<&str> {
