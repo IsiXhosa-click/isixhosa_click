@@ -152,7 +152,13 @@ pub struct Config {
 
 impl Config {
     pub fn host_builder(host: &str, port: u16) -> uri::Builder {
-        let authority = Authority::from_str(&format!("{}:{}", host, port)).unwrap();
+        let authority = if port != 443 {
+            format!("{}:{}", host, port)
+        } else {
+            host.to_owned()
+        };
+
+        let authority = Authority::from_str(&authority).unwrap();
         Uri::builder().scheme("https").authority(authority)
     }
 }
