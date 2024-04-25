@@ -1,5 +1,5 @@
 use crate::language::{NounClassExt, NounClassPrefixes};
-use crate::serialization::SerOnlyDisplay;
+use crate::serialization::SerAndDisplayWithDisplayHtml;
 use crate::types::{PublicUserInfo, WordHit};
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
@@ -92,7 +92,7 @@ pub trait DisplayHtml {
     }
 }
 
-impl<T: DisplayHtml> DisplayHtml for SerOnlyDisplay<T> {
+impl<T: DisplayHtml> DisplayHtml for SerAndDisplayWithDisplayHtml<T> {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         self.0.fmt(f)
     }

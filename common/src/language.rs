@@ -163,21 +163,15 @@ impl AsRef<str> for Transitivity {
     }
 }
 
-impl Display for Transitivity {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl DisplayHtml for Transitivity {
+    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         let s = match self {
             Transitivity::Transitive => "transitive-only",
             Transitivity::Intransitive => "intransitive",
             Transitivity::Ambitransitive => "",
         };
 
-        f.write_str(s)
-    }
-}
-
-impl DisplayHtml for Transitivity {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
-        f.write_text(&format!("{}", self))
+        f.write_text(s)
     }
 
     fn is_empty_str(&self) -> bool {

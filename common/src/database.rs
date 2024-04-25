@@ -1,7 +1,7 @@
 use crate::language::{
     ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType,
 };
-use crate::serialization::{DiscrimOutOfRange, SerOnlyDisplay, WithDeleteSentinel};
+use crate::serialization::{DiscrimOutOfRange, SerAndDisplayWithDisplayHtml, WithDeleteSentinel};
 use crate::types::{ExistingExample, ExistingLinkedWord, ExistingWord, PublicUserInfo, WordHit};
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
@@ -371,11 +371,13 @@ impl WordHit {
             id: id.inner(),
             english: row.get("english")?,
             xhosa: row.get("xhosa")?,
-            part_of_speech: SerOnlyDisplay(row.get("part_of_speech")?),
+            part_of_speech: SerAndDisplayWithDisplayHtml(row.get("part_of_speech")?),
             is_plural: row.get("is_plural")?,
             is_inchoative: row.get("is_inchoative")?,
             is_informal: row.get("is_informal")?,
-            transitivity: row.get_with_sentinel("transitivity")?.map(SerOnlyDisplay),
+            transitivity: row
+                .get_with_sentinel("transitivity")?
+                .map(SerAndDisplayWithDisplayHtml),
             is_suggestion: id.is_suggested(),
             noun_class: row
                 .get_with_sentinel("noun_class")?

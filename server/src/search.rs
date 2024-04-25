@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::{GetWithSentinelExt, WordOrSuggestionId};
 use isixhosa_common::language::{NounClassExt, PartOfSpeech, Transitivity};
-use isixhosa_common::serialization::SerOnlyDisplay;
+use isixhosa_common::serialization::SerAndDisplayWithDisplayHtml;
 use isixhosa_common::types::WordHit;
 use num_enum::TryFromPrimitive;
 use ordered_float::OrderedFloat;
@@ -670,7 +670,8 @@ impl WordHitExt for WordHit {
                     doc
                 )
             })?;
-        let part_of_speech = SerOnlyDisplay(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
+        let part_of_speech =
+            SerAndDisplayWithDisplayHtml(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
 
         let is_suggestion = doc
             .get_first(schema_info.suggesting_user)
@@ -737,7 +738,8 @@ impl WordHitExt for WordHit {
             is_plural: get_bool(&doc, schema_info.is_plural, "is_plural")?,
             is_inchoative: get_bool(&doc, schema_info.is_inchoative, "is_inchoative")?,
             is_informal: get_bool(&doc, schema_info.is_informal, "is_informal")?,
-            transitivity: get_with_sentinel(&doc, schema_info.transitivity).map(SerOnlyDisplay),
+            transitivity: get_with_sentinel(&doc, schema_info.transitivity)
+                .map(SerAndDisplayWithDisplayHtml),
             is_suggestion,
             noun_class: get_with_sentinel(&doc, schema_info.noun_class)
                 .map(|c: NounClass| c.to_prefixes()),
@@ -751,11 +753,11 @@ impl From<WordDocument> for WordHit {
             id: d.id.inner(),
             english: d.english,
             xhosa: d.xhosa,
-            part_of_speech: SerOnlyDisplay(d.part_of_speech),
+            part_of_speech: SerAndDisplayWithDisplayHtml(d.part_of_speech),
             is_plural: d.is_plural,
             is_inchoative: d.is_inchoative,
             is_informal: d.is_informal,
-            transitivity: d.transitivity.map(SerOnlyDisplay),
+            transitivity: d.transitivity.map(SerAndDisplayWithDisplayHtml),
             is_suggestion: d.suggesting_user.is_some(),
             noun_class: d.noun_class.map(|c| c.to_prefixes()),
         }

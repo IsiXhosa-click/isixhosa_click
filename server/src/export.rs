@@ -7,6 +7,7 @@ use genanki_rs::{Deck, Field, Model, ModelType, Note, Template};
 use isixhosa::noun::NounClass;
 use isixhosa_common::format::DisplayHtml;
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
+use isixhosa_common::serialization::SerAndDisplayWithDisplayHtml;
 use isixhosa_common::types::{ExistingExample, ExistingWord};
 use rusqlite::backup::Backup;
 use rusqlite::{params, OptionalExtension};
@@ -102,7 +103,7 @@ pub struct WordRecord {
     pub is_inchoative: bool,
     pub is_informal: bool,
     #[serde_as(as = "NoneAsEmptyString")]
-    pub transitivity: Option<Transitivity>,
+    pub transitivity: Option<SerAndDisplayWithDisplayHtml<Transitivity>>,
     #[serde_as(as = "NoneAsEmptyString")]
     pub followed_by: Option<ConjunctionFollowedBy>,
     pub noun_class: Option<NounClass>,
@@ -213,7 +214,7 @@ impl WordRecord {
         let plural = if self.is_plural { "plural" } else { "" };
         let transitivity = self
             .transitivity
-            .map(|t| format!("{}", t))
+            .map(|t| t.to_plaintext().to_string())
             .unwrap_or_default();
 
         let en_extra = [
@@ -301,7 +302,7 @@ impl From<ExistingWord> for WordRecord {
             is_plural: w.is_plural,
             is_inchoative: w.is_inchoative,
             is_informal: w.is_informal,
-            transitivity: w.transitivity,
+            transitivity: w.transitivity.map(SerAndDisplayWithDisplayHtml),
             followed_by: w.followed_by,
             noun_class: w.noun_class,
             note: w.note,
@@ -467,7 +468,7 @@ fn restore_words(cfg: &Config, conn: &Connection) {
                 w.is_plural,
                 w.is_inchoative,
                 w.is_informal,
-                w.transitivity,
+                w.transitivity.map(|s| s.0),
                 w.followed_by.unwrap_or_default(),
                 w.noun_class.map(|x| x as u8),
                 w.note
