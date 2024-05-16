@@ -30,7 +30,7 @@ pub fn import_zulu_lsp(cfg: Config, path: &Path) -> Result<()> {
 
 /// Extract all the terms contained in the line
 fn process_line(conn: &Connection, line: String) -> Result<()> {
-    let (english, zulu) = line.split_once(":").context("No translation found")?;
+    let (english, zulu) = line.split_once(':').context("No translation found")?;
 
     let word_ids: Vec<i64> = process_word(english)
         .cartesian_product(process_word(zulu))
