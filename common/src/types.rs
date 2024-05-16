@@ -48,6 +48,22 @@ pub struct ExistingWord {
     pub contributors: Vec<PublicUserInfo>,
 }
 
+impl ExistingWord {
+    /// Returns `true` if the word has any grammatical information specified
+    pub fn has_grammatical_information(&self) -> bool {
+        self.part_of_speech.is_some()
+            || !self.xhosa_tone_markings.is_empty()
+            || !self.infinitive.is_empty()
+            || self.is_plural
+            || self.is_inchoative
+            || self.transitivity.is_some()
+            || self.followed_by.is_some()
+            || self.noun_class.is_some()
+            || !self.note.is_empty()
+            || self.is_informal
+    }
+}
+
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Deserialize, Serialize)]
 pub struct WordHit {
     pub id: u64,

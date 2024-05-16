@@ -181,6 +181,11 @@
                                     {%- endif -%}
                                 </tbody>
                             </table>
+
+                            {%- if !word.has_grammatical_information() -%}
+                                This word doesn't have any further information yet. You can help by
+                                <a href="/word/{{ word.word_id }}/edit">editing this entry</a>.
+                            {%- endif -%}
                         </div>
 
                         {%- if !word.examples.is_empty() -%}
