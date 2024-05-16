@@ -232,16 +232,20 @@ macro_rules! impl_display_html {
                 f.write_text(" - ")?;
                 DisplayHtml::fmt(&self.xhosa, f)?;
 
-                f.write_text(" (")?;
-                f.join_if_non_empty(" ", [
-                    &if self.is_informal { "informal" } else { "" },
-                    &if self.is_inchoative { "inchoative" } else { "" },
-                    &self.transitivity as &dyn DisplayHtml,
-                    &if self.is_plural { "plural" } else { "" },
-                    &self.part_of_speech,
-                    &self.noun_class.as_ref().map(NounClassInHit),
-                ])?;
-                f.write_text(")")
+                if self.has_grammatical_information() {
+                    f.write_text(" (")?;
+                    f.join_if_non_empty(" ", [
+                        &if self.is_informal { "informal" } else { "" },
+                        &if self.is_inchoative { "inchoative" } else { "" },
+                        &self.transitivity as &dyn DisplayHtml,
+                        &if self.is_plural { "plural" } else { "" },
+                        &self.part_of_speech,
+                        &self.noun_class.as_ref().map(NounClassInHit),
+                    ])?;
+                    f.write_text(")")?;
+                }
+
+                Ok(())
             }
 
             fn is_empty_str(&self) -> bool {

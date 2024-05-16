@@ -93,6 +93,16 @@ impl WordHit {
             is_suggestion: false,
         }
     }
+
+    pub fn has_grammatical_information(&self) -> bool {
+        self.part_of_speech.is_some()
+            || self.is_plural
+            || self.is_inchoative
+            || self.transitivity.is_some()
+            || self.noun_class.is_some()
+            || self.is_informal
+    }
+
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
