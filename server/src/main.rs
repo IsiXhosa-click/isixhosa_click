@@ -227,7 +227,7 @@ fn init_tracing(cli: &CliArgs) {
         .with_trace_config(
             opentelemetry_sdk::trace::config().with_resource(Resource::new(vec![KeyValue::new(
                 opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                "isixhosa-click",
+                format!("isixhosa-click-{}", cli.site),
             )])),
         )
         .install_batch(opentelemetry_sdk::runtime::Tokio)
