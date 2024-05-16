@@ -2,8 +2,9 @@ use crate::auth::{random_string_token, FullUser, StaySignedInToken};
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
+use fallible_iterator::FallibleIterator;
 use isixhosa_common::auth::Permissions;
-use isixhosa_common::database::{PublicAccessDb, UserAccessDb};
+use isixhosa_common::database::{ModeratorAccessDb, PublicAccessDb, UserAccessDb};
 use openid::{Token, Userinfo};
 use r2d2_sqlite::rusqlite::Row;
 use rusqlite::{params, OptionalExtension};
@@ -84,6 +85,72 @@ impl FullUser {
         Span::current().record("found", user.is_some());
 
         user
+    }
+
+    #[instrument(level = "info", name = "Fetch all users", skip_all)]
+    pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<FullUser> {
+        const SELECT: &str = "
+            SELECT
+                user_id, username, display_name, email, is_moderator, is_administrator, locked
+            FROM users;
+        ";
+
+        let conn = db.get().unwrap();
+
+        #[allow(clippy::redundant_closure)] // lifetime issue
+        let users = conn
+            .prepare(SELECT)
+            .unwrap()
+            .query(params!())
+            .unwrap()
+            .map(|row| FullUser::try_from(row))
+            .collect()
+            .unwrap();
+
+        users
+    }
+
+    #[instrument(level = "info", name = "Set user role", skip(db))]
+    pub fn set_role_by_email(
+        db: &impl ModeratorAccessDb,
+        email: String,
+        role: Permissions,
+    ) -> bool {
+        const UPDATE: &str =
+            "UPDATE users SET is_moderator = ?1, is_administrator = ?2 WHERE email = ?3;";
+
+        let (is_mod, is_admin) = match role {
+            Permissions::User => (false, false),
+            Permissions::Moderator => (true, false),
+            Permissions::Administrator => (true, true),
+        };
+
+        let conn = db.get().unwrap();
+
+        #[allow(clippy::redundant_closure)] // lifetime issue
+        let changed = conn
+            .prepare(UPDATE)
+            .unwrap()
+            .execute(params![is_mod, is_admin, email])
+            .unwrap();
+
+        changed != 0
+    }
+
+    #[instrument(level = "info", name = "Set user to locked", skip(db))]
+    pub fn set_locked_by_email(db: &impl ModeratorAccessDb, email: String, locked: bool) -> bool {
+        const UPDATE: &str = "UPDATE users SET locked = ?1 WHERE email = ?2;";
+
+        let conn = db.get().unwrap();
+
+        #[allow(clippy::redundant_closure)] // lifetime issue
+        let changed = conn
+            .prepare(UPDATE)
+            .unwrap()
+            .execute(params![locked, email])
+            .unwrap();
+
+        changed != 0
     }
 
     #[instrument(name = "Register user", skip(db, userinfo))]

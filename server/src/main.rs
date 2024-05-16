@@ -78,6 +78,7 @@ mod search;
 mod serialization;
 mod session;
 mod submit;
+mod user_management;
 
 pub use config::Config;
 
@@ -113,11 +114,42 @@ enum Commands {
         /// The path of the dictionary file
         path: PathBuf,
     },
+    /// Commands relating to user management
+    User(UserCommandArgs),
+}
+
+#[derive(Parser)]
+struct UserCommandArgs {
+    #[command(subcommand)]
+    command: UserCommand,
+}
+
+#[derive(Subcommand, Clone)]
+enum UserCommand {
+    /// Set a user's permissions
+    SetRole {
+        /// The user's email
+        user: String,
+        /// The user's new role
+        role: Permissions,
+    },
+    /// Lock a user so that they cannot log in - this amounts to a ban but is not necessarily
+    /// because of bad behaviour (e.g., the user could have disabled their account voluntarily).
+    Lock {
+        /// The user's email
+        user: String,
+    },
+    /// Unlock a user so they can log in again.
+    Unlock {
+        /// The user's email
+        user: String,
+    },
+    /// List all users
+    List,
 }
 
 fn main() {
     let cli = CliArgs::parse();
-    println!("STATIC_LAST_CHANGED = {STATIC_LAST_CHANGED}");
     let cfg: Config = confy::load("isixhosa_click", Some(cli.site.as_ref())).unwrap();
 
     match cli.command {
@@ -131,6 +163,7 @@ fn main() {
         Commands::Backup => export::run_daily_tasks(cfg),
         Commands::Restore => export::restore(cfg),
         Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path).unwrap(),
+        Commands::User(command) => user_management::run_command(cfg, command.command),
     }
 }
 

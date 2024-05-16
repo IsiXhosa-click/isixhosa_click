@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::num::NonZeroU64;
 
 #[derive(Clone, Debug)]
@@ -7,11 +8,27 @@ pub struct User {
     pub permissions: Permissions,
 }
 
+#[cfg_attr(feature = "server", derive(clap::ValueEnum))]
 #[derive(PartialEq, Eq, Ord, PartialOrd, Clone, Copy, Debug)]
 pub enum Permissions {
+    /// A regular user
     User,
+    /// A moderator who is able to approve suggestions
     Moderator,
+    /// An administrator who is able to configure the site itself
     Administrator,
+}
+
+impl Display for Permissions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Permissions::User => "User",
+            Permissions::Moderator => "Moderator",
+            Permissions::Administrator => "Administrator",
+        };
+
+        f.write_str(s)
+    }
 }
 
 impl Permissions {

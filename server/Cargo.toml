@@ -50,6 +50,7 @@ ordered-float = "4.2.0"
 csv = "1.1.6"
 tempdir = "0.3.7"
 walkdir = "2.3.2"
+tabled = "0.15.0"
 itertools = "0.12.1"
 clap = { version = "4.5.4", features = ["derive"] }
 
