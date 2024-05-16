@@ -1,4 +1,4 @@
-use crate::auth::FullUser;
+use crate::auth::{FullUser, StaySignedInToken};
 use crate::{set_up_db, Config, UserCommand};
 use isixhosa_common::database::db_impl::DbImpl;
 use r2d2::Pool;
@@ -41,6 +41,10 @@ pub fn run_command(cfg: Config, command: UserCommand) {
         }
         UserCommand::List => {
             println!("{}", Table::new(FullUser::fetch_all(&db)));
+        }
+        UserCommand::LogoutAll => {
+            StaySignedInToken::delete_all(&db);
+            println!("Logged out all users")
         }
     }
 }

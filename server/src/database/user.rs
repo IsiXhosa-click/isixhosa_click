@@ -1,6 +1,4 @@
 use crate::auth::{random_string_token, FullUser, StaySignedInToken};
-use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;
 use isixhosa_common::auth::Permissions;
@@ -8,8 +6,10 @@ use isixhosa_common::database::{ModeratorAccessDb, PublicAccessDb, UserAccessDb}
 use openid::{Token, Userinfo};
 use r2d2_sqlite::rusqlite::Row;
 use rusqlite::{params, OptionalExtension};
+use sha2::Digest;
 use std::convert::TryFrom;
 use std::num::NonZeroU64;
+use subtle::ConstantTimeEq;
 use tracing::{debug_span, instrument, Span};
 
 impl TryFrom<&Row<'_>> for FullUser {
@@ -201,26 +201,36 @@ impl StaySignedInToken {
             RETURNING token_id;
         ";
 
-        let argon2 = Argon2::default();
+        let mut hasher = sha2::Sha256::new();
         let token = random_string_token();
-        let salt = SaltString::generate(rand::thread_rng());
+        let salt = random_string_token();
+        hasher.update(&salt);
+        hasher.update(&token);
 
-        let token_hash = argon2.hash_password(token.as_bytes(), &salt).unwrap();
+        let token_hash = format!("{:x}", hasher.finalize());
+        let token_encoded = format!("{salt}_{token_hash}");
 
         let conn = db.get().unwrap();
         let token_id: i64 = conn
             .prepare(INSERT)
             .unwrap()
-            .query_row(
-                params![token_hash.to_string(), user_id, Utc::now()],
-                |row| row.get("token_id"),
-            )
+            .query_row(params![token_encoded, user_id, Utc::now()], |row| {
+                row.get("token_id")
+            })
             .unwrap();
 
         StaySignedInToken {
             token,
             token_id: token_id as u64,
         }
+    }
+
+    #[instrument(name = "Delete all stay-signed-in tokens", skip_all)]
+    pub fn delete_all(db: &impl ModeratorAccessDb) {
+        const DELETE: &str = "DELETE FROM login_tokens;";
+
+        let conn = db.get().unwrap();
+        conn.prepare(DELETE).unwrap().execute(params![]).unwrap();
     }
 
     #[instrument(name = "Delete stay-signed-in token", fields(token_id = self.token_id), skip_all)]
@@ -253,12 +263,19 @@ impl StaySignedInToken {
             })?;
 
         let verified = debug_span!("Verify hash").in_scope(|| {
-            let password_hash = &PasswordHash::new(&token_hash).ok()?;
-            let argon2 = Argon2::default();
+            let (salt, hash) = token_hash.split_once('_')?;
+            let mut hasher = sha2::Sha256::new();
+            hasher.update(salt);
+            hasher.update(&self.token);
+            let our_hash = format!("{:x}", hasher.finalize());
 
-            argon2
-                .verify_password(self.token.as_bytes(), password_hash)
-                .ok()
+            let verified = our_hash.as_bytes().ct_eq(hash.as_bytes()).into();
+
+            if verified {
+                Some(())
+            } else {
+                None
+            }
         });
 
         verified.map(|_| {

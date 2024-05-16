@@ -102,7 +102,6 @@ impl WordHit {
             || self.noun_class.is_some()
             || self.is_informal
     }
-
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

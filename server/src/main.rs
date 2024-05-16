@@ -146,6 +146,8 @@ enum UserCommand {
     },
     /// List all users
     List,
+    /// Logs out all users
+    LogoutAll,
 }
 
 fn main() {
@@ -407,6 +409,7 @@ macro_rules! wrap_filter {
                     path = %info.path(),
                 )
             }))
+            .with(warp::reply::with::header(warp::http::header::X_FRAME_OPTIONS, "Deny"))
             .with(gzip())
     }
 }

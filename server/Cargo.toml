@@ -53,6 +53,7 @@ walkdir = "2.3.2"
 tabled = "0.15.0"
 itertools = "0.12.1"
 clap = { version = "4.5.4", features = ["derive"] }
+subtle = "2.5.0"
 
 # We are kind pinned to 0.25 of rusqlite (and versions of its friends) until genanki updates to 0.31
 rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly

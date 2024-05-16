@@ -2,7 +2,7 @@ use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use crate::{spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
-use cookie::{Cookie, Expiration};
+use cookie::{Cookie, Expiration, SameSite};
 use dashmap::DashMap;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::db_impl::DbImpl;
@@ -391,6 +391,7 @@ async fn reply_authorize(
         .path("/")
         .http_only(true)
         .secure(true)
+        .same_site(SameSite::Lax)
         .expires(Expiration::Session)
         .build()
         .to_string();
@@ -523,14 +524,22 @@ async fn reply_login(
     Ok(response)
 }
 
+// This is to make sure that we still get the cookie even with Same-Site set to strict
+// https://stackoverflow.com/questions/42216700/how-can-i-redirect-after-oauth2-with-samesite-strict-and-still-get-my-cookies
+#[derive(Template)]
+#[template(path = "redirect.askama.html")]
+struct AuthRedirect {
+    redirect_url: String,
+}
+
 async fn reply_insert_session(
     db: impl PublicAccessDb,
     session_id: SignInSessionId,
     user: FullUser,
     host_uri_builder: uri::Builder,
     redirect_url: Option<String>,
-) -> impl warp::Reply {
-    const SIX_MONTHS: Duration = Duration::from_secs(60 * 60 * 24 * 31 * 6);
+) -> impl Reply {
+    const ONE_MONTH: Duration = Duration::from_secs(60 * 60 * 24 * 31);
 
     let redirect_url = redirect_url.unwrap_or_else(|| {
         host_uri_builder
@@ -550,18 +559,18 @@ async fn reply_insert_session(
     .path("/")
     .http_only(true)
     .secure(true)
-    .expires(OffsetDateTime::now_utc() + SIX_MONTHS)
+    .same_site(SameSite::Strict)
+    .expires(OffsetDateTime::now_utc() + ONE_MONTH)
     .build()
     .to_string();
 
     IN_PROGRESS_SIGN_INS.remove(&session_id);
 
-    Response::builder()
-        .status(StatusCode::FOUND)
-        .header(warp::http::header::LOCATION, redirect_url)
-        .header(warp::http::header::SET_COOKIE, authorization_cookie)
-        .body("")
-        .unwrap()
+    warp::reply::with_header(
+        askama_warp::reply(&AuthRedirect { redirect_url }),
+        warp::http::header::SET_COOKIE,
+        authorization_cookie,
+    )
 }
 
 async fn signup_form_submit(
@@ -645,6 +654,7 @@ async fn reply_logout(
         .path("/")
         .http_only(true)
         .secure(true)
+        .same_site(SameSite::Strict)
         .expires(OffsetDateTime::now_utc())
         .build()
         .to_string();

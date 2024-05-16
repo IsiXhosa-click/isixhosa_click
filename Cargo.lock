@@ -1644,6 +1644,7 @@ dependencies = [
  "sha2",
  "smallvec",
  "strsim 0.11.1",
+ "subtle",
  "tabled",
  "tantivy",
  "tempdir",
