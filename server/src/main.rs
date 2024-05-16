@@ -175,9 +175,9 @@ impl Default for Config {
             log_path: PathBuf::from("log/"),
             http_port: 8080,
             https_port: 8443,
-            host: "127.0.0.01".to_string(),
-            oidc_client: "".to_string(),
-            oidc_secret: "".to_string(),
+            host: "127.0.0.1".to_string(),
+            oidc_client: "DUMMY_CLIENT".to_string(),
+            oidc_secret: "DUMMY_SECRET".to_string(),
             plaintext_export_path: PathBuf::from("isixhosa_click_export/"),
         }
     }
@@ -505,8 +505,6 @@ async fn server(cfg: Config) {
             })
             .filter(|entry: &String| !entry.contains("LICENSE"))
             .partition::<Vec<_>, _>(|entry| ends_with(entry, &["png", "svg", "woff2", "ico"]));
-
-        println!("sfiles {:?}", static_files);
 
         let last_modified_static = walk()
             .filter_map(|entry| entry.metadata().ok())

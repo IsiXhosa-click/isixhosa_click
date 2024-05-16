@@ -7,6 +7,12 @@ resolver = "2"
 
 exclude = ["wasm"]
 
+[profile.dev]
+debug = 1
+
+[profile.dev.build-override]
+opt-level = 3
+
 [profile.release]
 lto = "fat"
 

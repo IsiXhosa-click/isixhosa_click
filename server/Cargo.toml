@@ -6,7 +6,8 @@ edition = "2021"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
-isixhosa_common = { path = "../common", features = ["server"] }
+isixhosa_common = { path = "../common", features = ["server"], version = "*" }
+isixhosa = { version = "0.2.0", features = ["with-serde-1", "with-num_enum-0_7"] }
 serde = { version = "1", features = ["derive"] }
 serde_qs = "0.13.0"
 serde_with = "3.7.0"
@@ -23,7 +24,6 @@ tracing-subscriber = "0.3.1"
 tracing-opentelemetry = "0.23.0"
 opentelemetry = "0.22.0"
 opentelemetry-semantic-conventions = "0.14.0"
-opentelemetry-jaeger = { version = "0.21.0", features = ["rt-tokio"] }
 opentelemetry_sdk = { version = "0.22.1", features = ["rt-tokio"] }
 opentelemetry-jaeger-propagator = { version = "0.1.0"}
 opentelemetry-otlp = { version = "0.15.0", features = ["grpc-tonic"] }
@@ -31,12 +31,11 @@ chrono = "0.4"
 r2d2 = "0.8"
 serde_json = "1"
 num_enum = "0.7.2"
-xtra = { git = "https://github.com/Restioson/xtra", features = ["tokio", "sink", "instrumentation"] }
+xtra = { version = "0.6.0", features = ["tokio", "sink", "instrumentation"] }
 tantivy = "0.22.0"
 anyhow = "1"
 num_cpus = "1"
 confy = "0.6.1"
-isixhosa = { version = "0.2.0", features = ["with-serde-1", "with-num_enum-0_7"] }
 openid = "0.14.0"
 url = "2.2.2"
 rand = "0.8.3"
@@ -51,7 +50,6 @@ ordered-float = "4.2.0"
 csv = "1.1.6"
 tempdir = "0.3.7"
 walkdir = "2.3.2"
-itertools = "0.12.1"
 
 # We are kind pinned to 0.25 of rusqlite (and versions of its friends) until genanki updates to 0.31
 rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly
