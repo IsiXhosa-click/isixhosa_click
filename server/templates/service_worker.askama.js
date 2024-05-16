@@ -7,17 +7,18 @@ const BIN_FILES = [[ static_bin_files|json|safe ]];
 
 self.addEventListener("install", (event) => {
     console.log("Install!");
+    self.skipWaiting();
+
     event.waitUntil(
         (async () => {
             const site_files_cache = await caches.open(STATIC_FILES_CACHE);
             await site_files_cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
-            await site_files_cache.addAll(SITE_FILES);
+            await site_files_cache.addAll(SITE_FILES.map((url) => new Request(url, { cache: 'reload' })));
 
             const bin_files_cache = await caches.open(STATIC_BIN_FILES_CACHE);
-            await bin_files_cache.addAll(BIN_FILES);
+            await bin_files_cache.addAll(BIN_FILES.map((url) => new Request(url, { cache: 'reload' })));
         })()
     );
-    this.skipWaiting();
 });
 
 self.addEventListener("activate", function(event) {
@@ -46,7 +47,6 @@ self.addEventListener("activate", (event) => {
     );
 
     console.log("I am a service worker with cache from unix epoch [[ STATIC_LAST_CHANGED ]]");
-    self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {

@@ -150,14 +150,20 @@ export function formatResult(result, elt) {
         transitive = result.transitivity + " ";
     }
 
-    let part_of_speech = result.part_of_speech;
-    if (part_of_speech === "adjective") {
+    let part_of_speech = "";
+    if (result.part_of_speech === "adjective") {
         part_of_speech = "adjective (isiphawuli)";
-    } else if (part_of_speech === "relative") {
-        part_of_speech = "relative";
+    } else if (result.part_of_speech != null) {
+        part_of_speech = result.part_of_speech;
     }
 
-    let text = `${result.english} - ${result.xhosa} (${inchoative}${informal}${transitive}${plural}${part_of_speech}`;
+    let grammar_info = `${inchoative}${informal}${transitive}${plural}${part_of_speech}`;
+    let has_bracketed_info = grammar_info !== "" || result.noun_class != null;
+    let text = `${result.english} - ${result.xhosa}`;
+
+    if (has_bracketed_info) {
+        text += ` (${grammar_info}`;
+    }
 
     if (elt != null) {
         elt.innerText = text;
@@ -181,7 +187,9 @@ export function formatResult(result, elt) {
             }
         }
 
-        elt.innerHTML += ")";
+        if (has_bracketed_info) {
+            elt.innerHTML += ")";
+        }
     } else {
         let noun_class = "";
         if (result.noun_class != null) {
@@ -191,7 +199,12 @@ export function formatResult(result, elt) {
                 noun_class = ` - class ${result.noun_class.singular}`;
             }
         }
+        text += noun_class;
 
-        return text + `${noun_class})`;
+        if (has_bracketed_info) {
+            text += ")";
+        }
+
+        return text;
     }
 }

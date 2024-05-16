@@ -89,7 +89,7 @@ const STATIC_BIN_FILES_LAST_CHANGED: &str = env!("STATIC_BIN_FILES_LAST_CHANGED"
 #[command(about = "Online, live dictionary software", long_about = None)]
 struct CliArgs {
     /// The site. Each site has a distinct database, export directory, and config file.
-    #[arg(short, long)]
+    #[arg(short, long, required = true)]
     site: String,
     /// Whether to enable OpenTelemetry protocol (OTLP) trace exporting.
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
@@ -117,6 +117,7 @@ enum Commands {
 
 fn main() {
     let cli = CliArgs::parse();
+    println!("STATIC_LAST_CHANGED = {STATIC_LAST_CHANGED}");
     let cfg: Config = confy::load("isixhosa_click", Some(cli.site.as_ref())).unwrap();
 
     match cli.command {
