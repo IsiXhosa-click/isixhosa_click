@@ -1,0 +1,116 @@
+{%- macro navbar() -%}
+    <nav class="menu" id="menu">
+        <a id="site_name_container" href="/">
+            <div id="site_icon"><img src="/icons/icon-192.png" width="40" height="40" alt="Site icon"></div>
+            <span id="site_name">IsiXhosa.click Live Dictionary</span>
+        </a>
+        <button id="hamburger">
+            <span class="material-icons">menu</span>
+        </button>
+
+        <a href="/search">Search</a>
+        <a href="/about">About</a>
+        <a href="/submit">Submit a word</a>
+        <a href="/wordle">Wordle</a>
+        {%- if auth.has_permissions(Permissions::Moderator) -%}
+            <a href="/moderation">Moderation</a>
+        {%- endif -%}
+
+        {%- if auth.has_permissions(Permissions::Administrator) -%}
+            <a href="/admin/jaeger">Tracing</a>
+        {%-endif -%}
+
+        {%- match auth.username() -%}
+            {%- when None -%}
+                <div id="login_bar_container">
+                    <div>
+                        <a href="/login/oauth2/authorization/oidc">
+                            <div id="login_bar" class="row_list not_signed_in">
+                                <img id="login_icon" alt="Google logo" width="54" height="54" src="/google.svg">
+                                <div id="login_bar_text">Sign in with Google</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            {%- when Some with (username) -%}
+                <div id="login_bar_container">
+                    <div>
+                        <div>
+                            <button id="login_bar" class="row_list">
+                                <div class="material-icons" id="user_icon">account_circle</div>
+                                <div id="login_bar_text">{{- username -}}</div>
+                            </button>
+
+                            <div id="login_popover_container">
+                                <div id="login_popover" hidden>
+                                    <a href="/logout/">
+                                        <div class="material-icons login_popover_icon">logout</div>
+                                        <div class="login_popover_text">Log out</div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        {%- endmatch -%}
+    </nav>
+
+    <script type="module">
+        window.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("hamburger").addEventListener("click", function () {
+                let menu = document.getElementById("menu");
+
+                if (menu.classList.contains("open")) {
+                    menu.classList.remove("open");
+                } else {
+                    menu.classList.add("open");
+                }
+            });
+
+            document.getElementById("login_bar").addEventListener("click", function () {
+                let menu = document.getElementById("login_popover");
+                menu.hidden = !menu.hidden;
+            });
+
+            document.getElementById("main_wrap").addEventListener("click", function () {
+                document.getElementById("menu").classList.remove("open");
+            });
+        });
+    </script>
+{%- endmacro -%}
+
+{%- macro meta() -%}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta name="og:type" content="website"/>
+    <meta name="og:site_name" content="IsiXhosa.click"/>
+    <meta name="og:logo" content="https://isixhosa.click/icons/icon-192.png"/>
+    <meta name="og:image" content="https://isixhosa.click/icons/icon-192.png"/>
+    <link rel="stylesheet" href="/style.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
+    <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#5bbad5">
+    <link rel="shortcut icon" href="/icons/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-config" content="/icons/browserconfig.xml">
+    <meta name="theme-color" content="#484848">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="preload" type="image/png" as="image" href="/icons/icon-192.png">
+
+    <script type="module">
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service_worker.js').then(function(r) {}, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+{%- endmacro -%}
+
+{%- macro description(desc) -%}
+    <meta name="og:description" content="{{ desc }}"/>
+    <meta name="description" content="{{ desc }}"/>
+{%- endmacro -%}

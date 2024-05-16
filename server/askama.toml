@@ -1,0 +1,7 @@
+[general]
+dirs = ["templates", "../common/templates"]
+
+[[syntax]]
+name = "js"
+expr_start = "[["
+expr_end = "]]"

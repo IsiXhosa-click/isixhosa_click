@@ -1,0 +1,49 @@
+{%- import "macros.askama.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <title>Wordle - IsiXhosa.click</title>
+    <meta name="og:title" content="Wordle - IsiXhosa.click"/>
+    {%- call macros::description("Xhosa Wordle on IsiXhosa.click!") -%}
+    <meta name="og:url" content="https://isixhosa.wordle/"/>
+    {%- call macros::meta() -%}
+    <link rel="stylesheet" href="/wordle.css"/>
+</head>
+
+<body>
+    {%- call macros::navbar() -%}
+    <div id="main_wrap">
+        <div id="loading_spinner_container">
+             <div id="loading_spinner"></div>
+        </div>
+
+        <script type="module">
+            import init from '/wasm/isixhosa_wordle.js';
+
+            const supported = (() => {
+                try {
+                    if (typeof WebAssembly === "object"
+                        && typeof WebAssembly.instantiate === "function") {
+                        const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
+                        if (module instanceof WebAssembly.Module)
+                            return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
+                    }
+                } catch (e) {
+                }
+                return false;
+            })();
+
+            if (supported) {
+                  init();
+            } else {
+                let msg = document.createElement("p");
+                msg.innerText = "WebAssembly is required to play. Sorry!";
+                document.getElementById("main_wrap").appendChild(msg);
+            }
+        </script>
+
+        <noscript>JavaScript and WebAssembly are required to play. Sorry!</noscript>
+    </div>
+</body>
+</html>

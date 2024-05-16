@@ -1,0 +1,61 @@
+[package]
+name = "isixhosa_server"
+version = "0.1.0"
+authors = ["Restioson <restiosondev@gmail.com>"]
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+isixhosa_common = { path = "../common", features = ["server"], version = "*" }
+isixhosa = { version = "0.2.0", features = ["with-serde-1", "with-num_enum-0_7"] }
+serde = { version = "1", features = ["derive"] }
+serde_qs = "0.13.0"
+serde_with = "3.7.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+futures = "0.3"
+warp = { version = "0.3", features = ["tls", "compression"] }
+askama = { version = "0.12.1", features = ["serde-json"] }
+askama_warp = { version = "0.13.0" }
+warp-reverse-proxy = "1.0.0"
+html-minifier = "5.0.0"
+minifier = "0.3.0"
+tracing = { version = "0.1.29", features = ["attributes"] }
+tracing-subscriber = "0.3.1"
+tracing-opentelemetry = "0.23.0"
+opentelemetry = "0.22.0"
+opentelemetry-semantic-conventions = "0.14.0"
+opentelemetry_sdk = { version = "0.22.1", features = ["rt-tokio"] }
+opentelemetry-jaeger-propagator = { version = "0.1.0"}
+opentelemetry-otlp = { version = "0.15.0", features = ["grpc-tonic"] }
+chrono = "0.4"
+r2d2 = "0.8"
+serde_json = "1"
+num_enum = "0.7.2"
+xtra = { version = "0.6.0", features = ["tokio", "sink", "instrumentation"] }
+tantivy = "0.22.0"
+anyhow = "1"
+num_cpus = "1"
+confy = "0.6.1"
+openid = "0.14.0"
+url = "2.2.2"
+rand = "0.8.3"
+sha2 = "0.10.8"
+cookie = "0.18.1"
+lazy_static = "1.4.0"
+percent-encoding = "2.1.0"
+dashmap = "5.5.3"
+argon2 = { version = "0.5.3", features = ["password-hash"] }
+strsim = "0.11.1"
+ordered-float = "4.2.0"
+csv = "1.1.6"
+tempdir = "0.3.7"
+walkdir = "2.3.2"
+
+# We are kind pinned to 0.25 of rusqlite (and versions of its friends) until genanki updates to 0.31
+rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly
+r2d2_sqlite = "0.18.0"
+genanki-rs = "0.4.0"
+fallible-iterator = "0.2.0"
+
+smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability
+

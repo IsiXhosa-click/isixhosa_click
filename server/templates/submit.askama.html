@@ -1,0 +1,419 @@
+{%- import "macros.askama.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <title>Submit a word - IsiXhosa.click</title>
+    <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
+    <meta name="og:url" content="https://isixhosa.click/submit"/>
+    {%- call macros::description("Submit a word to the free, open, online IsiXhosa.click dictionary for Xhosa and English.") -%}
+    <link rel="stylesheet" href="/submit.css">
+    {%- call macros::meta() -%}
+</head>
+
+<body>
+    {%- call macros::navbar() -%}
+
+    <div id="main_wrap">
+        <header>
+            <h1>Submit a word</h1>
+        </header>
+
+        {%- match previous_success -%}
+            {%- when Some with (true) -%}
+                <script>
+                    /* HACK(restioson): stop F5 from resubmitting form */
+                    if (window.history.replaceState) {
+                        window.history.replaceState(null, null, window.location.href);
+                    }
+                </script>
+            {%- when other -%}
+        {%- endmatch -%}
+
+        <main>
+            {%- match previous_success -%}
+                {%- when Some with (true) -%}
+                    <p>Word successfully submitted!</p>
+                {%- when Some with (false) -%}
+                    <p>There was an error submitting the word.</p>
+                {%- when None -%}
+            {%- endmatch -%}
+
+            <noscript>
+                <p>
+                    <strong>
+                        Javascript is required for this page to work properly due to the complex nature of the form.
+                        Apologies!
+                    </strong>
+                </p>
+            </noscript>
+
+            {%- let route -%}
+
+            {%- match action -%}
+                {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _, suggestion_anchor_ord: _ } -%}
+                    {%- let route = "/moderation/edit".to_string() -%}
+                {%- when SubmitFormAction::SubmitNewWord -%}
+                    {%- let route = "/submit".to_string() -%}
+                {%- when SubmitFormAction::EditExisting with (id) -%}
+                    {%- let route = format!("/word/{}", id) -%}
+            {%- endmatch -%}
+
+            <form id="submit_word" action="{{ route }}" method="post" enctype="application/x-www-form-urlencoded"
+                {#-#} class="column_list"
+            >
+                {%- let existing_id -%}
+
+                {%- match action -%}
+                    {%- when SubmitFormAction::EditSuggestion with { suggestion_id, existing_id: exist, suggestion_anchor_ord } -%}
+                        <select name="suggestion_id" hidden><option value="{{ suggestion_id }}"></select>
+                        <select name="suggestion_anchor_ord" hidden><option value="{{ suggestion_anchor_ord }}"></select>
+                        {%- let existing_id = exist.clone() -%}
+                    {%- when SubmitFormAction::EditExisting with (id) -%}
+                         {%- let existing_id = Some(id.clone()) -%}
+                    {%- when other -%}
+                        {%- let existing_id = None -%}
+                {%- endmatch -%}
+
+                {%- match existing_id -%}
+                    {%- when Some with (existing_id) -%}
+                        <select name="existing_id" hidden><option value="{{ existing_id }}"></select>
+                    {%- when None -%}
+                {%- endmatch -%}
+
+                <div>
+                    <p>Take a look at the <a href="/style_guide">style guide</a> before submitting a word.
+                    Required fields are marked with a <span class="required">*</span>.</p>
+                </div>
+
+                <fieldset class="contains_table">
+                    <legend>Translation</legend>
+
+                    <div class="table">
+                        <div>
+                            <label for="english">English<span class="required">*</span>:</label>
+                            <div>
+                                <input type="text" id="english" name="english" autocomplete="off" spellcheck="true"
+                                 {#-#} value="{{ word.english }}" required>
+                                <div class="duplicates_container">
+                                    <div class="duplicates_popover">
+                                        <div>Possible duplicates (hover)</div>
+                                        <div class="duplicates"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="xhosa">Xhosa<span class="required">*</span>:</label>
+                            <div>
+                                <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false"
+                                 {#-#} value="{{ word.xhosa }}" lang="xh" required>
+                                <div class="duplicates_container">
+                                    <div class="duplicates_popover">
+                                        <div>Possible duplicates (hover)</div>
+                                        <div class="duplicates"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="xhosa_tone_markings" tabindex="0"
+                                {#-#} data-descr="Xhosa with tone markings written out as diacritics. For instance:
+                                {#-#} &quot;bónákala&quot;."
+                            >
+                                Xhosa with tone markings:
+                            </label>
+                            <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off"
+                             {#-#} spellcheck="false" value="{{ word.xhosa_tone_markings }}" lang="xh">
+                        </div>
+
+                        <div>
+                            <label for="is_informal">Informal or slang?</label>
+                            <input type="checkbox" id="is_informal" name="is_informal"
+                                {%- if word.is_informal %} checked {%- endif -%}>
+                        </div>
+
+                        <div>
+                            <label for="note">Note:</label>
+                            <textarea id="note" name="note" autocomplete="off" spellcheck="true">
+                                {{- word.note -}}
+                            </textarea>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="contains_table">
+                    <legend>Part of speech</legend>
+
+                    <div class="table">
+                        <div>
+                            <label for="part_of_speech">Part of speech<span class="required">*</span>:</label>
+                            <select id="part_of_speech" name="part_of_speech" required>
+                                <option value="">Choose a part of speech</option>
+                                <option value="verb" id="verb_selected">Verb</option>
+                                <option value="noun" id="noun_selected">Noun</option>
+                                <option value="adverb">Adverb</option>
+                                <option value="relative">Relative (adjective)</option>
+                                <option value="adjective" disabled hidden>Adjective (isiphawuli)</option>
+                                <option value="interjection">Interjection</option>
+                                <option value="conjunction" id="conjunction_selected">Conjunction</option>
+                                <option value="preposition">Preposition</option>
+                                <option value="ideophone">Ideophone</option>
+                            </select>
+                        </div>
+
+                        {%- match word.part_of_speech -%}
+                            {% when Some with (part) %}
+                                <script type="module">
+                                    window.addEventListener("DOMContentLoaded", function () {
+                                        let select = document.getElementById("part_of_speech");
+                                        for (let option of select.options) {
+                                            if (option.value === {{ part|json|safe }}) {
+                                                if (option.value === "adjective") {
+                                                    option.hidden = false;
+                                                    option.disabled = false;
+                                                }
+
+                                                option.selected = true;
+                                            }
+                                        }
+                                    });
+                                </script>
+                            {% when None %}
+                        {%- endmatch -%}
+
+                        {#-  Noun options -#}
+
+                        <div class="noun_option" hidden>
+                            <label for="is_plural">Plural?</label>
+                            <input type="checkbox" id="is_plural" name="is_plural"
+                                {%- if word.is_plural %} checked {%- endif -%}>
+                        </div>
+
+                        {%- match word.noun_class -%}
+                            {%- when Some with (class) -%}
+                                <script type="module">
+                                    window.addEventListener("DOMContentLoaded", function () {
+                                        let select = document.getElementById("noun_class");
+                                        select.options[{{ class.as_u8() }}].selected = true;
+                                    });
+                                </script>
+                            {%- when None -%}
+                        {%- endmatch -%}
+
+                        <div class="noun_option" hidden>
+                            <label for="noun_class">Noun class<span class="required">*</span>:</label>
+                            <select id="noun_class" name="noun_class" class="required_if_enabled">
+                                <option value="">Choose a noun class</option>
+                                <option value="Class1Um">um (aba)</option>
+                                <option value="Aba">aba</option>
+                                <option value="U">u</option>
+                                <option value="Oo">oo</option>
+                                <option value="Class3Um">um (imi)</option>
+                                <option value="Imi">imi</option>
+                                <option value="Ili">i(li)</option>
+                                <option value="Ama">ama</option>
+                                <option value="Isi">isi</option>
+                                <option value="Izi">izi</option>
+                                <option value="In">i(n)</option>
+                                <option value="Izin">i(z)i(n)</option>
+                                <option value="Ulu">ulu</option>
+                                <option value="Ubu">ubu</option>
+                                <option value="Uku">uku</option>
+                            </select>
+                        </div>
+
+                        {#-  Verb options -#}
+
+                        <div class="verb_option" hidden>
+                            <label for="infinitive">Infinitive form<span class="required">*</span>:</label>
+                            <input type="text" id="infinitive" name="infinitive" autocomplete="off" spellcheck="false"
+                                {#-#} value="{{ word.infinitive }}" class="required_if_enabled" lang="xh">
+                        </div>
+
+                        <div class="verb_option" hidden>
+                            <label for="is_inchoative" tabindex="0"
+                                {#-#} data-descr="An inchoative (stative) verb takes the perfect tense for present
+                                {#-#} tense meaning. For example, &quot;ndilambile&quot; means &quot;I am hungry&quot;
+                                {#-#} whereas &quot;ndiyalamba&quot; means &quot;I am getting hungry&quot;."
+                            >
+                                Inchoative?
+                            </label>
+                            <input type="checkbox" id="is_inchoative" name="is_inchoative"
+                                {%- if word.is_inchoative %} checked {%- endif -%}>
+                        </div>
+
+                        <div class="verb_option row_list" hidden>
+                            <span tabindex="0" data-descr="Whether the verb can take a direct object or not.">
+                                Transitivity<span class="required">*</span>:
+                            </span>
+
+                            <div> {#- This is table-cell -#}
+                                <div class="row_or_column" id="transitivity"> {#- inside of table-cell -#}
+                                    <div>
+                                         <input type="radio" id="either" name="transitivity" value="either" class="required_if_enabled"
+                                            {%- if word.transitivity == Some(Transitivity::Ambitransitive)  %} checked {%- endif -%}>
+                                        <label for="either">Either</label>
+                                    </div>
+
+                                    <div>
+                                         <input type="radio" id="transitive" name="transitivity" value="transitive" class="required_if_enabled"
+                                            {%- if word.transitivity == Some(Transitivity::Transitive) %} checked {%- endif -%}>
+                                        <label for="transitive">Transitive only</label>
+                                    </div>
+
+                                    <div>
+                                        <input type="radio" id="intransitive" name="transitivity" value="intransitive" class="required_if_enabled"
+                                            {%- if word.transitivity == Some(Transitivity::Intransitive) %} checked {%- endif -%}>
+                                        <label for="intransitive" id="intransitive_label">Intransitive only</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input type="radio" id="transitivity_unselected" name="transitivity" value="" hidden class="required_if_enabled">
+                        </div>
+
+                        {#- Conjunction options -#}
+
+                        <div class="conjunction_option" hidden>
+                            <label for="followed_by" tabindex="0"
+                                {#-#} data-descr="The verbial mood or construction the conjunction is followed by."
+                            >
+                                Followed by:
+                            </label>
+                            <input type="text" autocomplete="off" spellcheck="false" list="followed_by_list"
+                                {#-#} value="{{ word.followed_by.to_plaintext()|safe }}" name="followed_by"
+                                {#-#} id="followed_by">
+
+                            {#- Hidden is due to dumb table stuff -#}
+                            <datalist id="followed_by_list" hidden>
+                              <option value="Indicative mood">
+                              <option value="Subjunctive mood">
+                              <option value="Participial mood">
+                            </datalist>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Example sentences</legend>
+
+                    <ul id="examples" class="bare_list spaced_list">
+                        <li><button id="add_example" type="button">Add another</button></li>
+                    </ul>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Linked words</legend>
+
+                    <ul id="linked_words" class="bare_list spaced_list">
+                        <li><button id="add_linked_word" type="button">Add another</button></li>
+                    </ul>
+                </fieldset>
+
+                <div class="column_list spaced_flex_list">
+                    {%- if existing_id.is_some() -%}
+                        <div>
+                            <label for="changes_summary">Changes made and why<span class="required">*</span>:</label>
+                            <textarea id="changes_summary" name="changes_summary" autocomplete="off" spellcheck="true"
+                                {#-#} placeholder="Briefly explain the changes you made and why." required></textarea>
+                        </div>
+                    {%- endif -%}
+
+                    <div>
+                        <input type="checkbox" id="tou_agree" name="tou_agree" required>
+                        <label for="tou_agree">
+                            I agree to submit this entry under the <a href="https://creativecommons.org/licenses/by-sa/4.0/">
+                            Creative Commons 4.0 (or later) Attribution ShareAlike License</a>, subject to the Terms of
+                            Service, and certify that I have the permission to do so.<span class="required">*</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="submit_button">
+                        {%- match action -%}
+                            {%- when SubmitFormAction::SubmitNewWord -%}
+                                Suggest word
+                            {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _, suggestion_anchor_ord: _ } -%}
+                                Submit edit to suggestion
+                            {%- when SubmitFormAction::EditExisting with (_) -%}
+                                Suggest edit to word
+                        {%- endmatch -%}
+                    </button>
+                </div>
+            </form>
+
+            <script type="module">
+                import { addExample, addExamples } from "/submit/example.js";
+                import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
+                import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
+                import { addDuplicateSearchFor } from "/submit/duplicate.js";
+
+                window.addEventListener("DOMContentLoaded", function() {
+                    for (let input of document.getElementsByTagName("input")) {
+                        if (input.type === "text") {
+                            input.setAttribute("data-lpignore", "true");
+                        }
+                    }
+
+                    let button = document.getElementById("submit_button");
+                    button.classList.add("disabled");
+
+                    for (let elt of document.querySelectorAll(".required_if_enabled, :required")) {
+                        let event = "change";
+                        if (elt instanceof HTMLInputElement || elt instanceof HTMLTextAreaElement) {
+                            event = "input";
+                        }
+
+                        elt.addEventListener(event, function() {
+                            let all = Array.from(document.querySelectorAll(":required"));
+                            button.classList.toggle("disabled", !all.every(elt => elt.checkValidity()));
+                        });
+                    }
+                });
+
+                window.addEventListener("load", function() {
+                    {%- let this_word_id = self.this_word_id_js() -%}
+
+                    addExamples({{ word.examples|json|safe }});
+                    addLinkedWords({{ word.linked_words|json|safe }}, {{ this_word_id }});
+                    partOfSpeechChange(); /* Refresh part of speech sections */
+                    addDuplicateSearchFor("english", {{ this_word_id }});
+                    addDuplicateSearchFor("xhosa", {{ this_word_id }});
+
+                    document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
+                    document.getElementById("add_example").addEventListener("click", function() { addExample() });
+                    document.getElementById("add_linked_word").addEventListener("click", function() {
+                        addLinkedWord({{ this_word_id }});
+                    });
+                    document.getElementById("submit_word").addEventListener("submit", function() {
+                        for (let word of document.getElementsByClassName("word_select_search")) {
+                            word.value = JSON.stringify({
+                                id: word.getAttribute("data-selected_word_id"),
+                                is_suggestion: word.getAttribute("data-selected_is_suggestion"),
+                            });
+                        }
+
+                        if (!document.getElementById("noun_selected").selected) {
+                            document.getElementById("is_plural").checked = false;
+                            document.getElementById("noun_class").value = "";
+                        }
+
+                        if (!document.getElementById("verb_selected").selected) {
+                            document.getElementById("infinitive").value = "";
+                            document.getElementById("is_inchoative").checked = false;
+                            document.getElementById("transitivity_unselected").checked = true;
+                        }
+
+                        if (!document.getElementById("conjunction_selected").selected) {
+                            document.getElementById("followed_by").value = "";
+                        }
+                    });
+                })
+            </script>
+        </main>
+    </div>
+</body>
+
+</html>

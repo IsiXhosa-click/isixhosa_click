@@ -1,0 +1,73 @@
+.suggested_word_text {
+    margin: 0;
+}
+
+li:target {
+    background-color: #ffffcc;
+    box-shadow: 0 0 0 5px #ffffcc;
+    border-radius: 5px;
+}
+
+h3.suggested_word_text strong.noun_class_prefix {
+    font-weight: bolder;
+}
+
+a {
+    text-decoration: none; /* interferes with <ins> */
+}
+
+td:first-child, th:first-child {
+    box-sizing: border-box;
+    width: 8em;
+    padding-right: 0.5em;
+}
+
+li::marker {
+    font-size: 1.17em;
+}
+
+#suggestions > ul {
+    margin: 0;
+}
+
+#suggestions > ul > li {
+    margin-bottom: 1em;
+}
+
+table {
+    table-layout: fixed;
+    width: 100%;
+    word-wrap: break-word;
+}
+
+#confirm_buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    justify-content: center;
+}
+
+#confirm_buttons > button {
+    width: 3rem;
+}
+
+#confirm_duplicates:empty {
+    display: none;
+}
+
+#confirm_duplicates > ol {
+    margin: 0;
+    padding: 0;
+}
+
+#confirm_duplicates::before {
+    content: "Possible duplicates:";
+}
+
+#confirm_duplicates:empty::before {
+    content: "";
+}
+
+#confirm_duplicates li::marker {
+    font-size: 1rem;
+}

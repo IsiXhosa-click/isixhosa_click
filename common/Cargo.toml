@@ -1,0 +1,20 @@
+[package]
+name = "isixhosa_common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+askama = { version = "0.12.1", features = ["serde-json"], default-features = false }
+askama_warp = { version = "0.13.0", optional = true }
+serde = { version = "1.0.133", default-features = false }
+isixhosa = { version = "0.2.0", features = ["with-num_enum-0_7", "with-serde-1"] }
+num_enum = { version = "0.7.2", default-features = false }
+
+rusqlite = { version = "0.25", optional = true , features = ["chrono"] }
+tracing = { version = "0.1.29", optional = true , default-features = false }
+r2d2 = { version = "0.8.9", optional = true }
+r2d2_sqlite = { version = "0.18", optional = true }
+fallible-iterator = { version = "0.2.0", optional = true , default-features = false }
+
+[features]
+server = ["rusqlite", "tracing", "r2d2", "r2d2_sqlite", "fallible-iterator", "askama_warp"]

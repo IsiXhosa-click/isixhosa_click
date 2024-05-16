@@ -1,0 +1,538 @@
+/* open-sans-regular - latin */
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Open Sans'),
+    url('/fonts/open-sans-v27-latin-regular.woff2') format('woff2');
+}
+
+/* open-sans-600 - latin */
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 600;
+    src: local('Open Sans'),
+    url('/fonts/open-sans-v27-latin-600.woff2') format('woff2');
+}
+
+/* open-sans-700 - latin */
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Open Sans'),
+    url('/fonts/open-sans-v27-latin-700.woff2') format('woff2');
+}
+
+/* open-sans-800 - latin */
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 800;
+    src: local('Open Sans'),
+    url('/fonts/open-sans-v27-latin-800.woff2') format('woff2');
+}
+
+/* open-sans-italic - latin */
+@font-face {
+    font-family: 'Open Sans';
+    font-style: italic;
+    font-weight: 400;
+    src: local('Open Sans'),
+    url('/fonts/open-sans-v27-latin-italic.woff2') format('woff2');
+}
+
+/* roboto-500 - latin */
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Roboto'),
+    url('/fonts/roboto-v29-latin-500.woff2') format('woff2');
+}
+
+/* material icons */
+@font-face {
+    font-family: 'Material Icons';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Material Icons'),
+    local('MaterialIcons-Regular'),
+    url('/fonts/MaterialIcons-Regular.woff2') format('woff2');
+}
+
+.material-icons {
+    /* noinspection CssNoGenericFontName - this is an icon font */
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;  /* Preferred icon size */
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+
+    /* Support for all WebKit browsers. */
+    -webkit-font-smoothing: antialiased;
+    /* Support for Safari and Chrome. */
+    text-rendering: optimizeLegibility;
+
+    /* Support for Firefox. */
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Support for IE. */
+    font-feature-settings: 'liga';
+}
+
+/* https://meowni.ca/hidden.is.a.lie.html */
+[hidden] {
+    display: none !important;
+}
+
+:root {
+    scroll-padding-top: 4rem;
+    overflow-y: scroll;
+}
+
+body {
+    background-color: white;
+    color: #080808;
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    box-sizing: border-box;
+}
+
+p {
+    max-width: max-content;
+}
+
+article, main {
+    margin: 0 auto;
+    width: 35em;
+    max-width: 100%;
+    line-height: 1.5rem;
+    box-sizing: border-box;
+}
+
+article h1 {
+    font-size: 2em;
+}
+
+article h2 {
+    font-size: 1.5em;
+}
+
+#main_wrap > header, #main_wrap > article > header, main > article > div > header {
+    margin: 0 auto 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: normal;
+}
+
+article > header {
+    width: 100%;
+}
+
+#main_wrap > header {
+    width: 35em;
+}
+
+form, fieldset {
+    box-sizing: border-box;
+}
+
+button, .button {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+    border-radius: 5px;
+    border: solid 1px lightgray;
+    padding: 4px;
+    cursor: pointer;
+}
+
+#main_wrap {
+    margin: 0 auto 8px;
+
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+@media screen and (min-width: 800px) {
+    #main_wrap {
+        width: 800px;
+    }
+}
+
+input[type='checkbox'] {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin: 0;
+}
+
+input[type='radio'] {
+    margin: 0;
+}
+
+input, textarea {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.9rem;
+    border-radius: 3px;
+    border: solid 1px lightgray;
+    padding: 5px 5px;
+}
+
+textarea {
+    resize: none;
+}
+
+select {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.9rem;
+}
+
+.column_list {
+    display: flex;
+    flex-direction: column;
+}
+
+.row_list {
+    display: flex;
+    flex-direction: row;
+}
+
+.spaced_flex_list {
+    gap: 1.25em;
+}
+
+strong.noun_class_prefix {
+    font-weight: 600; /* Semibold */
+}
+
+header > * > strong.noun_class_prefix {
+    font-weight: bolder !important;
+}
+
+th {
+    text-align: left;
+    vertical-align: top;
+}
+
+caption, .caption {
+    text-align: left;
+    font-size: large;
+    font-weight: bold;
+}
+
+.menu {
+    position: sticky;
+    z-index: 5;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    background: #282828;
+    width: 100%;
+}
+
+.menu > a, #login_bar, #site_name, #login_popover > a {
+    color: white;
+    text-decoration: none;
+    background: #282828;
+}
+
+#login_bar_container {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+#login_bar_container > * {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+#login_bar_container > * > * {
+    margin-left: auto;
+    min-width: 7rem;
+}
+
+#login_bar_container a {
+    text-decoration: none;
+}
+
+#login_bar {
+    border: none;
+    border-radius: 0;
+    font-size: initial;
+    height: 100%;
+    width: 100%;
+}
+
+#login_bar > #login_bar_text {
+    font-weight: bold;
+    padding: 0.75rem 0.5rem;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+#login_bar.not_signed_in {
+    background-color: #4285f4;
+    min-width: 15rem;
+}
+
+#login_bar.not_signed_in:hover {
+    box-shadow: 0 0 3px 3px rgba(66, 133, 244, 0.3);
+}
+
+#login_bar.not_signed_in > #login_bar_text {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500; /* Roboto medium */
+    font-size: 1.1rem;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+#login_bar.not_signed_in:hover {
+    background-color: #4285f4;
+}
+
+#user_icon {
+    font-size: 3rem;
+}
+
+#login_popover_container {
+    z-index: 1;
+    position: relative;
+}
+
+#login_popover {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+#login_popover > a {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+}
+
+.menu > * {
+    padding: 0.75rem;
+    box-sizing: border-box;
+    align-self: stretch;
+}
+
+#site_icon {
+    box-sizing: border-box;
+    padding: 0.25rem 0.75rem;
+}
+
+#site_icon > img {
+    margin-top: 1px;
+    max-width: calc(0.75rem * 2 + 1rem);
+    height: auto;
+}
+
+#site_name_container {
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+}
+
+#site_name_container:hover > * {
+    background: #484848;
+}
+
+#site_name {
+    font-weight: bold;
+    margin-bottom: 0.4rem;
+    padding-right: 0.75rem;
+}
+
+#hamburger {
+    position: absolute;
+    right: 0;
+    top: 0;
+    padding: 12px;
+    border: none;
+    display: none;
+    min-width: 0;
+    background: #282828;
+}
+
+#hamburger:hover {
+    background: #484848;
+}
+
+#hamburger > span {
+    color: white;
+}
+
+.menu :is(a, button):hover, #login_bar:hover, #login_popover > a:hover {
+    background: #484848;
+}
+
+.required {
+    color: #b50000; /* 7:1 contrast ratio */
+}
+
+button.disabled {
+    color: #6d6d6d
+}
+
+[data-descr], [data-tooltip] {
+    position: relative;
+}
+
+[data-descr]:hover::after, [data-descr]:focus::after, [data-tooltip]:focus::after {
+    position: absolute;
+    left: 0;
+    top: 2em;
+    border: 1px #aaaaaa solid;
+    border-radius: 10px;
+    background-color: #ffffcc;
+    padding: 12px;
+    color: #080808;
+    font-size: 1rem;
+    font-weight: normal;
+    z-index: 1;
+}
+
+[data-descr] {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+[data-descr]:hover::after, [data-descr]:focus::after {
+    min-width: 20em;
+    content: attr(data-descr);
+}
+
+[data-tooltip]:focus::after {
+    content: attr(data-tooltip);
+    right: 3rem;
+    min-width: 6rem;
+ }
+
+:target {
+    background-color: #ffffcc;
+}
+
+ul.examples > li > h3 {
+    font-size: 1em;
+    margin: 0;
+}
+
+ul.examples > li > p {
+    margin: 0.5em 0;
+}
+
+/* Show on screenreader only */
+.screenreader_only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap; /* added line */
+    border: 0;
+}
+
+.modal {
+    position: fixed;
+    z-index: 999;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.modal.open {
+    visibility: visible;
+    opacity: 1;
+    background-color: rgba(211, 211, 211, 0.5);
+    pointer-events: auto;
+}
+
+.modal > div {
+    position: absolute;
+    border: 1px solid lightgray;
+    border-radius: 10px;
+    background-color: white;
+    top: 25%;
+    left: 50%;
+    transform: translate(-50%, -25%);
+    padding: 2em;
+    text-align: center;
+}
+
+@media screen and (max-width: 800px) {
+    .modal > div {
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+@media screen and (max-width: 800px) {
+    #main_wrap {
+        margin-left: 8px;
+        margin-right: 8px;
+    }
+
+    .menu {
+        flex-direction: column;
+    }
+
+    .menu > a {
+        display: none;
+    }
+
+    .menu > #login_bar_container {
+        display: none;
+    }
+
+    #site_name_container {
+        display: inline-flex;
+    }
+
+    .menu.open > a {
+        display: inline;
+    }
+
+    .menu.open > #login_bar_container {
+        display: flex;
+    }
+
+    .menu.open > #login_bar_container > * > * {
+        margin-left: initial;
+        width: 100%;
+    }
+
+    #hamburger {
+        display: inline;
+    }
+
+    [data-descr]:hover::after, [data-descr]:focus::after {
+        min-width: 18em;
+    }
+}
