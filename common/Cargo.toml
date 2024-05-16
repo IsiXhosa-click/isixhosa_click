@@ -14,7 +14,8 @@ rusqlite = { version = "0.25", optional = true , features = ["chrono"] }
 tracing = { version = "0.1.29", optional = true , default-features = false }
 r2d2 = { version = "0.8.9", optional = true }
 r2d2_sqlite = { version = "0.18", optional = true }
-fallible-iterator = { version = "0.2.0", optional = true , default-features = false }
+fallible-iterator = { version = "0.2.0", optional = true, default-features = false }
+clap = { version = "4.5.4", optional = true, features = ["derive"] }
 
 [features]
-server = ["rusqlite", "tracing", "r2d2", "r2d2_sqlite", "fallible-iterator", "askama_warp"]
+server = ["rusqlite", "tracing", "r2d2", "r2d2_sqlite", "fallible-iterator", "askama_warp", "clap"]

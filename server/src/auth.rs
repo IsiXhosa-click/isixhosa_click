@@ -16,6 +16,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroU64;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
+use tabled::Tabled;
 use tracing::{debug, error, instrument, Span};
 use url::Url;
 use warp::http::uri;
@@ -227,13 +228,19 @@ pub struct SignupForm {
 }
 
 // TODO this is probably passed around a bit too much?
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Tabled)]
 pub struct FullUser {
+    #[tabled(rename = "ID")]
     pub id: NonZeroU64,
+    #[tabled(rename = "Username")]
     pub username: String,
+    #[tabled(rename = "Display name?")]
     pub display_name: bool,
+    #[tabled(rename = "Email address")]
     pub email: String,
+    #[tabled(rename = "Role")]
     pub permissions: Permissions,
+    #[tabled(rename = "Locked?")]
     pub locked: bool,
 }
 

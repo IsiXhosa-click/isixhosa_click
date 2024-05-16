@@ -371,7 +371,9 @@ impl WordHit {
             id: id.inner(),
             english: row.get("english")?,
             xhosa: row.get("xhosa")?,
-            part_of_speech: SerAndDisplayWithDisplayHtml(row.get("part_of_speech")?),
+            part_of_speech: row
+                .get::<_, Option<PartOfSpeech>>("part_of_speech")?
+                .map(SerAndDisplayWithDisplayHtml),
             is_plural: row.get("is_plural")?,
             is_inchoative: row.get("is_inchoative")?,
             is_informal: row.get("is_informal")?,

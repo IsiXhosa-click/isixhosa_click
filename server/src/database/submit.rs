@@ -139,7 +139,7 @@ pub async fn submit_suggestion(
             changes_summary,
             diff(w.english.clone(), &orig.english, use_submitted),
             diff(w.xhosa.clone(), &orig.xhosa, use_submitted),
-            diff_opt(w.part_of_speech, &orig.part_of_speech, use_submitted),
+            diff(w.part_of_speech, &orig.part_of_speech, use_submitted),
             diff(
                 w.xhosa_tone_markings.clone(),
                 &orig.xhosa_tone_markings,
@@ -637,7 +637,7 @@ impl From<SuggestedWord> for WordFormTemplate {
         WordFormTemplate {
             english: w.english.current().clone(),
             xhosa: w.xhosa.current().clone(),
-            part_of_speech: Some(*w.part_of_speech.current()),
+            part_of_speech: *w.part_of_speech.current(),
             xhosa_tone_markings: w.xhosa_tone_markings.current().clone(),
             infinitive: w.infinitive.current().clone(),
             is_plural: *w.is_plural.current(),
@@ -662,7 +662,7 @@ impl From<ExistingWord> for WordFormTemplate {
         WordFormTemplate {
             english: w.english,
             xhosa: w.xhosa,
-            part_of_speech: Some(w.part_of_speech),
+            part_of_speech: w.part_of_speech,
             xhosa_tone_markings: w.xhosa_tone_markings,
             infinitive: w.infinitive,
             is_plural: w.is_plural,
@@ -825,7 +825,7 @@ pub struct WordSubmission {
 
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: PartOfSpeech,
+    pub part_of_speech: Option<PartOfSpeech>,
     changes_summary: Option<String>,
     note: String,
     xhosa_tone_markings: String,
@@ -864,9 +864,7 @@ impl WordSubmission {
             || self.is_informal != o.is_informal
             || self.transitivity != o.transitivity
             || self.noun_class != o.noun_class
-            || o.part_of_speech
-                .map(|p| p != self.part_of_speech)
-                .unwrap_or(true)
+            || self.part_of_speech != o.part_of_speech
     }
 }
 

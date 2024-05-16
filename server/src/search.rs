@@ -232,18 +232,22 @@ impl WriterActor {
         schema_info: &SchemaInfo,
         doc: WordDocument,
     ) -> Result<()> {
-        let stemmed = if doc.part_of_speech == PartOfSpeech::Noun {
-            isixhosa::noun::guess_noun_base(&doc.xhosa, doc.noun_class)
-        } else {
+        let stemmed = if doc.part_of_speech == Some(PartOfSpeech::Verb) {
             // Remove (i) from latent i verbs
             doc.xhosa.trim_start_matches("(i)").to_owned()
+        } else if doc.part_of_speech == Some(PartOfSpeech::Noun) || doc.part_of_speech.is_none() {
+            // We just treat it as a noun for now.
+            // TODO(isizulu): better stemming
+            isixhosa::noun::guess_noun_base(&doc.xhosa, doc.noun_class)
+        } else {
+            doc.xhosa.to_owned()
         };
 
         let mut tantivy_doc = tantivy::doc!(
             schema_info.english => doc.english,
             schema_info.xhosa => doc.xhosa,
             schema_info.xhosa_stemmed => stemmed,
-            schema_info.part_of_speech => doc.part_of_speech as u64,
+            schema_info.part_of_speech => doc.part_of_speech.map(|x| x as u64).unwrap_or(255),
             schema_info.suggesting_user => doc.suggesting_user.map(NonZeroU64::get).unwrap_or(0),
             schema_info.is_plural => doc.is_plural as u64,
             schema_info.is_inchoative => doc.is_inchoative as u64,
@@ -645,7 +649,7 @@ pub struct WordDocument {
     pub id: WordOrSuggestionId,
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: PartOfSpeech,
+    pub part_of_speech: Option<PartOfSpeech>,
     pub is_plural: bool,
     pub is_inchoative: bool,
     pub transitivity: Option<Transitivity>,
@@ -661,18 +665,6 @@ trait WordHitExt {
 
 impl WordHitExt for WordHit {
     fn try_deserialize(schema_info: &SchemaInfo, doc: TantivyDocument) -> Result<WordHit> {
-        let pos_ord = doc
-            .get_first(schema_info.part_of_speech)
-            .and_then(|v| v.as_u64())
-            .with_context(|| {
-                format!(
-                    "Invalid value for field `part_of_speech` in document {:#?}",
-                    doc
-                )
-            })?;
-        let part_of_speech =
-            SerAndDisplayWithDisplayHtml(PartOfSpeech::try_from_primitive(pos_ord.try_into()?)?);
-
         let is_suggestion = doc
             .get_first(schema_info.suggesting_user)
             .and_then(|v| v.as_u64())
@@ -734,7 +726,8 @@ impl WordHitExt for WordHit {
                 .with_context(|| format!("Invalid value for id field in document {:#?}", doc))?,
             english: get_str(&doc, schema_info.english, "english")?,
             xhosa: get_str(&doc, schema_info.xhosa, "xhosa")?,
-            part_of_speech,
+            part_of_speech: get_with_sentinel(&doc, schema_info.part_of_speech)
+                .map(SerAndDisplayWithDisplayHtml),
             is_plural: get_bool(&doc, schema_info.is_plural, "is_plural")?,
             is_inchoative: get_bool(&doc, schema_info.is_inchoative, "is_inchoative")?,
             is_informal: get_bool(&doc, schema_info.is_informal, "is_informal")?,
@@ -753,7 +746,7 @@ impl From<WordDocument> for WordHit {
             id: d.id.inner(),
             english: d.english,
             xhosa: d.xhosa,
-            part_of_speech: SerAndDisplayWithDisplayHtml(d.part_of_speech),
+            part_of_speech: d.part_of_speech.map(SerAndDisplayWithDisplayHtml),
             is_plural: d.is_plural,
             is_inchoative: d.is_inchoative,
             is_informal: d.is_informal,

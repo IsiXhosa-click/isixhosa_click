@@ -95,7 +95,7 @@ pub struct WordRecord {
 
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: PartOfSpeech,
+    pub part_of_speech: Option<PartOfSpeech>,
 
     pub xhosa_tone_markings: String,
     pub infinitive: String,
@@ -217,11 +217,12 @@ impl WordRecord {
             .map(|t| t.to_plaintext().to_string())
             .unwrap_or_default();
 
-        let en_extra = [
-            plural.to_owned(),
-            transitivity.clone(),
-            self.part_of_speech.to_string(),
-        ];
+        let part_of_speech = self
+            .part_of_speech
+            .map(|p| p.to_string())
+            .unwrap_or_default();
+
+        let en_extra = [plural.to_owned(), transitivity.clone(), part_of_speech];
 
         let en_extra = Self::join_if_non_empty(&en_extra, " ");
 
@@ -229,6 +230,11 @@ impl WordRecord {
             Some(class) => format!("class {}", class.to_html()),
             None => String::new(),
         };
+
+        let part_of_speech = self
+            .part_of_speech
+            .map(|p| p.to_string())
+            .unwrap_or_default();
 
         let pos_info = [
             plural.to_owned(),
@@ -238,7 +244,7 @@ impl WordRecord {
                 String::new()
             },
             transitivity,
-            self.part_of_speech.to_string(),
+            part_of_speech,
         ];
 
         let xh_extra = [

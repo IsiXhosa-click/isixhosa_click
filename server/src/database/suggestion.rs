@@ -29,7 +29,7 @@ pub struct SuggestedWord {
 
     pub english: MaybeEdited<String>,
     pub xhosa: MaybeEdited<String>,
-    pub part_of_speech: MaybeEdited<PartOfSpeech>,
+    pub part_of_speech: MaybeEdited<Option<PartOfSpeech>>,
 
     pub xhosa_tone_markings: MaybeEdited<String>,
     pub infinitive: MaybeEdited<String>,
@@ -1081,7 +1081,7 @@ impl DisplayHtml for SuggestedWord {
                     "inchoative",
                     "non-inchoative",
                     self.is_inchoative,
-                    self.part_of_speech.was_or_is(&PartOfSpeech::Verb),
+                    self.part_of_speech.was_or_is(&Some(PartOfSpeech::Verb)),
                 ),
                 &self
                     .transitivity
@@ -1091,7 +1091,7 @@ impl DisplayHtml for SuggestedWord {
                     "plural",
                     "singular",
                     self.is_plural,
-                    self.part_of_speech.was_or_is(&PartOfSpeech::Noun),
+                    self.part_of_speech.was_or_is(&Some(PartOfSpeech::Noun)),
                 ),
                 &self.part_of_speech,
                 &self.noun_class.map(|opt| opt.map(NounClassInHit)),

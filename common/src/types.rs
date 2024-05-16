@@ -30,7 +30,7 @@ pub struct ExistingWord {
 
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: PartOfSpeech,
+    pub part_of_speech: Option<PartOfSpeech>,
 
     pub xhosa_tone_markings: String,
     pub infinitive: String,
@@ -48,12 +48,28 @@ pub struct ExistingWord {
     pub contributors: Vec<PublicUserInfo>,
 }
 
+impl ExistingWord {
+    /// Returns `true` if the word has any grammatical information specified
+    pub fn has_grammatical_information(&self) -> bool {
+        self.part_of_speech.is_some()
+            || !self.xhosa_tone_markings.is_empty()
+            || !self.infinitive.is_empty()
+            || self.is_plural
+            || self.is_inchoative
+            || self.transitivity.is_some()
+            || self.followed_by.is_some()
+            || self.noun_class.is_some()
+            || !self.note.is_empty()
+            || self.is_informal
+    }
+}
+
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Deserialize, Serialize)]
 pub struct WordHit {
     pub id: u64,
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: SerAndDisplayWithDisplayHtml<PartOfSpeech>,
+    pub part_of_speech: Option<SerAndDisplayWithDisplayHtml<PartOfSpeech>>,
     pub is_plural: bool,
     pub is_inchoative: bool,
     pub is_informal: bool,
@@ -68,7 +84,7 @@ impl WordHit {
             id: 0,
             english: String::new(),
             xhosa: String::new(),
-            part_of_speech: SerAndDisplayWithDisplayHtml(PartOfSpeech::Interjection),
+            part_of_speech: None,
             is_plural: false,
             is_inchoative: false,
             is_informal: false,
