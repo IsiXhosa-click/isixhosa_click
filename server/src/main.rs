@@ -26,6 +26,7 @@ use crate::session::LiveSearchSession;
 use askama::Template;
 use auth::auth;
 use chrono::{DateTime, Utc};
+use clap::{Parser, Subcommand};
 use details::details;
 use edit::edit;
 use futures::StreamExt;
@@ -40,13 +41,12 @@ use percent_encoding::NON_ALPHANUMERIC;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, Connection};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashSet;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::num::NonZeroU64;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use submit::submit;
@@ -58,8 +58,7 @@ use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
 use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE, LAST_MODIFIED};
-use warp::http::uri::Authority;
-use warp::http::{uri, HeaderValue, StatusCode, Uri};
+use warp::http::{HeaderValue, StatusCode, Uri};
 use warp::path::FullPath;
 use warp::reject::{MethodNotAllowed, Reject};
 use warp::reply::Response;
@@ -68,6 +67,7 @@ use warp_reverse_proxy as proxy;
 use xtra::{Handler, Mailbox, WeakAddress};
 
 mod auth;
+mod config;
 mod database;
 mod details;
 mod edit;
@@ -79,8 +79,59 @@ mod serialization;
 mod session;
 mod submit;
 
+pub use config::Config;
+
 const STATIC_LAST_CHANGED: &str = env!("STATIC_LAST_CHANGED");
 const STATIC_BIN_FILES_LAST_CHANGED: &str = env!("STATIC_BIN_FILES_LAST_CHANGED");
+
+#[derive(Parser)]
+#[command(name = "IsiXhosa.click")]
+#[command(about = "Online, live dictionary software", long_about = None)]
+struct CliArgs {
+    /// The site. Each site has a distinct database, export directory, and config file.
+    #[arg(short, long)]
+    site: String,
+    /// Whether to enable OpenTelemetry protocol (OTLP) trace exporting.
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    with_otlp: bool,
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Run the server for the site
+    Run,
+    /// Run the backup for the site. The directory of the exported files is specified in the site's
+    /// configuration file.
+    Backup,
+    /// Restore from the backup. The directory of the files to restore from are specified in the
+    /// site's configuration file.
+    Restore,
+    /// Import a dictionary file in the format of the isiZulu LSP
+    ImportZuluLSP {
+        /// The path of the dictionary file
+        path: PathBuf,
+    },
+}
+
+fn main() {
+    let cli = CliArgs::parse();
+    let cfg: Config = confy::load("isixhosa_click", Some(cli.site.as_ref())).unwrap();
+
+    match cli.command {
+        Commands::Run => {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(server(cfg, cli));
+        }
+        Commands::Backup => export::run_daily_tasks(cfg),
+        Commands::Restore => export::restore(cfg),
+        Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path).unwrap(),
+    }
+}
 
 pub fn spawn_blocking_child<F, R>(f: F) -> JoinHandle<R>
 where
@@ -134,57 +185,7 @@ struct TemplateError(askama::Error);
 
 impl Reject for TemplateError {}
 
-#[derive(Serialize, Deserialize)]
-pub struct Config {
-    database_path: PathBuf,
-    tantivy_path: PathBuf,
-    cert_path: Option<PathBuf>,
-    key_path: Option<PathBuf>,
-    static_site_files: PathBuf,
-    other_static_files: PathBuf,
-    log_path: PathBuf,
-    http_port: u16,
-    https_port: u16,
-    host: String,
-    oidc_client: String,
-    oidc_secret: String,
-    plaintext_export_path: PathBuf,
-}
-
-impl Config {
-    pub fn host_builder(host: &str, port: u16) -> uri::Builder {
-        let authority = if port != 443 {
-            format!("{}:{}", host, port)
-        } else {
-            host.to_owned()
-        };
-
-        let authority = Authority::from_str(&authority).unwrap();
-        Uri::builder().scheme("https").authority(authority)
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            database_path: PathBuf::from("isixhosa_click.db"),
-            tantivy_path: PathBuf::from("tantivy_data/"),
-            cert_path: Some(PathBuf::from("tls/cert.pem")),
-            key_path: Some(PathBuf::from("tls/key.rsa")),
-            static_site_files: PathBuf::from("static/"),
-            other_static_files: PathBuf::from("dummy_www/"),
-            log_path: PathBuf::from("log/"),
-            http_port: 8080,
-            https_port: 8443,
-            host: "127.0.0.1".to_string(),
-            oidc_client: "DUMMY_CLIENT".to_string(),
-            oidc_secret: "DUMMY_SECRET".to_string(),
-            plaintext_export_path: PathBuf::from("isixhosa_click_export/"),
-        }
-    }
-}
-
-fn init_tracing() {
+fn init_tracing(cli: &CliArgs) {
     global::set_text_map_propagator(opentelemetry_jaeger_propagator::Propagator::new());
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
@@ -201,11 +202,13 @@ fn init_tracing() {
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
     let fmt_layer = tracing_subscriber::fmt::layer().with_target(false);
 
-    Registry::default()
-        .with(LevelFilter::DEBUG)
-        .with(telemetry)
-        .with(fmt_layer)
-        .init();
+    let registry = Registry::default().with(LevelFilter::DEBUG).with(fmt_layer);
+
+    if cli.with_otlp {
+        registry.with(telemetry).init();
+    } else {
+        registry.init();
+    }
 }
 
 #[instrument(
@@ -311,7 +314,7 @@ async fn handle_error(err: Rejection) -> Result<Response, Rejection> {
             }
             UnauthorizedReason::NoPermissions | UnauthorizedReason::Locked => {
                 debug!("User has insufficient permissions");
-                Ok(warp::reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response())
+                Ok(reply::with_status(warp::reply(), StatusCode::FORBIDDEN).into_response())
             }
             UnauthorizedReason::InvalidCookie => {
                 debug!("User has invalid cookie; redirecting");
@@ -322,32 +325,6 @@ async fn handle_error(err: Rejection) -> Result<Response, Rejection> {
         Err(warp::reject::not_found())
     } else {
         Err(err)
-    }
-}
-
-fn main() {
-    let cfg: Config = confy::load("isixhosa_click", None).unwrap();
-
-    let flag = std::env::args().nth(1);
-    let flag = flag.as_ref();
-
-    if flag.map(|s| s == "--run-backup").unwrap_or(false) {
-        export::run_daily_tasks(cfg);
-    } else if flag.map(|s| s == "--restore-from-backup").unwrap_or(false) {
-        export::restore(cfg);
-    } else if flag.map(|s| s == "--import-zulu-lsp").unwrap_or(false) {
-        import_zulu::import_zulu_lsp(cfg, Path::new(&std::env::args().nth(2).unwrap())).unwrap();
-    } else if let Some(flag) = flag {
-        eprintln!(
-            "Unknown flag: {}. Accepted values are --run-backup and --restore-from-backup.",
-            flag
-        );
-    } else {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(server(cfg));
     }
 }
 
@@ -400,8 +377,8 @@ macro_rules! wrap_filter {
     }
 }
 
-async fn server(cfg: Config) {
-    init_tracing();
+async fn server(cfg: Config, args: CliArgs) {
+    init_tracing(&args);
     info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
@@ -426,19 +403,19 @@ async fn server(cfg: Config) {
             query: Default::default(),
         });
 
-        let query_search = warp::path::end()
+        let query_search = path::end()
             .and(warp::query())
             .and(with_tantivy.clone())
             .and(with_any_auth(db.clone()))
             .and_then(query_search);
-        let live_search = warp::path::end()
+        let live_search = path::end()
             .and(warp::ws())
             .and(with_tantivy.clone())
             .and(warp::query())
             .and(with_any_auth(db.clone()))
             .map(live_search);
         let duplicate_search = warp::path("duplicates")
-            .and(warp::path::end())
+            .and(path::end())
             .and(warp::query())
             .and(with_tantivy)
             .and(with_moderator_auth(db.clone()))
@@ -523,7 +500,7 @@ async fn server(cfg: Config) {
 
         let service_worker = warp::get()
             .and(warp::path("service_worker.js"))
-            .and(warp::path::end())
+            .and(path::end())
             .map(move || {
                 let template = ServiceWorker {
                     static_files: static_files.clone(),
@@ -594,7 +571,7 @@ async fn server(cfg: Config) {
 
     info!("Visit https://127.0.0.1:{}/", cfg.https_port);
 
-    let http_redirect = warp::path::full()
+    let http_redirect = path::full()
         .map(move |path: FullPath| {
             let to = Uri::builder()
                 .scheme("https")
@@ -622,8 +599,8 @@ async fn server(cfg: Config) {
     // Add post filters such as minification, logging, and gzip
     let serve = jaeger_proxy
         .or(wrap_filter!(routes))
-        .or(wrap_filter!(auth::with_any_auth(db).map(|auth, _db| {
-            warp::reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
+        .or(wrap_filter!(with_any_auth(db).map(|auth, _db| {
+            reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
         })));
 
     if has_reverse_proxy {
@@ -714,7 +691,7 @@ async fn query_search(
     tantivy: Arc<TantivyClient>,
     auth: Auth,
     _db: impl PublicAccessDb,
-) -> Result<impl warp::Reply, Rejection> {
+) -> Result<impl Reply, Rejection> {
     let results = tantivy
         .search(query.query.clone(), IncludeResults::AcceptedOnly, false)
         .await
@@ -748,7 +725,7 @@ async fn duplicate_search(
     tantivy: Arc<TantivyClient>,
     _user: FullUser,
     db: impl ModeratorAccessDb,
-) -> Result<impl warp::Reply, Rejection> {
+) -> Result<impl Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
 
     let include = IncludeResults::AcceptedAndAllSuggestions;

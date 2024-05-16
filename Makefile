@@ -8,6 +8,7 @@ common_src = common/Cargo.toml $(wildcard common/src/**) $(wildcard common/templ
 wordle_artifact_names := isixhosa_wordle.js isixhosa_wordle_bg.wasm
 wordle := $(foreach f, $(wordle_artifact_names), $(wasm_exported)/$(f))
 pwa := $(foreach f, $(pwa_artifact_names), $(wasm_exported)/$(f))
+site := default
 
 ifeq ($(profile), release)
 	cargo_flags := --release
@@ -17,9 +18,9 @@ build: $(wordle) $(pwa) $(isixhosa_server)
 
 run: build
 ifeq ($(jaeger_debug), 1)
-	cd server && ./with_jaeger_debug.sh ../target/$(profile)/isixhosa_server
+	cd server && ./with_jaeger_debug.sh ../target/$(profile)/isixhosa_server -s $(site) run
 else
-	cd server && ../target/$(profile)/isixhosa_server
+	cd server && ../target/$(profile)/isixhosa_server -s $(site) --with-otlp false run
 endif
 
 clean:

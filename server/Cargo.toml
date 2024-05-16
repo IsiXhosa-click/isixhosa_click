@@ -51,6 +51,7 @@ csv = "1.1.6"
 tempdir = "0.3.7"
 walkdir = "2.3.2"
 itertools = "0.12.1"
+clap = { version = "4.5.4", features = ["derive"] }
 
 # We are kind pinned to 0.25 of rusqlite (and versions of its friends) until genanki updates to 0.31
 rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly
