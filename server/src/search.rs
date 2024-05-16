@@ -235,13 +235,13 @@ impl WriterActor {
         let stemmed = if doc.part_of_speech == Some(PartOfSpeech::Verb) {
             // Remove (i) from latent i verbs
             doc.xhosa.trim_start_matches("(i)").to_owned()
-        } else {
+        } else if doc.part_of_speech == Some(PartOfSpeech::Noun) || doc.part_of_speech.is_none() {
             // We just treat it as a noun for now.
             // TODO(isizulu): better stemming
             isixhosa::noun::guess_noun_base(&doc.xhosa, doc.noun_class)
+        } else {
+            doc.xhosa.to_owned()
         };
-
-        println!("{}", stemmed);
 
         let mut tantivy_doc = tantivy::doc!(
             schema_info.english => doc.english,
