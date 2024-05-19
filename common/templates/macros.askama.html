@@ -1,5 +1,6 @@
 {%- macro navbar() -%}
-    <nav class="menu" id="menu">
+<!--suppress ALL -->
+<nav class="menu" id="menu">
         <a id="site_name_container" href="/">
             <div id="site_icon"><img src="/icons/icon-192.png" width="40" height="40" alt="Site icon"></div>
             <span id="site_name">IsiXhosa.click Live Dictionary</span>
@@ -113,4 +114,12 @@
 {%- macro description(desc) -%}
     <meta name="og:description" content="{{ desc }}"/>
     <meta name="description" content="{{ desc }}"/>
+{%- endmacro -%}
+
+{%- macro translate(key) -%}
+    {{ key|translate(i18n_info, crate::i18n::args!()) }}
+{%- endmacro -%}
+
+{%- macro translate_with(key, args) -%}
+    {{ key|translate(i18n_info, args) }}
 {%- endmacro -%}

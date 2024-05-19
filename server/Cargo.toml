@@ -8,13 +8,14 @@ license = "AGPL-3.0-or-later"
 [dependencies]
 isixhosa_common = { path = "../common", features = ["server"], version = "*" }
 isixhosa = { version = "0.2.0", features = ["with-serde-1", "with-num_enum-0_7"] }
+isixhosa_click_macros = { path = "../macros", version = "*" }
 serde = { version = "1", features = ["derive"] }
 serde_qs = "0.13.0"
 serde_with = "3.7.0"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 futures = "0.3"
 warp = { version = "0.3", features = ["tls", "compression"] }
-askama = { version = "0.12.1", features = ["serde-json"] }
+askama = { version = "0.12.1", features = ["serde-json", "with-warp"] }
 askama_warp = { version = "0.13.0" }
 warp-reverse-proxy = "1.0.0"
 html-minifier = "5.0.0"
@@ -54,6 +55,8 @@ tabled = "0.15.0"
 itertools = "0.12.1"
 clap = { version = "4.5.4", features = ["derive"] }
 subtle = "2.5.0"
+fluent-templates = "0.9.4"
+unic-langid = "0.9.5"
 
 # We are kind pinned to 0.25 of rusqlite (and versions of its friends) until genanki updates to 0.31
 rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly

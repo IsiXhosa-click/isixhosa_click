@@ -30,6 +30,7 @@ use clap::{Parser, Subcommand};
 use details::details;
 use edit::edit;
 use futures::StreamExt;
+use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb};
 use isixhosa_common::format::DisplayHtml;
@@ -42,7 +43,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, Connection};
 use serde::Deserialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::num::NonZeroU64;
@@ -72,6 +73,7 @@ mod database;
 mod details;
 mod edit;
 mod export;
+mod i18n;
 mod import_zulu;
 mod moderation;
 mod search;
@@ -80,7 +82,9 @@ mod session;
 mod submit;
 mod user_management;
 
+use crate::i18n::I18nInfo;
 pub use config::Config;
+pub use i18n::SiteContext;
 
 const STATIC_LAST_CHANGED: &str = env!("STATIC_LAST_CHANGED");
 const STATIC_BIN_FILES_LAST_CHANGED: &str = env!("STATIC_BIN_FILES_LAST_CHANGED");
@@ -432,30 +436,32 @@ async fn server(cfg: Config, args: CliArgs) {
     let tantivy_cloned = tantivy.clone();
     let with_tantivy = warp::any().map(move || tantivy_cloned.clone());
     let db = DbBase::new(pool);
+    let site_ctx = i18n::load(args.site);
 
     let search = {
-        let search_page = with_any_auth(db.clone()).map(|auth, _db| Search {
-            auth,
-            hits: Default::default(),
-            query: Default::default(),
-        });
+        let search_page =
+            with_any_auth(db.clone(), site_ctx.clone()).map(|auth, _i18n_info, _db| Search {
+                auth,
+                hits: Default::default(),
+                query: Default::default(),
+            });
 
         let query_search = path::end()
             .and(warp::query())
             .and(with_tantivy.clone())
-            .and(with_any_auth(db.clone()))
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
             .and_then(query_search);
         let live_search = path::end()
             .and(warp::ws())
             .and(with_tantivy.clone())
             .and(warp::query())
-            .and(with_any_auth(db.clone()))
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
             .map(live_search);
         let duplicate_search = warp::path("duplicates")
             .and(path::end())
             .and(warp::query())
             .and(with_tantivy)
-            .and(with_moderator_auth(db.clone()))
+            .and(with_moderator_auth(db.clone(), site_ctx.clone()))
             .and_then(duplicate_search);
 
         warp::path("search")
@@ -471,16 +477,16 @@ async fn server(cfg: Config, args: CliArgs) {
     let simple_templates = {
         let terms_of_use = warp::path("terms_of_use")
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .map(|auth, _| TermsOfUse { auth });
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|auth, _i18n_info, _| TermsOfUse { auth });
         let style_guide = warp::path("style_guide")
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .map(|auth, _| StyleGuide { auth });
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|auth, _i18n_info, _| StyleGuide { auth });
         let wordle = warp::path("wordle")
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .map(|auth, _| Wordle { auth });
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|auth, _i18n_info, _| Wordle { auth });
         let offline = warp::get()
             .and(warp::path("offline"))
             .and(path::end())
@@ -489,9 +495,10 @@ async fn server(cfg: Config, args: CliArgs) {
         let about = warp::get()
             .and(warp::path("about"))
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .and_then(|auth, db| async move {
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .and_then(|auth, i18n_info, db| async move {
                 Ok::<About, Infallible>(About {
+                    i18n_info,
                     auth,
                     word_count: spawn_blocking_child(move || ExistingWord::count_all(&db))
                         .await
@@ -597,11 +604,11 @@ async fn server(cfg: Config, args: CliArgs) {
     let routes = search
         .or(simple_templates)
         .or(redirects)
-        .or(submit(db.clone(), tantivy.clone()))
-        .or(moderation(db.clone(), tantivy.clone()))
-        .or(details(db.clone()))
-        .or(edit(db.clone(), tantivy))
-        .or(auth(db.clone(), &cfg).await)
+        .or(submit(db.clone(), tantivy.clone(), site_ctx.clone()))
+        .or(moderation(db.clone(), tantivy.clone(), site_ctx.clone()))
+        .or(details(db.clone(), site_ctx.clone()))
+        .or(edit(db.clone(), tantivy, site_ctx.clone()))
+        .or(auth(db.clone(), &cfg, site_ctx.clone()).await)
         .or(static_files)
         .recover(handle_error)
         .debug_boxed();
@@ -636,9 +643,11 @@ async fn server(cfg: Config, args: CliArgs) {
     // Add post filters such as minification, logging, and gzip
     let serve = jaeger_proxy
         .or(wrap_filter!(routes))
-        .or(wrap_filter!(with_any_auth(db).map(|auth, _db| {
-            reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
-        })));
+        .or(wrap_filter!(with_any_auth(db, site_ctx.clone()).map(
+            |auth, _i18n, _db| {
+                reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
+            }
+        )));
 
     if has_reverse_proxy {
         warp::serve(serve).run(([0, 0, 0, 0], cfg.http_port)).await
@@ -671,9 +680,10 @@ struct NotFound {
     auth: Auth,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "about.askama.html")]
 struct About {
+    i18n_info: I18nInfo,
     auth: Auth,
     word_count: u64,
 }
@@ -727,6 +737,7 @@ async fn query_search(
     query: SearchQuery,
     tantivy: Arc<TantivyClient>,
     auth: Auth,
+    _i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let results = tantivy
@@ -761,6 +772,7 @@ async fn duplicate_search(
     query: DuplicateQuery,
     tantivy: Arc<TantivyClient>,
     _user: FullUser,
+    _i18n_info: I18nInfo,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
@@ -805,6 +817,7 @@ fn live_search(
     tantivy: Arc<TantivyClient>,
     params: LiveSearchParams,
     auth: Auth,
+    _i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> impl Reply {
     ws.on_upgrade(move |websocket| {

@@ -1,5 +1,8 @@
+use crate::i18n::I18nInfo;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
+use crate::{
+    i18n, spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt, SiteContext,
+};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration, SameSite};
@@ -278,6 +281,7 @@ enum SignUpFailure {
 pub async fn auth(
     db: DbBase,
     cfg: &Config,
+    site_ctx: SiteContext,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let redirect = Config::host_builder(&cfg.host, cfg.https_port)
         .path_and_query("/login/oauth2/code/oidc")
@@ -321,7 +325,7 @@ pub async fn auth(
     let logout = warp::get()
         .and(warp::path("logout"))
         .and(warp::path::end())
-        .and(with_user_auth(db.clone()))
+        .and(with_user_auth(db.clone(), site_ctx.clone()))
         .and(warp::cookie::cookie(STAY_LOGGED_IN_COOKIE))
         .and_then(reply_logout);
 
@@ -647,6 +651,7 @@ async fn signup_form_submit(
 
 async fn reply_logout(
     _user: FullUser, // This _user is important as it implicitly validates the given token
+    _i18n_info: I18nInfo,
     db: impl UserAccessDb,
     token: StaySignedInToken,
 ) -> Result<impl warp::Reply, Infallible> {
@@ -740,6 +745,35 @@ async fn extract_user(
     .unwrap()
 }
 
+async fn extract_i18n_from_auth(
+    auth: Auth,
+    ctx: SiteContext,
+    db: impl PublicAccessDb,
+) -> Result<(Auth, I18nInfo, impl PublicAccessDb), Rejection> {
+    let i18n = I18nInfo {
+        user_language: i18n::EN_ZA,
+        ctx,
+    };
+
+    Ok((auth, i18n, db))
+}
+
+async fn extract_i18n_from_user<DB>(
+    user: FullUser,
+    ctx: SiteContext,
+    db: DB,
+) -> Result<(FullUser, I18nInfo, DB), Rejection>
+where
+    DB: PublicAccessDb,
+{
+    let i18n = I18nInfo {
+        user_language: i18n::EN_ZA,
+        ctx,
+    };
+
+    Ok((user, i18n, db))
+}
+
 fn with_public_db(
     db: DbBase,
 ) -> impl Filter<Extract = (impl PublicAccessDb,), Error = Infallible> + Clone {
@@ -748,7 +782,8 @@ fn with_public_db(
 
 pub fn with_any_auth(
     db: DbBase,
-) -> impl Filter<Extract = (Auth, impl PublicAccessDb), Error = Infallible> + Clone {
+    ctx: SiteContext,
+) -> impl Filter<Extract = (Auth, I18nInfo, impl PublicAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
@@ -758,22 +793,29 @@ pub fn with_any_auth(
         .or(warp::any().map(Auth::default))
         .unify()
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
+        .and_then(move |auth, db| extract_i18n_from_auth(auth, ctx.clone(), db))
+        .untuple_one()
 }
 
 pub fn with_user_auth(
     db: DbBase,
-) -> impl Filter<Extract = (FullUser, impl UserAccessDb), Error = Rejection> + Clone {
+    ctx: SiteContext,
+) -> impl Filter<Extract = (FullUser, I18nInfo, impl UserAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
         .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))
         .and_then(move |path, cookie| extract_user(DbImpl(db.0.clone()), path, cookie))
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
+        .and_then(move |user, db| extract_i18n_from_user(user, ctx.clone(), db))
+        .untuple_one()
 }
 
 pub fn with_moderator_auth(
     db: DbBase,
-) -> impl Filter<Extract = (FullUser, impl ModeratorAccessDb), Error = Rejection> + Clone {
+    ctx: SiteContext,
+) -> impl Filter<Extract = (FullUser, I18nInfo, impl ModeratorAccessDb), Error = Rejection> + Clone
+{
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
@@ -790,6 +832,8 @@ pub fn with_moderator_auth(
             }
         })
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
+        .and_then(move |user, db| extract_i18n_from_user(user, ctx.clone(), db))
+        .untuple_one()
 }
 
 pub fn with_administrator_auth(db: DbBase) -> impl Filter<Extract = (), Error = Rejection> + Clone {

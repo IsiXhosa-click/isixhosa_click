@@ -5,7 +5,7 @@ use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
 use std::fmt::{self, Display, Formatter};
 
-fn escape(s: &str) -> MarkupDisplay<Html, &str> {
+pub fn escape(s: &str) -> MarkupDisplay<Html, &str> {
     MarkupDisplay::new_unsafe(s, Html)
 }
 
