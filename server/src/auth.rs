@@ -22,6 +22,7 @@ use std::time::{Duration, Instant};
 use tabled::Tabled;
 use tracing::{debug, error, instrument, Span};
 use url::Url;
+use warp::http::header::ACCEPT_LANGUAGE;
 use warp::http::uri;
 use warp::path::FullPath;
 use warp::{
@@ -749,12 +750,9 @@ async fn extract_i18n_from_auth(
     auth: Auth,
     ctx: SiteContext,
     db: impl PublicAccessDb,
+    accept_lang: Option<String>,
 ) -> Result<(Auth, I18nInfo, impl PublicAccessDb), Rejection> {
-    let i18n = I18nInfo {
-        user_language: i18n::EN_ZA,
-        ctx,
-    };
-
+    let i18n = I18nInfo::parse_header(ctx, accept_lang);
     Ok((auth, i18n, db))
 }
 
@@ -793,7 +791,10 @@ pub fn with_any_auth(
         .or(warp::any().map(Auth::default))
         .unify()
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
-        .and_then(move |auth, db| extract_i18n_from_auth(auth, ctx.clone(), db))
+        .and(warp::header::optional(ACCEPT_LANGUAGE.as_str()))
+        .and_then(move |auth, db, accept_lang| {
+            extract_i18n_from_auth(auth, ctx.clone(), db, accept_lang)
+        })
         .untuple_one()
 }
 
