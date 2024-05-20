@@ -6,19 +6,20 @@ use fallible_iterator::FallibleIterator;
 use genanki_rs::{Deck, Field, Model, ModelType, Note, Template};
 use isixhosa::noun::NounClass;
 use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::i18n::{I18nInfo, EN_ZA};
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
-use isixhosa_common::serialization::SerAndDisplayWithDisplayHtml;
 use isixhosa_common::types::{ExistingExample, ExistingWord};
 use rusqlite::backup::Backup;
 use rusqlite::{params, OptionalExtension};
 use rusqlite::{Connection, Row};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, NoneAsEmptyString};
+use serde_with::serde_as;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, BufWriter, Write};
 use std::process::Command;
+use std::sync::Arc;
 use std::time::Duration;
 use tempdir::TempDir;
 
@@ -102,9 +103,7 @@ pub struct WordRecord {
     pub is_plural: bool,
     pub is_inchoative: bool,
     pub is_informal: bool,
-    #[serde_as(as = "NoneAsEmptyString")]
-    pub transitivity: Option<SerAndDisplayWithDisplayHtml<Transitivity>>,
-    #[serde_as(as = "NoneAsEmptyString")]
+    pub transitivity: Option<Transitivity>,
     pub followed_by: Option<ConjunctionFollowedBy>,
     pub noun_class: Option<NounClass>,
     pub note: String,
@@ -113,6 +112,7 @@ pub struct WordRecord {
 impl WordRecord {
     fn render_note(
         self,
+        i18n_info: I18nInfo,
         en_example: String,
         xh_example: String,
     ) -> Result<(Note, Vec<String>), anyhow::Error> {
@@ -214,12 +214,12 @@ impl WordRecord {
         let plural = if self.is_plural { "plural" } else { "" };
         let transitivity = self
             .transitivity
-            .map(|t| t.to_plaintext().to_string())
+            .map(|t| t.to_plaintext(&i18n_info).to_string())
             .unwrap_or_default();
 
         let part_of_speech = self
             .part_of_speech
-            .map(|p| p.to_string())
+            .map(|p| p.to_plaintext(&i18n_info).to_string())
             .unwrap_or_default();
 
         let en_extra = [plural.to_owned(), transitivity.clone(), part_of_speech];
@@ -227,13 +227,13 @@ impl WordRecord {
         let en_extra = Self::join_if_non_empty(&en_extra, " ");
 
         let class = match self.noun_class {
-            Some(class) => format!("class {}", class.to_html()),
+            Some(class) => format!("class {}", class.to_html(&i18n_info)),
             None => String::new(),
         };
 
         let part_of_speech = self
             .part_of_speech
-            .map(|p| p.to_string())
+            .map(|p| p.to_plaintext(&i18n_info).to_string())
             .unwrap_or_default();
 
         let pos_info = [
@@ -253,7 +253,7 @@ impl WordRecord {
             self.infinitive,
             class,
             self.followed_by
-                .map(|s| format!("followed by {}", s.as_ref()))
+                .map(|s| format!("followed by {}", s.to_plaintext(&i18n_info)))
                 .unwrap_or_default(),
         ];
 
@@ -308,7 +308,7 @@ impl From<ExistingWord> for WordRecord {
             is_plural: w.is_plural,
             is_inchoative: w.is_inchoative,
             is_informal: w.is_informal,
-            transitivity: w.transitivity.map(SerAndDisplayWithDisplayHtml),
+            transitivity: w.transitivity,
             followed_by: w.followed_by,
             noun_class: w.noun_class,
             note: w.note,
@@ -383,6 +383,7 @@ fn csv_reader(cfg: &Config, file: &str) -> csv::Reader<BufReader<File>> {
     csv::Reader::from_reader(reader)
 }
 
+// TODO do per-site & translate
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
 fn write_words(cfg: &Config, conn: &Connection) {
     const ANKI_DESC: &str = "All the words on IsiXhosa.click, as of %d-%m-%Y.";
@@ -423,6 +424,12 @@ fn write_words(cfg: &Config, conn: &Connection) {
         .collect()
         .unwrap();
 
+    let ctx = crate::i18n::load("isixhosa".to_string(), cfg);
+    let i18n_info = I18nInfo {
+        user_language: EN_ZA,
+        ctx: Arc::new(ctx),
+    };
+
     for word in words {
         let (en_example, xh_example): (String, String) = select_example
             .query_row(params![word.word_id], |row| {
@@ -434,7 +441,9 @@ fn write_words(cfg: &Config, conn: &Connection) {
 
         full_word_csv.serialize(&word).unwrap();
 
-        let (note, fields) = word.render_note(en_example, xh_example).unwrap();
+        let (note, fields) = word
+            .render_note(i18n_info.clone(), en_example, xh_example)
+            .unwrap();
         deck.add_note(note);
         plaintext_deck.write_record(fields).unwrap();
     }
@@ -474,7 +483,7 @@ fn restore_words(cfg: &Config, conn: &Connection) {
                 w.is_plural,
                 w.is_inchoative,
                 w.is_informal,
-                w.transitivity.map(|s| s.0),
+                w.transitivity,
                 w.followed_by.unwrap_or_default(),
                 w.noun_class.map(|x| x as u8),
                 w.note

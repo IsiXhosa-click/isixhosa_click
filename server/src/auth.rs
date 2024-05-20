@@ -1,16 +1,16 @@
-use crate::i18n::I18nInfo;
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{
-    i18n, spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt, SiteContext,
-};
+use crate::{i18n, spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration, SameSite};
 use dashmap::DashMap;
+use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::db_impl::DbImpl;
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb};
+use isixhosa_common::i18n::{I18nInfo, SiteContext, EN_ZA};
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
+use ordered_float::OrderedFloat;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
@@ -18,6 +18,7 @@ use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroU64;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tabled::Tabled;
 use tracing::{debug, error, instrument, Span};
@@ -265,10 +266,11 @@ impl From<FullUser> for Auth {
     }
 }
 
-#[derive(Template)]
+#[derive(Template, I18nTemplate)]
 #[template(path = "sign_up.askama.html")]
 struct SignUpTemplate {
     auth: Auth,
+    i18n_info: I18nInfo,
     openid_query: OpenIdLoginQuery,
     previous_failure: Option<SignUpFailure>,
 }
@@ -279,10 +281,23 @@ enum SignUpFailure {
     NoEmail,
 }
 
+// Used in sign_up.askama.html
+impl Display for SignUpFailure {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            SignUpFailure::InvalidUsername => "invalid-username",
+            SignUpFailure::DidNotAgree => "did-not-agree",
+            SignUpFailure::NoEmail => "no-email",
+        };
+
+        f.write_str(s)
+    }
+}
+
 pub async fn auth(
     db: DbBase,
     cfg: &Config,
-    site_ctx: SiteContext,
+    site_ctx: Arc<SiteContext>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let redirect = Config::host_builder(&cfg.host, cfg.https_port)
         .path_and_query("/login/oauth2/code/oidc")
@@ -320,7 +335,7 @@ pub async fn auth(
         .and(warp::query::<OpenIdLoginQuery>())
         .and(with_session())
         .and(with_client_host.clone())
-        .and(with_public_db(db.clone()))
+        .and(with_any_auth(db.clone(), site_ctx.clone()))
         .and_then(reply_login);
 
     let logout = warp::get()
@@ -337,7 +352,7 @@ pub async fn auth(
         .and(qs_form())
         .and(with_session())
         .and(with_client_host)
-        .and(with_public_db(db.clone()))
+        .and(with_any_auth(db.clone(), site_ctx))
         .and_then(signup_form_submit);
 
     login.or(oidc_code).or(sign_up).or(logout).debug_boxed()
@@ -471,6 +486,8 @@ async fn reply_login(
     session_id: SignInSessionId,
     oidc_client: OpenIDClient,
     host_builder: uri::Builder,
+    _: Auth,
+    i18n_info: I18nInfo,
     db: impl PublicAccessDb,
 ) -> Result<impl warp::Reply, Infallible> {
     let request_token = request_token(oidc_client, &session_id, &openid_query).await;
@@ -505,9 +522,16 @@ async fn reply_login(
     let state: OpenIdState = serde_json::from_str(openid_query.state.as_ref().unwrap()).unwrap();
 
     let response = match FullUser::fetch_by_oidc_id(&db, token, oidc_id) {
-        Some(user) => reply_insert_session(db, session_id, user, host_builder, state.redirect)
-            .await
-            .into_response(),
+        Some(user) => reply_insert_session(
+            db,
+            i18n_info,
+            session_id,
+            user,
+            host_builder,
+            state.redirect,
+        )
+        .await
+        .into_response(),
         None => {
             IN_PROGRESS_SIGN_INS.insert(
                 session_id,
@@ -519,6 +543,7 @@ async fn reply_login(
 
             SignUpTemplate {
                 auth: Default::default(),
+                i18n_info,
                 openid_query,
                 previous_failure: None,
             }
@@ -531,14 +556,16 @@ async fn reply_login(
 
 // This is to make sure that we still get the cookie even with Same-Site set to strict
 // https://stackoverflow.com/questions/42216700/how-can-i-redirect-after-oauth2-with-samesite-strict-and-still-get-my-cookies
-#[derive(Template)]
+#[derive(Template, I18nTemplate)]
 #[template(path = "redirect.askama.html")]
 struct AuthRedirect {
     redirect_url: String,
+    i18n_info: I18nInfo,
 }
 
 async fn reply_insert_session(
     db: impl PublicAccessDb,
+    i18n_info: I18nInfo,
     session_id: SignInSessionId,
     user: FullUser,
     host_uri_builder: uri::Builder,
@@ -572,7 +599,10 @@ async fn reply_insert_session(
     IN_PROGRESS_SIGN_INS.remove(&session_id);
 
     warp::reply::with_header(
-        askama_warp::reply(&AuthRedirect { redirect_url }),
+        askama_warp::reply(&AuthRedirect {
+            redirect_url,
+            i18n_info,
+        }),
         warp::http::header::SET_COOKIE,
         authorization_cookie,
     )
@@ -583,6 +613,8 @@ async fn signup_form_submit(
     session_id: SignInSessionId,
     _oidc_client: OpenIDClient,
     host_uri_builder: uri::Builder,
+    _: Auth,
+    i18n_info: I18nInfo,
     db: impl PublicAccessDb,
 ) -> Result<impl warp::Reply, Infallible> {
     let userinfo = match IN_PROGRESS_SIGN_INS.get(&session_id).as_deref() {
@@ -593,6 +625,7 @@ async fn signup_form_submit(
     if !form.tou_agree || !form.license_agree {
         return Ok(SignUpTemplate {
             auth: Default::default(),
+            i18n_info,
             openid_query: form.openid_query,
             previous_failure: Some(SignUpFailure::DidNotAgree),
         }
@@ -607,6 +640,7 @@ async fn signup_form_submit(
     {
         return Ok(SignUpTemplate {
             auth: Default::default(),
+            i18n_info,
             openid_query: form.openid_query,
             previous_failure: Some(SignUpFailure::InvalidUsername),
         }
@@ -618,6 +652,7 @@ async fn signup_form_submit(
         None => {
             return Ok(SignUpTemplate {
                 auth: Default::default(),
+                i18n_info,
                 openid_query: form.openid_query,
                 previous_failure: Some(SignUpFailure::NoEmail),
             }
@@ -643,11 +678,16 @@ async fn signup_form_submit(
     .await
     .unwrap();
 
-    Ok(
-        reply_insert_session(db_clone, session_id, user, host_uri_builder, redirect_url)
-            .await
-            .into_response(),
+    Ok(reply_insert_session(
+        db_clone,
+        i18n_info,
+        session_id,
+        user,
+        host_uri_builder,
+        redirect_url,
     )
+    .await
+    .into_response())
 }
 
 async fn reply_logout(
@@ -748,22 +788,36 @@ async fn extract_user(
 
 async fn extract_i18n_from_auth(
     auth: Auth,
-    ctx: SiteContext,
+    ctx: Arc<SiteContext>,
     db: impl PublicAccessDb,
     accept_lang: Option<String>,
 ) -> Result<(Auth, I18nInfo, impl PublicAccessDb), Rejection> {
-    let i18n = I18nInfo::parse_header(ctx, accept_lang);
+    let all = accept_language::intersection_with_quality(
+        accept_lang.as_deref().unwrap_or("en-ZA"),
+        ctx.supported_langs,
+    );
+
+    let best_lang = all
+        .iter()
+        .max_by_key(|(_lang, quality)| OrderedFloat(-quality))
+        .map(|(lang, _quality)| lang.as_str())
+        .unwrap_or("en-ZA");
+
+    let user_language = best_lang.parse().unwrap_or(EN_ZA);
+    let i18n = I18nInfo { user_language, ctx };
+
     Ok((auth, i18n, db))
 }
 
 async fn extract_i18n_from_user<DB>(
     user: FullUser,
-    ctx: SiteContext,
+    ctx: Arc<SiteContext>,
     db: DB,
 ) -> Result<(FullUser, I18nInfo, DB), Rejection>
 where
     DB: PublicAccessDb,
 {
+    // TODO fetch from DB
     let i18n = I18nInfo {
         user_language: i18n::EN_ZA,
         ctx,
@@ -772,15 +826,9 @@ where
     Ok((user, i18n, db))
 }
 
-fn with_public_db(
-    db: DbBase,
-) -> impl Filter<Extract = (impl PublicAccessDb,), Error = Infallible> + Clone {
-    warp::any().map(move || DbImpl(db.0.clone()))
-}
-
 pub fn with_any_auth(
     db: DbBase,
-    ctx: SiteContext,
+    ctx: Arc<SiteContext>,
 ) -> impl Filter<Extract = (Auth, I18nInfo, impl PublicAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
@@ -800,7 +848,7 @@ pub fn with_any_auth(
 
 pub fn with_user_auth(
     db: DbBase,
-    ctx: SiteContext,
+    ctx: Arc<SiteContext>,
 ) -> impl Filter<Extract = (FullUser, I18nInfo, impl UserAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
@@ -814,7 +862,7 @@ pub fn with_user_auth(
 
 pub fn with_moderator_auth(
     db: DbBase,
-    ctx: SiteContext,
+    ctx: Arc<SiteContext>,
 ) -> impl Filter<Extract = (FullUser, I18nInfo, impl ModeratorAccessDb), Error = Rejection> + Clone
 {
     let db_clone = db.clone();

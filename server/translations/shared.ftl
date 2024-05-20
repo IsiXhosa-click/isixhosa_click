@@ -1,1 +1,0 @@
--oidc-link = /login/oauth2/authorization/oidc

@@ -1,11 +1,13 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>Moderation - IsiXhosa.click</title>
-    <meta name="og:title" content="Moderation - IsiXhosa.click"/>
-    <meta name="og:url" content="https://isixhosa.click/moderation"/>
+    {%- let target_lang = self.t("target-language-code") -%}
+    {%- let src_lang = self.t("source-language-code") -%}
+
+    {%- call macros::title("moderation") -%}
+    <meta name="og:url" content="https://{{ self.host() }}/moderation"/>
     <link rel="stylesheet" href="/moderation.css">
     {%- call macros::meta() -%}
 </head>
@@ -15,45 +17,19 @@
 
     <div id="main_wrap">
         <header>
-            <h1>Suggestions</h1>
+            <h1>{{ self.t("moderation.suggestions") }}</h1>
         </header>
 
         <main>
             {%- match previous_success -%}
                 {%- when Some with (prev) -%}
                     <p id="previous_success">
+                        {%- let method = self.prev_action_method() -%}
+
                         {%- if prev.success -%}
-                            Success
-
-                            {%- match prev.method -%}
-                                {%- when Some with (method) -%}
-                                    {%- match method -%}
-                                        {%- when Method::Accept -%}
-                                            fully accepted suggestion.
-                                        {%- when Method::Edit -%}
-                                            fully edited suggestion.
-                                        {%- when Method::Reject -%}
-                                            fully rejected suggestion.
-                                    {%- endmatch -%}
-                                {%- when None -%}
-                                    .
-                            {%- endmatch -%}
+                            {{ self.t_with("moderation.action-success", crate::i18n_args!("method" => method)) }}
                         {%- else -%}
-                            An error occurred
-
-                            {%- match prev.method -%}
-                                {%- when Some with (method) -%}
-                                    {%- match method -%}
-                                        {%- when Method::Accept %}
-                                            while accepting a suggestion.
-                                        {%- when Method::Edit %}
-                                            while editing a suggestion.
-                                        {%- when Method::Reject %}
-                                            while rejecting a suggestion.
-                                    {%- endmatch -%}
-                                {%- when None -%}
-                                    .
-                            {%- endmatch -%}
+                            {{ self.t_with("moderation.action-fail", crate::i18n_args!("method" => method)) }}
                         {%- endif -%}
                     </p>
                 {%- when None -%}
@@ -117,6 +93,7 @@
                                         });
 
                                         if (results.length > 0) {
+                                            div.innerText = '{{ self.t("moderation.possible-duplicates") }}';
                                             div.appendChild(list);
                                         }
                                     })
@@ -163,7 +140,7 @@
                     "word",
                     s.suggestion_id,
                     s.word_id.is_none(),
-                    "Are you sure you want to {} this suggestion?"|format(method)
+                    self.t_with("moderation.confirm-action", crate::i18n_args!("method" => method.to_string()))
                 ) -%}
             {%- endmacro -%}
 
@@ -172,10 +149,10 @@
                 {%- let method -%}
 
                 {%- if is_accept -%}
-                    {%- let prompt = "Are you sure you want to permanently delete this word?" -%}
+                    {%- let prompt = self.t_with("moderation.confirm-delete", crate::i18n_args!("item" => "word")) -%}
                     {%- let method = "accept" -%}
                 {%- else -%}
-                    {%- let prompt = "Are you sure you want to reject this suggestion?" -%}
+                    {%- let prompt = self.t("moderation.confirm-reject") -%}
                     {%- let method = "reject" -%}
                 {%- endif -%}
 
@@ -185,7 +162,7 @@
                     "word_deletion",
                     s.suggestion_id,
                     false,
-                    prompt
+                    prompt,
                 ) -%}
             {%- endmacro -%}
 
@@ -196,7 +173,7 @@
                     "example",
                     ex.suggestion_id,
                     false,
-                    "Are you sure you want to {} this suggestion?"|format(method)
+                    self.t_with("moderation.confirm-action", crate::i18n_args!("method" => method.to_string())),
                 ) -%}
             {%- endmacro -%}
 
@@ -205,10 +182,10 @@
                 {%- let method -%}
 
                 {%- if is_accept -%}
-                    {%- let prompt = "Are you sure you want to permanently delete this example?" -%}
+                    {%- let prompt = self.t_with("moderation.confirm-delete", crate::i18n_args!("item" => "example")) -%}
                     {%- let method = "accept" -%}
                 {%- else -%}
-                    {%- let prompt = "Are you sure you want to reject this suggestion?" -%}
+                    {%- let prompt = self.t("moderation.confirm-reject") -%}
                     {%- let method = "reject" -%}
                 {%- endif -%}
 
@@ -229,7 +206,7 @@
                     "linked_word",
                     l.suggestion_id,
                     false,
-                    "Are you sure you want to {} this suggestion?"|format(method)
+                    self.t_with("moderation.confirm-action", crate::i18n_args!("method" => method.to_string()))
                 ) -%}
             {%- endmacro -%}
 
@@ -238,10 +215,10 @@
                 {%- let method -%}
 
                 {%- if is_accept -%}
-                    {%- let prompt = "Are you sure you want to permanently delete this linked word?" -%}
+                    {%- let prompt = self.t_with("moderation.confirm-delete", crate::i18n_args!("item" => "linked-word")) -%}
                     {%- let method = "accept" -%}
                 {%- else -%}
-                    {%- let prompt = "Are you sure you want to reject this suggestion?" -%}
+                    {%- let prompt = self.t("moderation.confirm-reject") -%}
                     {%- let method = "reject" -%}
                 {%- endif -%}
 
@@ -258,7 +235,7 @@
             {%- let offset = 0 -%}
             <div id="suggestions">
                 {%- if !word_suggestions.is_empty() -%}
-                    <h2>Suggested words</h2>
+                    <h2>{{ self.t("moderation.suggested-words") }}</h2>
                 {%- endif -%}
                 <ul>
                     {%- for (i, s) in word_suggestions.iter().enumerate() -%}
@@ -272,7 +249,7 @@
                                             {%- when None -%}
                                         {%- endmatch -%}
 
-                                        {{- s.to_html()|safe -}}
+                                        {{- s.to_html(i18n_info)|safe -}}
 
                                         {%- if s.word_id.is_some() -%}
                                             </a>
@@ -297,47 +274,47 @@
                                         </tr>
 
                                         <tr>
-                                            <th scope="row">Suggested by</th>
+                                            <th scope="row">{{ self.t("moderation.suggestor") }}</th>
                                             <td>{{ s.suggesting_user.username }}</td>
                                         </tr>
 
                                         <tr>
-                                            <th scope="row">Changes summary</th>
+                                            <th scope="row">{{ self.t("moderation.changes-summary") }}</th>
                                             <td>{{ s.changes_summary }}</td>
                                         </tr>
 
                                         {%- if !s.xhosa_tone_markings.is_empty_str() -%}
                                             <tr>
-                                                <th scope="row">Xhosa with tone markings</th>
-                                                <td lang="xh">{{ s.xhosa_tone_markings.to_html()|safe }}</td>
+                                                <th scope="row">{{ self.t("with-tone-markings") }}</th>
+                                                <td lang="{{ target_lang }}">{{ s.xhosa_tone_markings.to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.noun_class.is_none() -%}
                                             <tr>
-                                                <th scope="row">Selected noun class</th>
-                                                <td>{{ s.noun_class.map_debug().to_html()|safe }}</td>
+                                                <th scope="row">{{ self.t("moderation.selected-class") }}</th>
+                                                <td>{{ s.noun_class.map_debug().to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.infinitive.is_empty_str() -%}
                                             <tr>
-                                                <th scope="row">Infinitive form</th>
-                                                <td lang="xh">{{ s.infinitive.to_html()|safe }}</td>
+                                                <th scope="row">{{ self.t("infinitive.form") }}</th>
+                                                <td lang="{{ target_lang }}">{{ s.infinitive.to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.followed_by.is_none() -%}
                                             <tr>
-                                                <th scope="row">Followed by</th>
-                                                <td>{{ s.followed_by.map_or_default().to_html()|safe }}</td>
+                                                <th scope="row">{{ self.t("followed-by") }}</th>
+                                                <td>{{ s.followed_by.map_or_default().to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
                                         {%- if !s.note.is_empty_str() -%}
                                             <tr>
-                                                <th scope="row">Note</th>
-                                                <td>{{ s.note.to_html()|safe }}</td>
+                                                <th scope="row">{{ self.t("moderation.note") }}</th>
+                                                <td>{{ s.note.to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- endif -%}
                                     </table>
@@ -345,15 +322,15 @@
 
                                 {%- if !s.examples.is_empty() -%}
                                     <div>
-                                        <h2 class="caption">Examples</h2>
+                                        <h2 class="caption">{{ self.t("examples") }}</h2>
 
                                         <ul class="examples">
                                             {%- for ex in s.examples -%}
                                                 <li>
-                                                    <h3>English</h3>
-                                                    <p>{{ ex.english.to_html()|safe }}</p>
-                                                    <h3>Xhosa</h3>
-                                                    <p lang="xh">{{ ex.xhosa.to_html()|safe }}</p>
+                                                    <h3>{{ self.t("source-language") }}</h3>
+                                                    <p lang="{{ src_lang }}">{{ ex.english.to_html(i18n_info)|safe }}</p>
+                                                    <h3>{{ self.t("target-language") }}</h3>
+                                                    <p lang="{{ target_lang }}}}">{{ ex.xhosa.to_html(i18n_info)|safe }}</p>
                                                 </li>
                                             {%- endfor -%}
                                         </ul>
@@ -363,20 +340,20 @@
                                 {%- if !s.linked_words.is_empty() -%}
                                     <div>
                                         <table>
-                                            <caption>Linked words</caption>
+                                            <caption>{{ self.t("linked-words") }}</caption>
 
                                             <thead>
                                                 <tr>
-                                                    <th scope="col">Link type</th>
-                                                    <th scope="col">Other word</th>
+                                                    <th scope="col">{{ self.t("linked-words.link-type") }}</th>
+                                                    <th scope="col">{{ self.t("linked-words.other-word") }}</th>
                                                 </tr>
                                             </thead>
 
                                             <tbody>
                                                 {%- for l in s.linked_words -%}
                                                     <tr>
-                                                        <td>{{ l.link_type.to_html()|safe }}</td>
-                                                        <td>{{ l.other(s.this_id()).hyperlinked().to_html()|safe }}</td>
+                                                        <td>{{ l.link_type.to_html(i18n_info)|safe }}</td>
+                                                        <td>{{ l.other(s.this_id()).hyperlinked().to_html(i18n_info)|safe }}</td>
                                                     </tr>
                                                 {%- endfor -%}
                                             </tbody>
@@ -385,9 +362,9 @@
                                 {%- endif -%}
 
                                 <div class="row_list spaced_flex_list">
-                                    {%- call word_suggestion_action("edit", "Edit") -%}
-                                    {%- call word_suggestion_action("accept", "Accept") -%}
-                                    {%- call word_suggestion_action("reject", "Reject") -%}
+                                    {%- call word_suggestion_action("edit", self.t("moderation.edit")) -%}
+                                    {%- call word_suggestion_action("accept", self.t("moderation.accept")) -%}
+                                    {%- call word_suggestion_action("reject", self.t("moderation.reject")) -%}
                                 </div>
                             </article>
                         </li>
@@ -397,7 +374,7 @@
                 {%- let offset = offset + word_suggestions.len() -%}
 
                 {%- if !word_deletions.is_empty() -%}
-                    <h2>Deletion suggestions</h2>
+                    <h2>{{ self.t("moderation.deletion-suggestions") }}</h2>
                 {%- endif -%}
                 <ul>
                     {%- for (i, s) in word_deletions.iter().enumerate() -%}
@@ -407,7 +384,7 @@
                                     <del>
                                         <h3 class="suggested_word_text">
                                             <a href="/word/{{ s.word.id }}">
-                                                {{ s.word.to_html()|safe }}
+                                                {{ s.word.to_html(i18n_info)|safe }}
                                             </a>
                                         </h3>
                                     </del>
@@ -415,27 +392,27 @@
 
                                 <div>
                                     <table>
-                                        <caption>Details</caption>
+                                        <caption>{{ self.t("moderation.details") }}</caption>
                                         <tr>
-                                            <th scope="row">Change type</th>
-                                            <td>Word deleted</td>
+                                            <th scope="row">{{ self.t("moderation.change-type") }}</th>
+                                            <td>{{ self.t("moderation.word-deleted") }}</td>
                                         </tr>
 
                                         <tr>
-                                            <th scope="row">Suggested by</th>
+                                            <th scope="row">{{ self.t("moderation.suggestor") }}</th>
                                             <td>{{ s.suggesting_user.username }}</td>
                                         </tr>
 
                                         <tr>
-                                            <th scope="row">Reason</th>
+                                            <th scope="row">{{ self.t("moderation.reason") }}</th>
                                             <td>{{ s.reason }}</td>
                                         </tr>
                                     </table>
                                 </div>
 
                                 <div class="row_list spaced_flex_list">
-                                    {%- call word_deletion_action(true, "Accept deletion") -%}
-                                    {%- call word_deletion_action(false, "Reject deletion") -%}
+                                    {%- call word_deletion_action(true, self.t("moderation.accept-deletion")) -%}
+                                    {%- call word_deletion_action(false, self.t("moderation.reject-deletion")) -%}
                                 </div>
                             </article>
                         </li>
@@ -445,7 +422,7 @@
                 {%- let offset = offset + word_deletions.len() -%}
 
                 {%- if !word_associated_edits.is_empty() -%}
-                    <h2>Edited examples and linked words</h2>
+                    <h2>{{ self.t("moderation.edited-examples-and-links") }}</h2>
                 {%- endif -%}
                 <ul>
                     {%- for (i, (word, assoc)) in word_associated_edits.iter().enumerate() -%}
@@ -454,46 +431,51 @@
                                 <header>
                                     <h3 class="suggested_word_text">
                                         <a href="/word/{{ word.id }}">
-                                            {{ word.to_html()|safe }}
+                                            {{ word.to_html(i18n_info)|safe }}
                                         </a>
                                     </h3>
                                 </header>
 
                                 {%- if !assoc.examples_is_empty() -%}
                                     <div>
-                                        <h2 class="caption">Examples</h2>
+                                        <h2 class="caption">{{ self.t("examples") }}</h2>
 
                                         <ul class="examples">
                                             {%- for ex in assoc.example_suggestions -%}
                                                 <li>
-                                                    <h3>English</h3>
-                                                    <p>{{ ex.english.to_html()|safe }}</p>
-                                                    <h3>Xhosa</h3>
-                                                     <p>{{ ex.xhosa.to_html()|safe }}</p>
+                                                    <h3>{{ self.t("source-language") }}</h3>
+                                                    <p lang="{{ src_lang }}">{{ ex.english.to_html(i18n_info)|safe }}</p>
+                                                    <h3>{{ self.t("moderation.target-language") }}</h3>
+                                                    <p lang="{{ target_lang }}">{{ ex.xhosa.to_html(i18n_info)|safe }}</p>
 
-                                                     <p><strong>Suggested by</strong> {{ ex.suggesting_user.username }}</p>
-                                                     <p><strong>Changes summary:</strong> {{ ex.changes_summary }}</p>
+                                                     <p>
+                                                         {# Don't worry, we escape the username before rendering it #}
+                                                         {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => ex.suggesting_user.username.clone()))|safe }}
+                                                     </p>
+                                                     <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ ex.changes_summary }}</p>
 
                                                     <div class="row_list spaced_flex_list">
-                                                        {%- call example_suggestion_action("accept", "Accept") -%}
-                                                        {%- call example_suggestion_action("reject", "Reject") -%}
+                                                        {%- call example_suggestion_action("accept", self.t("moderation.accept")) -%}
+                                                        {%- call example_suggestion_action("reject", self.t("moderation.reject")) -%}
                                                     </div>
                                                 </li>
                                             {%- endfor -%}
 
                                             {%- for del in assoc.example_deletion_suggestions -%}
                                                 <li>
-                                                    <h3><del>English</del></h3>
-                                                    <p><del>{{ del.example.english }}</del></p>
-                                                    <h3><del>Xhosa</del></h3>
-                                                    <p><del>{{ del.example.xhosa }}</del></p>
+                                                    <h3><del>{{ self.t("source-language") }}</del></h3>
+                                                    <p lang="{{ src_lang }}"><del>{{ del.example.english }}</del></p>
+                                                    <h3><del>{{ self.t("target-language") }}</del></h3>
+                                                    <p lang="{{ target_lang }}"><del>{{ del.example.xhosa }}</del></p>
 
-                                                    <p><strong>Suggested by</strong> {{ del.suggesting_user.username }}</p>
-                                                    <p><strong>Changes summary:</strong> {{ del.reason }}</p>
+                                                    <p>
+                                                        {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => del.suggesting_user.username.clone()))|safe }}
+                                                    </p>
+                                                    <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ del.reason }}</p>
 
                                                     <div class="row_list spaced_flex_list">
-                                                        {%- call example_deletion_action(true, "Accept deletion") -%}
-                                                        {%- call example_deletion_action(false, "Reject deletion") -%}
+                                                        {%- call example_deletion_action(true, self.t("moderation.accept-deletion")) -%}
+                                                        {%- call example_deletion_action(false, self.t("moderation.reject-deletion")) -%}
                                                     </div>
                                                 </li>
                                             {%- endfor -%}
@@ -503,20 +485,22 @@
 
                                 {%- if !assoc.linked_words_is_empty() -%}
                                     <div>
-                                        <h2 class="caption">Linked words</h2>
+                                        <h2 class="caption">{{ self.t("linked-words")}}</h2>
 
                                         <ul>
                                             {%- for l in assoc.linked_word_suggestions -%}
                                                 <li>
-                                                    {{- l.other(WordId(word.id.clone()).into()).hyperlinked().to_html()|safe }}
-                                                    - {{ l.link_type.to_html()|safe -}}
+                                                    {{- l.other(WordId(word.id.clone()).into()).hyperlinked().to_html(i18n_info)|safe }}
+                                                    - {{ l.link_type.to_html(i18n_info)|safe -}}
 
-                                                    <p><strong>Suggested by</strong> {{ l.suggesting_user.username }}</p>
-                                                    <p><strong>Changes summary:</strong> {{ l.changes_summary }}</p>
+                                                    <p>
+                                                        {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => l.suggesting_user.username.clone()))|safe }}
+                                                    </p>
+                                                    <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ l.changes_summary }}</p>
 
                                                     <div class="row_list spaced_flex_list">
-                                                        {%- call linked_word_suggestion_action("accept", "Accept") -%}
-                                                        {%- call linked_word_suggestion_action("reject", "Reject") -%}
+                                                        {%- call linked_word_suggestion_action("accept", self.t("moderation.accept")) -%}
+                                                        {%- call linked_word_suggestion_action("reject", self.t("moderation.reject")) -%}
                                                     </div>
                                                 </li>
                                             {%- endfor -%}
@@ -524,16 +508,18 @@
                                             {%- for del in assoc.linked_word_deletion_suggestions -%}
                                                 <li>
                                                     <del>
-                                                        {{ del.link.other.hyperlinked().to_html()|safe }} -
-                                                        {{ del.link.link_type.to_html()|safe -}}
+                                                        {{ del.link.other.hyperlinked().to_html(i18n_info)|safe }} -
+                                                        {{ del.link.link_type.to_html(i18n_info)|safe -}}
                                                     </del>
 
-                                                    <p><strong>Suggested by</strong> {{ del.suggesting_user.username }}</p>
-                                                    <p><strong>Changes summary:</strong> {{ del.reason }}</p>
+                                                    <p>
+                                                        {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => del.suggesting_user.username.clone()))|safe }}
+                                                    </p>
+                                                    <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ del.reason }}</p>
 
                                                     <div class="row_list spaced_flex_list">
-                                                        {%- call linked_word_deletion_suggestion_action(true, "Accept deletion") -%}
-                                                        {%- call linked_word_deletion_suggestion_action(false, "Reject deletion") -%}
+                                                        {%- call linked_word_deletion_suggestion_action(true, self.t("moderation.accept-deletion")) -%}
+                                                        {%- call linked_word_deletion_suggestion_action(false, self.t("moderation.reject-deletion")) -%}
                                                     </div>
                                                 </li>
                                             {%- endfor -%}
@@ -546,7 +532,7 @@
                 </ul>
 
                 {%- if self.is_empty() -%}
-                    <p>There are no suggestions to review at this time.<p>
+                    <p>{{ self.t("moderation.no-suggestions") }}<p>
                 {%- endif -%}
             </div>
         </main>
@@ -559,8 +545,8 @@
             <div id="confirm_duplicates"></div>
 
             <div id="confirm_buttons">
-                <button id="confirm_yes">Yes</button>
-                <button id="confirm_no">No</button>
+                <button id="confirm_yes">{{ self.t("yes.capital") }}</button>
+                <button id="confirm_no">{{ self.t("no.capital") }}</button>
             </div>
         </div>
     </div>

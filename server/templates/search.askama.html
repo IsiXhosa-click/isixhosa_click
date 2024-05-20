@@ -3,12 +3,12 @@
 
 <!DOCTYPE html>
 
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
     <title>Live Dictionary - IsiXhosa.click</title>
     <meta name="og:title" content="Search - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/search"/>
-    {%- call macros::description("Search for a word in the free, open IsiXhosa.click dictionary for Xhosa and English.") -%}
+    {%- call macros::description("search.description") -%}
     <link rel="stylesheet" href="/search.css">
     {%- call macros::meta() -%}
 </head>
@@ -29,7 +29,7 @@
                     {%- for hit in hits -%}
                         <li class="hit_container">
                             <a class="hit" href="/word/{{ hit.id }}">
-                                <span>{{ hit.to_html()|safe }}</span>
+                                <span>{{ hit.to_html(i18n_info)|safe }}</span>
                                 <span class="material-icons go_arrow">arrow_forward</span>
                             </a>
                         </li>

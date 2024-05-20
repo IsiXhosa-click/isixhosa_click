@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use isixhosa_common::database::{DbBase, UserAccessDb, WordId};
+use isixhosa_common::i18n::SiteContext;
 use isixhosa_common::templates::WordChangeMethod;
 use tracing::instrument;
 use warp::{body, Filter, Rejection, Reply};
@@ -12,12 +13,12 @@ use crate::i18n::I18nInfo;
 use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::submit::edit_word_page;
-use crate::{DebugBoxedExt, SiteContext};
+use crate::DebugBoxedExt;
 
 pub fn edit(
     db: DbBase,
     tantivy: Arc<TantivyClient>,
-    site_ctx: SiteContext,
+    site_ctx: Arc<SiteContext>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let submit_page = warp::get()
         .and(warp::any().map(|| None)) // previous_success is none
@@ -67,7 +68,7 @@ async fn submit_suggestion_reply(
     i18n_info: I18nInfo,
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
-    submit_suggestion(w, tantivy, &user, &db).await;
+    submit_suggestion(w, tantivy, &user, &db, i18n_info.clone()).await;
     word(id, Some(WordChangeMethod::Edit), user.into(), i18n_info, db).await
 }
 

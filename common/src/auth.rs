@@ -70,8 +70,8 @@ impl Auth {
             .unwrap_or_default()
     }
 
-    pub fn username(&self) -> Option<&str> {
-        self.user().map(|user| &user.username as &str)
+    pub fn username(&self) -> Option<String> {
+        self.user().map(|user| user.username.clone())
     }
 
     pub fn user_id(&self) -> Option<NonZeroU64> {

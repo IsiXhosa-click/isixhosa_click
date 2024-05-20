@@ -1,25 +1,24 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="{{ i18n_info.user_language }}">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>About - IsiXhosa.click</title>
-    <meta name="og:title" content="About - IsiXhosa.click"/>
-    {%- call macros::description("IsiXhosa.click is a free, open, online dictionary for Xhosa and English.") -%}
+    {%- call macros::title("about") -%}
+    {%- call macros::description("about.description") -%}
     {%- call macros::meta() -%}
 </head>
 
 <body>
     {%- call macros::navbar() -%}
     <div id="main_wrap">
-        <header><h1>About</h1></header>
+        <header><h1>{{ self.t("about") }}</h1></header>
         <main>
             <article>
                 <h2 id="aim">{{ self.t("about.aim") }}</h2>
                 <p>{{ self.t("about.aim-text")|safe }}<p>
 
                 <h2 id="usage">{{ self.t("about.usage") }}</h2>
-                <p>{{ self.t_with("about.usage-text", i18n::args!("word-count" => self.word_count))|safe }}</p>
+                <p>{{ self.t_with("about.usage-text", crate::i18n_args!("word-count" => self.word_count))|safe }}</p>
 
                 <h2 id="submitting-edits">{{ self.t("about.submitting-edits") }}</h2>
                 {{ self.t("about.submitting-edits-text")|safe }}

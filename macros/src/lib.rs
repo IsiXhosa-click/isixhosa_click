@@ -8,29 +8,42 @@ pub fn derive_i18n_template(input: TokenStream) -> TokenStream {
     let name = &ast.ident;
     let gen = quote! {
         impl #name {
-            fn translate(&self, key: &str) -> askama::MarkupDisplay<askama::Html, String> {
-                askama::MarkupDisplay::new_safe(
-                    crate::i18n::translate(key, &self.i18n_info, &HashMap::new()),
-                    askama::Html
+            fn host(&self) -> &str {
+                &self.i18n_info.ctx.host
+            }
+
+            fn lang(&self) -> &fluent_templates::LanguageIdentifier {
+                &self.i18n_info.user_language
+            }
+
+            fn translate<K: crate::i18n::ToTranslationKey>(&self, key: K) -> String {
+                crate::i18n::translate(
+                    &crate::i18n::ToTranslationKey::translation_key(&key),
+                    &self.i18n_info,
+                    &std::collections::HashMap::new()
                 )
             }
 
-            fn t(&self, key: &str) -> askama::MarkupDisplay<askama::Html, String> {
+            fn t<K: crate::i18n::ToTranslationKey>(&self, key: K) -> String {
                 self.translate(key)
             }
 
-            fn translate_with_arg(
+            fn translate_with_arg<K: crate::i18n::ToTranslationKey>(
                 &self,
-                key: &str,
-                args: &HashMap<String, fluent_templates::fluent_bundle::FluentValue<'static>>
+                key: K,
+                args: &std::collections::HashMap<String, fluent_templates::fluent_bundle::FluentValue<'static>>
             ) -> String {
-                crate::i18n::translate(key, &self.i18n_info, args)
+                crate::i18n::translate(
+                    &crate::i18n::ToTranslationKey::translation_key(&key),
+                    &self.i18n_info,
+                    args
+                )
             }
 
-            fn t_with(
+            fn t_with<K: crate::i18n::ToTranslationKey>(
                 &self,
-                key: &str,
-                args: &HashMap<String, fluent_templates::fluent_bundle::FluentValue<'static>>
+                key: K,
+                args: &std::collections::HashMap<String, fluent_templates::fluent_bundle::FluentValue<'static>>
             ) -> String {
                 self.translate_with_arg(key, args)
             }

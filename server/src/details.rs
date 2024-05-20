@@ -1,16 +1,18 @@
 use crate::auth::with_any_auth;
 use crate::i18n::I18nInfo;
-use crate::{spawn_blocking_child, DebugBoxedExt, NotFound, SiteContext};
+use crate::{spawn_blocking_child, DebugBoxedExt, NotFound};
 use isixhosa_common::auth::Auth;
 use isixhosa_common::database::{DbBase, PublicAccessDb};
+use isixhosa_common::i18n::SiteContext;
 use isixhosa_common::templates::{WordChangeMethod, WordDetails};
 use isixhosa_common::types::ExistingWord;
+use std::sync::Arc;
 use tracing::instrument;
 use warp::{Filter, Rejection, Reply};
 
 pub fn details(
     db: DbBase,
-    site_ctx: SiteContext,
+    site_ctx: Arc<SiteContext>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     warp::path!["word" / u64]
         .and(warp::path::end())
@@ -26,20 +28,22 @@ pub async fn word(
     word_id: u64,
     previous_success: Option<WordChangeMethod>,
     auth: Auth,
-    _i18n_info: I18nInfo,
+    i18n_info: I18nInfo,
     db: impl PublicAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let db = db.clone();
-    let word = spawn_blocking_child(move || ExistingWord::fetch_full(&db, word_id))
+    let i18n_clone = i18n_info.clone();
+    let word = spawn_blocking_child(move || ExistingWord::fetch_full(&db, i18n_clone, word_id))
         .await
         .unwrap();
     Ok(match word {
         Some(word) => WordDetails {
             auth,
+            i18n_info,
             word,
             previous_success,
         }
         .into_response(),
-        None => NotFound { auth }.into_response(),
+        None => NotFound { auth, i18n_info }.into_response(),
     })
 }

@@ -7,6 +7,7 @@ use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::{ModeratorAccessDb, UserAccessDb};
 use isixhosa_common::format::{DisplayHtml, HtmlFormatter, HyperlinkWrapper, NounClassInHit};
+use isixhosa_common::i18n::I18nInfo;
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use isixhosa_common::serialization::WithDeleteSentinel;
 use isixhosa_common::types::{ExistingExample, ExistingWord, PublicUserInfo, WordHit};
@@ -61,7 +62,7 @@ impl SuggestedWord {
         fields(results),
         skip(db)
     )]
-    pub fn fetch_all_full(db: &impl ModeratorAccessDb) -> Vec<SuggestedWord> {
+    pub fn fetch_all_full(db: &impl ModeratorAccessDb, i18n_info: I18nInfo) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "
             SELECT
                 suggestion_id, suggesting_user, existing_word_id, changes_summary,
@@ -80,7 +81,11 @@ impl SuggestedWord {
             .map(|row| {
                 let mut w = SuggestedWord::from_row_fetch_original(row, db);
                 w.examples = SuggestedExample::fetch_all_for_suggestion(db, w.suggestion_id);
-                w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, w.suggestion_id);
+                w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(
+                    db,
+                    i18n_info.clone(),
+                    w.suggestion_id,
+                );
 
                 Ok(w)
             })
@@ -128,11 +133,15 @@ impl SuggestedWord {
 
     /// Returns the suggested word with examples and linked words populated.
     #[instrument(name = "Fetch full suggested word", fields(found), skip(db))]
-    pub fn fetch_full(db: &impl UserAccessDb, id: u64) -> Option<SuggestedWord> {
+    pub fn fetch_full(
+        db: &impl UserAccessDb,
+        i18n_info: I18nInfo,
+        id: u64,
+    ) -> Option<SuggestedWord> {
         let mut word = SuggestedWord::fetch_alone(db, id);
         if let Some(w) = word.as_mut() {
             w.examples = SuggestedExample::fetch_all_for_suggestion(db, id);
-            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, id);
+            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, id);
         }
 
         Span::current().record("found", word.is_some());
@@ -147,7 +156,7 @@ impl SuggestedWord {
             suggestion_id = self.suggestion_id,
             existing_id = self.word_id,
             accepted_id,
-            hit = %self.to_plaintext(),
+            hit = ?self,
         ),
         skip_all
     )]
@@ -556,7 +565,11 @@ pub struct SuggestedLinkedWord {
 
 impl SuggestedLinkedWord {
     #[instrument(name = "Fetch suggested linked word", skip(db))]
-    pub fn fetch(db: &impl UserAccessDb, suggestion: u64) -> SuggestedLinkedWord {
+    pub fn fetch(
+        db: &impl UserAccessDb,
+        i18n_info: I18nInfo,
+        suggestion: u64,
+    ) -> SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "
             SELECT linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
                    linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
@@ -576,7 +589,9 @@ impl SuggestedLinkedWord {
             .prepare(SELECT_SUGGESTION)
             .unwrap()
             .query_row(params![suggestion], |row| {
-                Ok(SuggestedLinkedWord::from_row_populate_both(row, db))
+                Ok(SuggestedLinkedWord::from_row_populate_both(
+                    row, db, i18n_info,
+                ))
             })
             .unwrap();
         s
@@ -591,6 +606,7 @@ impl SuggestedLinkedWord {
     )]
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
+        i18n_info: I18nInfo,
         suggested_word_id: u64,
     ) -> Vec<SuggestedLinkedWord> {
         const SELECT_SUGGESTION: &str = "
@@ -607,7 +623,13 @@ impl SuggestedLinkedWord {
         let rows = query.query(params![suggested_word_id]).unwrap();
 
         let mut vec: Vec<SuggestedLinkedWord> = rows
-            .map(|row| Ok(SuggestedLinkedWord::from_row_populate_both(row, db)))
+            .map(|row| {
+                Ok(SuggestedLinkedWord::from_row_populate_both(
+                    row,
+                    db,
+                    i18n_info.clone(),
+                ))
+            })
             .collect()
             .unwrap();
 
@@ -624,6 +646,7 @@ impl SuggestedLinkedWord {
     )]
     pub fn fetch_all_for_existing_words(
         db: &impl ModeratorAccessDb,
+        i18n_info: I18nInfo,
     ) -> impl Iterator<Item = (WordId, Vec<SuggestedLinkedWord>)> {
         const SELECT: &str = "
             SELECT words.word_id,
@@ -670,7 +693,7 @@ impl SuggestedLinkedWord {
 
                 Ok((
                     WordId(chosen.unwrap()),
-                    SuggestedLinkedWord::from_row_populate_both(row, db),
+                    SuggestedLinkedWord::from_row_populate_both(row, db, i18n_info.clone()),
                 ))
             })
             .for_each(|(word_id, link)| {
@@ -780,7 +803,7 @@ impl SuggestedLinkedWord {
         fields(suggestion_id),
         skip_all
     )]
-    fn from_row_populate_both(row: &Row<'_>, db: &impl UserAccessDb) -> Self {
+    fn from_row_populate_both(row: &Row<'_>, db: &impl UserAccessDb, i18n_info: I18nInfo) -> Self {
         const SELECT: &str =
             "SELECT link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1;";
 
@@ -839,8 +862,10 @@ impl SuggestedLinkedWord {
 
         let mut next = |other_id| {
             let this_id = iter.next().unwrap();
-            let get_other =
-                |id| WordHit::fetch_from_db(db, WordOrSuggestionId::existing(id)).unwrap();
+            let get_other = |id| {
+                WordHit::fetch_from_db(db, i18n_info.clone(), WordOrSuggestionId::existing(id))
+                    .unwrap()
+            };
 
             match other_id {
                 Some(other_id) if WordOrSuggestionId::existing(other_id) == this_id => {
@@ -848,9 +873,15 @@ impl SuggestedLinkedWord {
                 }
                 Some(other_id) => MaybeEdited::Edited {
                     old: (WordOrSuggestionId::existing(other_id), get_other(other_id)),
-                    new: (this_id, WordHit::fetch_from_db(db, this_id).unwrap()),
+                    new: (
+                        this_id,
+                        WordHit::fetch_from_db(db, i18n_info.clone(), this_id).unwrap(),
+                    ),
                 },
-                None => MaybeEdited::New((this_id, WordHit::fetch_from_db(db, this_id).unwrap())),
+                None => MaybeEdited::New((
+                    this_id,
+                    WordHit::fetch_from_db(db, i18n_info.clone(), this_id).unwrap(),
+                )),
             }
         };
 
@@ -1097,7 +1128,7 @@ impl DisplayHtml for SuggestedWord {
                 &self.noun_class.map(|opt| opt.map(NounClassInHit)),
             ],
         )?;
-        f.write_text(")")
+        f.write_raw_str(")")
     }
 
     fn is_empty_str(&self) -> bool {

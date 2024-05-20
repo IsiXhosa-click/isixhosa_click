@@ -5,11 +5,13 @@ use crate::database::suggestion::SuggestedWord;
 use crate::i18n::I18nInfo;
 use crate::search::TantivyClient;
 use crate::serialization::qs_form;
-use crate::{spawn_blocking_child, DebugBoxedExt, SiteContext};
+use crate::{spawn_blocking_child, DebugBoxedExt};
 use askama::Template;
+use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::{DbBase, UserAccessDb};
 use isixhosa_common::format::DisplayHtml;
+use isixhosa_common::i18n::SiteContext;
 use isixhosa_common::language::{NounClassExt, Transitivity};
 use serde::Deserialize;
 use std::fmt::{self, Debug, Display, Formatter};
@@ -17,10 +19,11 @@ use std::sync::Arc;
 use tracing::instrument;
 use warp::{body, path, Filter, Rejection, Reply};
 
-#[derive(Template, Debug)]
+#[derive(Template, I18nTemplate, Debug)]
 #[template(path = "submit.askama.html")]
 struct SubmitTemplate {
     auth: Auth,
+    i18n_info: I18nInfo,
     previous_success: Option<bool>,
     action: SubmitFormAction,
     word: WordFormTemplate,
@@ -57,7 +60,7 @@ impl Display for SubmitFormAction {
 pub fn submit(
     db: DbBase,
     tantivy: Arc<TantivyClient>,
-    site_ctx: SiteContext,
+    site_ctx: Arc<SiteContext>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let submit_page = warp::get()
         .and(warp::any().map(|| None)) // previous_success is none
@@ -138,19 +141,26 @@ async fn submit_word_page(
     previous_success: Option<bool>,
     action: SubmitFormAction,
     user: FullUser,
-    _i18n_info: I18nInfo,
+    i18n_info: I18nInfo,
     db: impl UserAccessDb,
 ) -> Result<impl Reply, Rejection> {
+    let i18n_clone = i18n_info.clone();
     let db = db.clone();
     let word = spawn_blocking_child(move || match action {
         SubmitFormAction::EditSuggestion {
             suggestion_id,
             existing_id,
             ..
-        } => WordFormTemplate::fetch_from_db(&db, existing_id, Some(suggestion_id))
-            .unwrap_or_default(),
+        } => WordFormTemplate::fetch_from_db(
+            &db,
+            i18n_info.clone(),
+            existing_id,
+            Some(suggestion_id),
+        )
+        .unwrap_or_default(),
         SubmitFormAction::EditExisting(id) => {
-            WordFormTemplate::fetch_from_db(&db, Some(id), None).unwrap_or_default()
+            WordFormTemplate::fetch_from_db(&db, i18n_info.clone(), Some(id), None)
+                .unwrap_or_default()
         }
         SubmitFormAction::SubmitNewWord => WordFormTemplate::default(),
     })
@@ -159,6 +169,7 @@ async fn submit_word_page(
 
     Ok(SubmitTemplate {
         auth: user.into(),
+        i18n_info: i18n_clone,
         previous_success,
         action,
         word,
@@ -173,7 +184,7 @@ async fn submit_new_word_form(
     i18n_info: I18nInfo,
     db: impl UserAccessDb,
 ) -> Result<impl warp::Reply, Rejection> {
-    submit::submit_suggestion(word, tantivy, &user, &db).await;
+    submit::submit_suggestion(word, tantivy, &user, &db, i18n_info.clone()).await;
     submit_word_page(
         Some(true),
         SubmitFormAction::SubmitNewWord,

@@ -43,7 +43,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, Connection};
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::num::NonZeroU64;
@@ -67,6 +67,8 @@ use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
 use xtra::{Handler, Mailbox, WeakAddress};
 
+pub use isixhosa_common::i18n_args;
+
 mod auth;
 mod config;
 mod database;
@@ -84,7 +86,6 @@ mod user_management;
 
 use crate::i18n::I18nInfo;
 pub use config::Config;
-pub use i18n::SiteContext;
 
 const STATIC_LAST_CHANGED: &str = env!("STATIC_LAST_CHANGED");
 const STATIC_BIN_FILES_LAST_CHANGED: &str = env!("STATIC_BIN_FILES_LAST_CHANGED");
@@ -436,12 +437,13 @@ async fn server(cfg: Config, args: CliArgs) {
     let tantivy_cloned = tantivy.clone();
     let with_tantivy = warp::any().map(move || tantivy_cloned.clone());
     let db = DbBase::new(pool);
-    let site_ctx = i18n::load(args.site);
+    let site_ctx = Arc::new(i18n::load(args.site, &cfg));
 
     let search = {
         let search_page =
-            with_any_auth(db.clone(), site_ctx.clone()).map(|auth, _i18n_info, _db| Search {
+            with_any_auth(db.clone(), site_ctx.clone()).map(|auth, i18n_info, _db| Search {
                 auth,
+                i18n_info,
                 hits: Default::default(),
                 query: Default::default(),
             });
@@ -478,19 +480,20 @@ async fn server(cfg: Config, args: CliArgs) {
         let terms_of_use = warp::path("terms_of_use")
             .and(path::end())
             .and(with_any_auth(db.clone(), site_ctx.clone()))
-            .map(|auth, _i18n_info, _| TermsOfUse { auth });
+            .map(|auth, i18n_info, _| TermsOfUse { auth, i18n_info });
         let style_guide = warp::path("style_guide")
             .and(path::end())
             .and(with_any_auth(db.clone(), site_ctx.clone()))
-            .map(|auth, _i18n_info, _| StyleGuide { auth });
+            .map(|auth, i18n_info, _| StyleGuide { auth, i18n_info });
         let wordle = warp::path("wordle")
             .and(path::end())
             .and(with_any_auth(db.clone(), site_ctx.clone()))
-            .map(|auth, _i18n_info, _| Wordle { auth });
+            .map(|auth, i18n_info, _| Wordle { auth, i18n_info });
         let offline = warp::get()
             .and(warp::path("offline"))
             .and(path::end())
-            .map(|| Offline);
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|_auth, i18n_info, _db| Offline { i18n_info });
 
         let about = warp::get()
             .and(warp::path("about"))
@@ -644,8 +647,9 @@ async fn server(cfg: Config, args: CliArgs) {
     let serve = jaeger_proxy
         .or(wrap_filter!(routes))
         .or(wrap_filter!(with_any_auth(db, site_ctx.clone()).map(
-            |auth, _i18n, _db| {
-                reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
+            |auth, i18n_info, _db| {
+                reply::with_status(NotFound { auth, i18n_info }, StatusCode::NOT_FOUND)
+                    .into_response()
             }
         )));
 
@@ -674,10 +678,11 @@ struct SearchQuery {
     raw: bool,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "404.askama.html")]
 struct NotFound {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
 #[derive(Template, I18nTemplate, Clone, Debug)]
@@ -688,22 +693,25 @@ struct About {
     word_count: u64,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "terms_of_use.askama.html")]
 struct TermsOfUse {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "style_guide.askama.html")]
 struct StyleGuide {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "wordle.askama.html")]
 struct Wordle {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
 #[derive(Template, Clone, Debug)]
@@ -713,14 +721,17 @@ struct ServiceWorker {
     static_bin_files: Vec<String>,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "offline.askama.html")]
-struct Offline;
+struct Offline {
+    i18n_info: I18nInfo,
+}
 
-#[derive(Template)]
+#[derive(Template, I18nTemplate)]
 #[template(path = "search.askama.html")]
 struct Search {
     auth: Auth,
+    i18n_info: I18nInfo,
     hits: Vec<WordHit>,
     query: String,
 }
@@ -737,17 +748,23 @@ async fn query_search(
     query: SearchQuery,
     tantivy: Arc<TantivyClient>,
     auth: Auth,
-    _i18n_info: I18nInfo,
+    i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let results = tantivy
-        .search(query.query.clone(), IncludeResults::AcceptedOnly, false)
+        .search(
+            query.query.clone(),
+            IncludeResults::AcceptedOnly,
+            false,
+            i18n_info.clone(),
+        )
         .await
         .unwrap();
 
     if !query.raw {
         let template = Search {
             auth,
+            i18n_info,
             query: query.query,
             hits: results,
         };
@@ -772,7 +789,7 @@ async fn duplicate_search(
     query: DuplicateQuery,
     tantivy: Arc<TantivyClient>,
     _user: FullUser,
-    _i18n_info: I18nInfo,
+    i18n_info: I18nInfo,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
@@ -781,11 +798,16 @@ async fn duplicate_search(
     let res = match suggestion.filter(|w| w.word_id.is_none()) {
         Some(w) => {
             let english = tantivy
-                .search(w.english.current().clone(), include, true)
+                .search(
+                    w.english.current().clone(),
+                    include,
+                    true,
+                    i18n_info.clone(),
+                )
                 .await
                 .unwrap();
             let xhosa = tantivy
-                .search(w.xhosa.current().clone(), include, true)
+                .search(w.xhosa.current().clone(), include, true, i18n_info)
                 .await
                 .unwrap();
 
@@ -817,7 +839,7 @@ fn live_search(
     tantivy: Arc<TantivyClient>,
     params: LiveSearchParams,
     auth: Auth,
-    _i18n_info: I18nInfo,
+    i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> impl Reply {
     ws.on_upgrade(move |websocket| {
@@ -833,6 +855,7 @@ fn live_search(
             tantivy,
             include_suggestions_from_user,
             auth.has_permissions(Permissions::Moderator),
+            i18n_info,
         );
 
         let addr = xtra::spawn_tokio(actor, Mailbox::bounded(4));

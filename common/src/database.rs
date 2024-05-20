@@ -1,7 +1,8 @@
+use crate::i18n::I18nInfo;
 use crate::language::{
     ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType,
 };
-use crate::serialization::{DiscrimOutOfRange, SerAndDisplayWithDisplayHtml, WithDeleteSentinel};
+use crate::serialization::{DiscrimOutOfRange, SerializeTranslated, WithDeleteSentinel};
 use crate::types::{ExistingExample, ExistingLinkedWord, ExistingWord, PublicUserInfo, WordHit};
 use fallible_iterator::FallibleIterator;
 use isixhosa::noun::NounClass;
@@ -209,7 +210,11 @@ impl ExistingLinkedWord {
         fields(results),
         skip(db)
     )]
-    pub fn fetch_all_for_word(db: &impl PublicAccessDb, word_id: u64) -> Vec<ExistingLinkedWord> {
+    pub fn fetch_all_for_word(
+        db: &impl PublicAccessDb,
+        i18n_info: I18nInfo,
+        word_id: u64,
+    ) -> Vec<ExistingLinkedWord> {
         const SELECT: &str = "
             SELECT link_id, link_type, first_word_id, second_word_id FROM linked_words
                 WHERE first_word_id = ?1 OR second_word_id = ?1
@@ -220,7 +225,9 @@ impl ExistingLinkedWord {
         let rows = query.query(params![word_id]).unwrap();
 
         let mut vec: Vec<ExistingLinkedWord> = rows
-            .map(|row| ExistingLinkedWord::try_from_row_populate_other(row, db, word_id))
+            .map(|row| {
+                ExistingLinkedWord::try_from_row_populate_other(row, db, i18n_info.clone(), word_id)
+            })
             .collect()
             .unwrap();
 
@@ -238,6 +245,7 @@ impl ExistingLinkedWord {
     )]
     pub fn fetch(
         db: &impl PublicAccessDb,
+        i18n_info: I18nInfo,
         id: u64,
         skip_populating: u64,
     ) -> Option<ExistingLinkedWord> {
@@ -251,7 +259,7 @@ impl ExistingLinkedWord {
             .prepare(SELECT)
             .unwrap()
             .query_row(params![id], |row| {
-                ExistingLinkedWord::try_from_row_populate_other(row, db, skip_populating)
+                ExistingLinkedWord::try_from_row_populate_other(row, db, i18n_info, skip_populating)
             })
             .optional()
             .unwrap();
@@ -265,6 +273,7 @@ impl ExistingLinkedWord {
     pub fn try_from_row_populate_other(
         row: &Row<'_>,
         db: &impl PublicAccessDb,
+        i18n_info: I18nInfo,
         skip_populating: u64,
     ) -> Result<Self, rusqlite::Error> {
         let (first_word_id, second_word_id) =
@@ -284,18 +293,23 @@ impl ExistingLinkedWord {
             first_word_id,
             second_word_id,
             link_type: row.get("link_type")?,
-            other: WordHit::fetch_from_db(db, WordOrSuggestionId::existing(populate)).unwrap(),
+            other: WordHit::fetch_from_db(db, i18n_info, WordOrSuggestionId::existing(populate))
+                .unwrap(),
         })
     }
 }
 
 impl ExistingWord {
     #[instrument(name = "Fetch full existing word", fields(found), skip(db))]
-    pub fn fetch_full(db: &impl PublicAccessDb, id: u64) -> Option<ExistingWord> {
+    pub fn fetch_full(
+        db: &impl PublicAccessDb,
+        i18n_info: I18nInfo,
+        id: u64,
+    ) -> Option<ExistingWord> {
         let mut word = ExistingWord::fetch_alone(db, id);
         if let Some(word) = word.as_mut() {
             word.examples = ExistingExample::fetch_all_for_word(db, id);
-            word.linked_words = ExistingLinkedWord::fetch_all_for_word(db, id);
+            word.linked_words = ExistingLinkedWord::fetch_all_for_word(db, i18n_info, id);
             word.contributors = PublicUserInfo::fetch_public_contributors_for_word(db, id);
         }
 
@@ -366,6 +380,7 @@ impl WordHit {
     pub fn try_from_row_and_id(
         row: &Row<'_>,
         id: WordOrSuggestionId,
+        i18n_info: I18nInfo,
     ) -> Result<WordHit, rusqlite::Error> {
         Ok(WordHit {
             id: id.inner(),
@@ -373,13 +388,19 @@ impl WordHit {
             xhosa: row.get("xhosa")?,
             part_of_speech: row
                 .get::<_, Option<PartOfSpeech>>("part_of_speech")?
-                .map(SerAndDisplayWithDisplayHtml),
+                .map(|val| SerializeTranslated {
+                    val,
+                    i18n_info: i18n_info.clone(),
+                }),
             is_plural: row.get("is_plural")?,
             is_inchoative: row.get("is_inchoative")?,
             is_informal: row.get("is_informal")?,
             transitivity: row
                 .get_with_sentinel("transitivity")?
-                .map(SerAndDisplayWithDisplayHtml),
+                .map(|val| SerializeTranslated {
+                    val,
+                    i18n_info: i18n_info.clone(),
+                }),
             is_suggestion: id.is_suggested(),
             noun_class: row
                 .get_with_sentinel("noun_class")?
@@ -393,7 +414,11 @@ impl WordHit {
         fields(found),
         skip(db)
     )]
-    pub fn fetch_from_db(db: &impl PublicAccessDb, id: WordOrSuggestionId) -> Option<WordHit> {
+    pub fn fetch_from_db(
+        db: &impl PublicAccessDb,
+        i18n_info: I18nInfo,
+        id: WordOrSuggestionId,
+    ) -> Option<WordHit> {
         const SELECT_EXISTING: &str = "
             SELECT
                 english, xhosa, part_of_speech, is_plural, is_inchoative, is_informal, transitivity, noun_class
@@ -422,7 +447,7 @@ impl WordHit {
             .prepare(stmt)
             .unwrap()
             .query_row(params![id.inner()], |row| {
-                WordHit::try_from_row_and_id(row, id)
+                WordHit::try_from_row_and_id(row, id, i18n_info)
             })
             .optional()
             .unwrap();
@@ -513,9 +538,14 @@ impl ToSql for PartOfSpeech {
 
 impl ToSql for ConjunctionFollowedBy {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        Ok(ToSqlOutput::Borrowed(ValueRef::Text(
-            self.as_ref().as_bytes(),
-        )))
+        let text = match self {
+            ConjunctionFollowedBy::Indicative => "indicative mood",
+            ConjunctionFollowedBy::Subjunctive => "subjunctive mood",
+            ConjunctionFollowedBy::Participial => "participial mood",
+            ConjunctionFollowedBy::Custom(s) => s.as_ref(),
+        };
+
+        Ok(ToSqlOutput::Borrowed(ValueRef::Text(text.as_bytes())))
     }
 }
 

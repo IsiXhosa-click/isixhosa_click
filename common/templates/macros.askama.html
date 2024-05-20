@@ -2,23 +2,23 @@
 <!--suppress ALL -->
 <nav class="menu" id="menu">
         <a id="site_name_container" href="/">
-            <div id="site_icon"><img src="/icons/icon-192.png" width="40" height="40" alt="Site icon"></div>
-            <span id="site_name">IsiXhosa.click Live Dictionary</span>
+            <div id="site_icon"><img src="/icons/icon-192.png" width="40" height="40" alt='{{ self.t("nav.site-icon") }}'></div>
+            <span id="site_name">{{ self.t("site") }}</span>
         </a>
-        <button id="hamburger">
+        <button id="hamburger" aria-label='{{ self.t("nav.menu") }}'>
             <span class="material-icons">menu</span>
         </button>
 
-        <a href="/search">Search</a>
-        <a href="/about">About</a>
-        <a href="/submit">Submit a word</a>
-        <a href="/wordle">Wordle</a>
+        <a href="/search">{{ self.t("search") }}</a>
+        <a href="/about">{{ self.t("about") }}</a>
+        <a href="/submit">{{ self.t("submit") }}</a>
+        <a href="/wordle">{{ self.t("wordle") }}</a>
         {%- if auth.has_permissions(Permissions::Moderator) -%}
-            <a href="/moderation">Moderation</a>
+            <a href="/moderation">{{ self.t("moderation") }}</a>
         {%- endif -%}
 
         {%- if auth.has_permissions(Permissions::Administrator) -%}
-            <a href="/admin/jaeger">Tracing</a>
+            <a href="/admin/jaeger">{{ self.t("tracing") }}</a>
         {%-endif -%}
 
         {%- match auth.username() -%}
@@ -27,8 +27,8 @@
                     <div>
                         <a href="/login/oauth2/authorization/oidc">
                             <div id="login_bar" class="row_list not_signed_in">
-                                <img id="login_icon" alt="Google logo" width="54" height="54" src="/google.svg">
-                                <div id="login_bar_text">Sign in with Google</div>
+                                <img id="login_icon" alt='{{ self.t("nav.google-logo") }}' width="54" height="54" src="/google.svg">
+                                <div id="login_bar_text">{{ self.t("nav.sign-in-with-google") }}</div>
                             </div>
                         </a>
                     </div>
@@ -37,14 +37,16 @@
                 <div id="login_bar_container">
                     <div>
                         <div>
-                            <button id="login_bar" class="row_list">
+                            <button id="login_bar" class="row_list"
+                                    aria-label='{{ self.t_with("nav.user", crate::i18n_args!("username" => username.to_owned())) }}'
+                            >
                                 <div class="material-icons" id="user_icon">account_circle</div>
                                 <div id="login_bar_text">{{- username -}}</div>
                             </button>
 
                             <div id="login_popover_container">
                                 <div id="login_popover" hidden>
-                                    <a href="/logout/">
+                                    <a href="/logout/" aria-label='{{ self.t("nav.log-out") }}'>
                                         <div class="material-icons login_popover_icon">logout</div>
                                         <div class="login_popover_text">Log out</div>
                                     </a>
@@ -84,9 +86,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width">
     <meta name="og:type" content="website"/>
-    <meta name="og:site_name" content="IsiXhosa.click"/>
-    <meta name="og:logo" content="https://isixhosa.click/icons/icon-192.png"/>
-    <meta name="og:image" content="https://isixhosa.click/icons/icon-192.png"/>
+    <meta name="og:site_name" content='{{ self.t("site.short-name") }}'/>
+    <meta name="og:logo" content="https://{{ self.host() }}/icons/icon-192.png"/>
+    <meta name="og:image" content="https://{{ self.host() }}/icons/icon-192.png"/>
     <link rel="stylesheet" href="/style.css">
 
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
@@ -111,13 +113,22 @@
     </script>
 {%- endmacro -%}
 
-{%- macro description(desc) -%}
+{%- macro title(title_key) -%}
+    {%- let title_text = self.t(title_key) -%}
+    {%- let short_name = self.t("site.short-name") -%}
+
+    <title>{{ title_text }} - {{ short_name }}</title>
+    <meta name="og:title" content="{{ title_text }} - {{ short_name }}"/>
+{%- endmacro -%}
+
+{%- macro description(desc_key) -%}
+    {%- let desc = self.t(desc_key) -%}
     <meta name="og:description" content="{{ desc }}"/>
     <meta name="description" content="{{ desc }}"/>
 {%- endmacro -%}
 
 {%- macro translate(key) -%}
-    {{ key|translate(i18n_info, crate::i18n::args!()) }}
+    {{ key|translate(i18n_info, crate::i18n_args!()) }}
 {%- endmacro -%}
 
 {%- macro translate_with(key, args) -%}

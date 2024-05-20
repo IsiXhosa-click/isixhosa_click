@@ -1,9 +1,10 @@
 use crate::language::{
     ConjunctionFollowedBy, NounClassPrefixes, PartOfSpeech, Transitivity, WordLinkType,
 };
-use crate::serialization::SerAndDisplayWithDisplayHtml;
+use crate::serialization::SerializeTranslated;
 use isixhosa::noun::NounClass;
 use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 use std::num::NonZeroU64;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -15,7 +16,7 @@ pub struct ExistingExample {
     pub xhosa: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct ExistingLinkedWord {
     pub link_id: u64,
     pub first_word_id: u64,
@@ -24,7 +25,7 @@ pub struct ExistingLinkedWord {
     pub other: WordHit,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct ExistingWord {
     pub word_id: u64,
 
@@ -64,19 +65,33 @@ impl ExistingWord {
     }
 }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct WordHit {
     pub id: u64,
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: Option<SerAndDisplayWithDisplayHtml<PartOfSpeech>>,
+    pub part_of_speech: Option<SerializeTranslated<PartOfSpeech>>,
     pub is_plural: bool,
     pub is_inchoative: bool,
     pub is_informal: bool,
-    pub transitivity: Option<SerAndDisplayWithDisplayHtml<Transitivity>>,
+    pub transitivity: Option<SerializeTranslated<Transitivity>>,
     pub noun_class: Option<NounClassPrefixes>,
     pub is_suggestion: bool,
 }
+
+impl Hash for WordHit {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state)
+    }
+}
+
+impl PartialEq for WordHit {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for WordHit {}
 
 impl WordHit {
     pub fn empty() -> WordHit {

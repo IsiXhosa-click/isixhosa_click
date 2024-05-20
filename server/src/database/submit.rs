@@ -8,6 +8,7 @@ use crate::spawn_blocking_child;
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::UserAccessDb;
+use isixhosa_common::i18n::I18nInfo;
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, ExistingWord, WordHit};
 use rusqlite::types::{ToSqlOutput, Value};
@@ -82,6 +83,7 @@ pub async fn submit_suggestion(
     tantivy: Arc<TantivyClient>,
     suggesting_user: &FullUser,
     db: &impl UserAccessDb,
+    i18n_info: I18nInfo,
 ) {
     // Intentionally suggesting_user is not set to excluded
     const INSERT_SUGGESTION: &str = "
@@ -119,7 +121,8 @@ pub async fn submit_suggestion(
     spawn_blocking_child(move || {
         let conn = db.get().unwrap();
 
-        let orig = WordFormTemplate::fetch_from_db(&db, w.existing_id, None).unwrap_or_default();
+        let orig = WordFormTemplate::fetch_from_db(&db, i18n_info.clone(), w.existing_id, None)
+            .unwrap_or_default();
         let use_submitted = w.existing_id.is_none();
 
         let changes_summary_default = if w.existing_id.is_none() {
@@ -155,7 +158,8 @@ pub async fn submit_suggestion(
             diff(w.note.clone(), &orig.note, use_submitted)
         ];
 
-        let orig_suggestion = WordFormTemplate::fetch_from_db(&db, None, w.suggestion_id);
+        let orig_suggestion =
+            WordFormTemplate::fetch_from_db(&db, i18n_info.clone(), None, w.suggestion_id);
 
         let any_changes = match orig_suggestion.as_ref() {
             Some(orig_suggestion) => w.has_any_changes_in_word(orig_suggestion),
@@ -205,6 +209,7 @@ pub async fn submit_suggestion(
         process_linked_words(
             &mut w,
             &db,
+            i18n_info,
             suggesting_user,
             suggested_word_id_if_new,
             &changes_summary,
@@ -236,6 +241,7 @@ pub async fn submit_suggestion(
 fn process_linked_words(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
+    i18n_info: I18nInfo,
     suggesting_user: NonZeroU64,
     suggested_word_id_if_new: Option<i64>,
     changes_summary: &str,
@@ -341,14 +347,21 @@ fn process_linked_words(
     match (w.suggestion_id, w.existing_id) {
         // Editing a new suggested word
         (Some(suggested), None) => {
-            for prev in SuggestedLinkedWord::fetch_all_for_suggestion(db, suggested) {
+            for prev in
+                SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info.clone(), suggested)
+            {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
                 {
                     let new = linked_words.remove(i);
                     let old = new.existing_id.and_then(|id| {
-                        ExistingLinkedWord::fetch(db, id, existing_word_id.unwrap())
+                        ExistingLinkedWord::fetch(
+                            db,
+                            i18n_info.clone(),
+                            id,
+                            existing_word_id.unwrap(),
+                        )
                     });
                     maybe_insert_link(new, old);
                 } else {
@@ -361,7 +374,7 @@ fn process_linked_words(
         }
         // Editing an edit to an existing word, or editing an existing word
         (_, Some(existing)) => {
-            for prev in ExistingLinkedWord::fetch_all_for_word(db, existing) {
+            for prev in ExistingLinkedWord::fetch_all_for_word(db, i18n_info, existing) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.existing_id == Some(prev.link_id))
@@ -599,12 +612,13 @@ impl WordFormTemplate {
     #[instrument(name = "Fetch word form template", skip(db))]
     pub fn fetch_from_db(
         db: &impl UserAccessDb,
+        i18n_info: I18nInfo,
         existing: Option<u64>,
         suggested: Option<u64>,
     ) -> Option<Self> {
         match (existing, suggested) {
             (Some(existing), Some(suggestion)) => {
-                let suggested_word = SuggestedWord::fetch_full(db, suggestion)?;
+                let suggested_word = SuggestedWord::fetch_full(db, i18n_info.clone(), suggestion)?;
                 let mut template = WordFormTemplate::from(suggested_word);
                 template.examples.extend(
                     ExistingExample::fetch_all_for_word(db, existing)
@@ -612,18 +626,18 @@ impl WordFormTemplate {
                         .map(Into::into),
                 );
                 template.linked_words.extend(
-                    ExistingLinkedWord::fetch_all_for_word(db, existing)
+                    ExistingLinkedWord::fetch_all_for_word(db, i18n_info, existing)
                         .into_iter()
                         .map(Into::into),
                 );
                 Some(template)
             }
             (_, Some(suggestion)) => {
-                let suggested_word = SuggestedWord::fetch_full(db, suggestion)?;
+                let suggested_word = SuggestedWord::fetch_full(db, i18n_info, suggestion)?;
                 Some(WordFormTemplate::from(suggested_word))
             }
             (Some(existing), None) => {
-                let existing_word = ExistingWord::fetch_full(db, existing)?;
+                let existing_word = ExistingWord::fetch_full(db, i18n_info, existing)?;
                 Some(WordFormTemplate::from(existing_word))
             }
             _ => None,

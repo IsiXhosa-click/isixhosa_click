@@ -60,14 +60,6 @@ table {
     padding: 0;
 }
 
-#confirm_duplicates::before {
-    content: "Possible duplicates:";
-}
-
-#confirm_duplicates:empty::before {
-    content: "";
-}
-
 #confirm_duplicates li::marker {
     font-size: 1rem;
 }
