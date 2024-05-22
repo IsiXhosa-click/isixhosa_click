@@ -2,9 +2,7 @@ use crate::spawn_blocking_child;
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::{GetWithSentinelExt, WordOrSuggestionId};
-use isixhosa_common::i18n::I18nInfo;
 use isixhosa_common::language::{NounClassExt, PartOfSpeech, Transitivity};
-use isixhosa_common::serialization::SerializeTranslated;
 use isixhosa_common::types::WordHit;
 use num_enum::TryFromPrimitive;
 use ordered_float::OrderedFloat;
@@ -151,14 +149,12 @@ impl TantivyClient {
         query: String,
         include: IncludeResults,
         duplicate: bool,
-        i18n_info: I18nInfo,
     ) -> Result<Vec<WordHit>> {
         self.searchers
             .send(SearchRequest {
                 query,
                 include,
                 duplicate,
-                i18n_info,
             })
             .await
             .map_err(Into::into)
@@ -424,7 +420,6 @@ pub struct SearchRequest {
     query: String,
     include: IncludeResults,
     duplicate: bool,
-    i18n_info: I18nInfo,
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -514,9 +509,7 @@ impl SearcherActor {
                 searcher
                     .doc(doc_address)
                     .map_err(anyhow::Error::from)
-                    .and_then(|doc| {
-                        WordHit::try_deserialize(&client.schema_info, doc, req.i18n_info.clone())
-                    })
+                    .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
                     .unwrap()
             })
             .inspect(|_| count += 1);
@@ -666,20 +659,11 @@ pub struct WordDocument {
 }
 
 trait WordHitExt {
-    fn try_deserialize(
-        schema_info: &SchemaInfo,
-        doc: TantivyDocument,
-        i18n_info: I18nInfo,
-    ) -> Result<WordHit>;
-    fn from_doc(doc: WordDocument, i18n_info: I18nInfo) -> WordHit;
+    fn try_deserialize(schema_info: &SchemaInfo, doc: TantivyDocument) -> Result<WordHit>;
 }
 
 impl WordHitExt for WordHit {
-    fn try_deserialize(
-        schema_info: &SchemaInfo,
-        doc: TantivyDocument,
-        i18n_info: I18nInfo,
-    ) -> Result<WordHit> {
+    fn try_deserialize(schema_info: &SchemaInfo, doc: TantivyDocument) -> Result<WordHit> {
         let is_suggestion = doc
             .get_first(schema_info.suggesting_user)
             .and_then(|v| v.as_u64())
@@ -741,39 +725,29 @@ impl WordHitExt for WordHit {
                 .with_context(|| format!("Invalid value for id field in document {:#?}", doc))?,
             english: get_str(&doc, schema_info.english, "english")?,
             xhosa: get_str(&doc, schema_info.xhosa, "xhosa")?,
-            part_of_speech: get_with_sentinel(&doc, schema_info.part_of_speech).map(|val| {
-                SerializeTranslated {
-                    val,
-                    i18n_info: i18n_info.clone(),
-                }
-            }),
+            part_of_speech: get_with_sentinel(&doc, schema_info.part_of_speech),
             is_plural: get_bool(&doc, schema_info.is_plural, "is_plural")?,
             is_inchoative: get_bool(&doc, schema_info.is_inchoative, "is_inchoative")?,
             is_informal: get_bool(&doc, schema_info.is_informal, "is_informal")?,
-            transitivity: get_with_sentinel(&doc, schema_info.transitivity)
-                .map(|val| SerializeTranslated { val, i18n_info }),
+            transitivity: get_with_sentinel(&doc, schema_info.transitivity),
             is_suggestion,
             noun_class: get_with_sentinel(&doc, schema_info.noun_class)
                 .map(|c: NounClass| c.to_prefixes()),
         })
     }
+}
 
-    fn from_doc(d: WordDocument, i18n_info: I18nInfo) -> Self {
+impl From<WordDocument> for WordHit {
+    fn from(d: WordDocument) -> Self {
         WordHit {
             id: d.id.inner(),
             english: d.english,
             xhosa: d.xhosa,
-            part_of_speech: d.part_of_speech.map(|val| SerializeTranslated {
-                val,
-                i18n_info: i18n_info.clone(),
-            }),
+            part_of_speech: d.part_of_speech,
             is_plural: d.is_plural,
             is_inchoative: d.is_inchoative,
             is_informal: d.is_informal,
-            transitivity: d.transitivity.map(|val| SerializeTranslated {
-                val,
-                i18n_info: i18n_info.clone(),
-            }),
+            transitivity: d.transitivity,
             is_suggestion: d.suggesting_user.is_some(),
             noun_class: d.noun_class.map(|c| c.to_prefixes()),
         }

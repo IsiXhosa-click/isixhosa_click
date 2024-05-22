@@ -338,6 +338,8 @@
                 import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
                 import { addDuplicateSearchFor } from "/submit/duplicate.js";
 
+                let translations = {{ self.i18n_info.js_translations()|json|safe }};
+
                 window.addEventListener("DOMContentLoaded", function() {
                     for (let input of document.getElementsByTagName("input")) {
                         if (input.type === "text") {
@@ -365,15 +367,15 @@
                     {%- let this_word_id = self.this_word_id_js() -%}
 
                     addExamples({{ word.examples|json|safe }});
-                    addLinkedWords({{ word.linked_words|json|safe }}, {{ this_word_id }});
+                    addLinkedWords(translations, {{ word.linked_words|json|safe }}, {{ this_word_id }});
                     partOfSpeechChange(); /* Refresh part of speech sections */
-                    addDuplicateSearchFor("english", {{ this_word_id }});
-                    addDuplicateSearchFor("xhosa", {{ this_word_id }});
+                    addDuplicateSearchFor(translations, "english", {{ this_word_id }});
+                    addDuplicateSearchFor(translations, "xhosa", {{ this_word_id }});
 
                     document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
                     document.getElementById("add_example").addEventListener("click", function() { addExample() });
                     document.getElementById("add_linked_word").addEventListener("click", function() {
-                        addLinkedWord({{ this_word_id }});
+                        addLinkedWord(translations, {{ this_word_id }});
                     });
                     document.getElementById("submit_word").addEventListener("submit", function() {
                         for (let word of document.getElementsByClassName("word_select_search")) {

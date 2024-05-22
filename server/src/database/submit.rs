@@ -374,7 +374,7 @@ fn process_linked_words(
         }
         // Editing an edit to an existing word, or editing an existing word
         (_, Some(existing)) => {
-            for prev in ExistingLinkedWord::fetch_all_for_word(db, i18n_info, existing) {
+            for prev in ExistingLinkedWord::fetch_all_for_word(db, existing) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.existing_id == Some(prev.link_id))
@@ -626,7 +626,7 @@ impl WordFormTemplate {
                         .map(Into::into),
                 );
                 template.linked_words.extend(
-                    ExistingLinkedWord::fetch_all_for_word(db, i18n_info, existing)
+                    ExistingLinkedWord::fetch_all_for_word(db, existing)
                         .into_iter()
                         .map(Into::into),
                 );
@@ -637,7 +637,7 @@ impl WordFormTemplate {
                 Some(WordFormTemplate::from(suggested_word))
             }
             (Some(existing), None) => {
-                let existing_word = ExistingWord::fetch_full(db, i18n_info, existing)?;
+                let existing_word = ExistingWord::fetch_full(db, existing)?;
                 Some(WordFormTemplate::from(existing_word))
             }
             _ => None,

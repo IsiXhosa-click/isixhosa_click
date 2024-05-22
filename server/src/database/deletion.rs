@@ -23,7 +23,7 @@ impl WordDeletionSuggestion {
         fields(results),
         skip_all
     )]
-    pub fn fetch_all(db: &impl ModeratorAccessDb, i18n_info: I18nInfo) -> Vec<Self> {
+    pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<Self> {
         const SELECT: &str =
             "SELECT words.word_id, words.english, words.xhosa, words.part_of_speech, words.is_plural,
                     words.is_inchoative, words.is_informal, words.transitivity, words.followed_by,
@@ -50,7 +50,6 @@ impl WordDeletionSuggestion {
                     word: WordHit::try_from_row_and_id(
                         row,
                         WordOrSuggestionId::existing(row.get::<&str, i64>("word_id")? as u64),
-                        i18n_info.clone(),
                     )
                     .unwrap(),
                     reason: row.get("reason")?,
@@ -233,12 +232,7 @@ impl LinkedWordDeletionSuggestion {
         Ok(LinkedWordDeletionSuggestion {
             suggestion_id,
             suggesting_user: PublicUserInfo::try_from(row)?,
-            link: ExistingLinkedWord::try_from_row_populate_other(
-                row,
-                db,
-                i18n_info,
-                skip_populating,
-            )?,
+            link: ExistingLinkedWord::try_from_row_populate_other(row, db, skip_populating)?,
             reason: row.get("reason")?,
         })
     }

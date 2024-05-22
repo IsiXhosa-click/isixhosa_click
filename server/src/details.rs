@@ -32,8 +32,7 @@ pub async fn word(
     db: impl PublicAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let db = db.clone();
-    let i18n_clone = i18n_info.clone();
-    let word = spawn_blocking_child(move || ExistingWord::fetch_full(&db, i18n_clone, word_id))
+    let word = spawn_blocking_child(move || ExistingWord::fetch_full(&db, word_id))
         .await
         .unwrap();
     Ok(match word {

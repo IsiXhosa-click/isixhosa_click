@@ -1,6 +1,5 @@
-use crate::i18n::{translate, I18nInfo, ToTranslationKey, TranslationKey};
+use crate::i18n::{translate, I18nInfo, TranslationKey};
 use crate::language::{NounClassExt, NounClassPrefixes};
-use crate::serialization::SerializeTranslated;
 use crate::types::{PublicUserInfo, WordHit};
 use askama::{Html, MarkupDisplay};
 use isixhosa::noun::NounClass;
@@ -100,17 +99,6 @@ pub trait DisplayHtml {
             i18n_info,
             plain_text: false,
         }
-    }
-}
-
-impl<T: ToTranslationKey> DisplayHtml for SerializeTranslated<T> {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
-        DisplayHtml::fmt(&self.val.translation_key(), f)
-    }
-
-    fn is_empty_str(&self) -> bool {
-        let key = self.val.translation_key();
-        key.is_empty_str()
     }
 }
 

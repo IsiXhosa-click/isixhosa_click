@@ -65,6 +65,8 @@
             <script type="module">
                 import { formatResult } from "/live_search.js";
 
+                let translations = {{ self.i18n_info.js_translations()|json|safe }};
+
                 function confirmWithDuplicates(suggestion_type, method, prompt, form, is_new_word, suggestion_id) {
                      document.getElementById("confirm_duplicates").innerHTML = "";
 
@@ -86,9 +88,9 @@
                                                 a.rel = "noopener noreferrer";
                                                 a.target = "_blank";
                                                 li.appendChild(a);
-                                                formatResult(result, a);
+                                                formatResult(translations, result, a);
                                             } else {
-                                                formatResult(result, li);
+                                                formatResult(translations, result, li);
                                             }
                                         });
 

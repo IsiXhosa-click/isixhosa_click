@@ -589,9 +589,7 @@ impl SuggestedLinkedWord {
             .prepare(SELECT_SUGGESTION)
             .unwrap()
             .query_row(params![suggestion], |row| {
-                Ok(SuggestedLinkedWord::from_row_populate_both(
-                    row, db, i18n_info,
-                ))
+                Ok(SuggestedLinkedWord::from_row_populate_both(row, db))
             })
             .unwrap();
         s
@@ -623,13 +621,7 @@ impl SuggestedLinkedWord {
         let rows = query.query(params![suggested_word_id]).unwrap();
 
         let mut vec: Vec<SuggestedLinkedWord> = rows
-            .map(|row| {
-                Ok(SuggestedLinkedWord::from_row_populate_both(
-                    row,
-                    db,
-                    i18n_info.clone(),
-                ))
-            })
+            .map(|row| Ok(SuggestedLinkedWord::from_row_populate_both(row, db)))
             .collect()
             .unwrap();
 
@@ -646,7 +638,6 @@ impl SuggestedLinkedWord {
     )]
     pub fn fetch_all_for_existing_words(
         db: &impl ModeratorAccessDb,
-        i18n_info: I18nInfo,
     ) -> impl Iterator<Item = (WordId, Vec<SuggestedLinkedWord>)> {
         const SELECT: &str = "
             SELECT words.word_id,
@@ -693,7 +684,7 @@ impl SuggestedLinkedWord {
 
                 Ok((
                     WordId(chosen.unwrap()),
-                    SuggestedLinkedWord::from_row_populate_both(row, db, i18n_info.clone()),
+                    SuggestedLinkedWord::from_row_populate_both(row, db),
                 ))
             })
             .for_each(|(word_id, link)| {
@@ -803,7 +794,7 @@ impl SuggestedLinkedWord {
         fields(suggestion_id),
         skip_all
     )]
-    fn from_row_populate_both(row: &Row<'_>, db: &impl UserAccessDb, i18n_info: I18nInfo) -> Self {
+    fn from_row_populate_both(row: &Row<'_>, db: &impl UserAccessDb) -> Self {
         const SELECT: &str =
             "SELECT link_type, first_word_id, second_word_id FROM linked_words WHERE link_id = ?1;";
 
@@ -862,10 +853,8 @@ impl SuggestedLinkedWord {
 
         let mut next = |other_id| {
             let this_id = iter.next().unwrap();
-            let get_other = |id| {
-                WordHit::fetch_from_db(db, i18n_info.clone(), WordOrSuggestionId::existing(id))
-                    .unwrap()
-            };
+            let get_other =
+                |id| WordHit::fetch_from_db(db, WordOrSuggestionId::existing(id)).unwrap();
 
             match other_id {
                 Some(other_id) if WordOrSuggestionId::existing(other_id) == this_id => {
@@ -873,15 +862,9 @@ impl SuggestedLinkedWord {
                 }
                 Some(other_id) => MaybeEdited::Edited {
                     old: (WordOrSuggestionId::existing(other_id), get_other(other_id)),
-                    new: (
-                        this_id,
-                        WordHit::fetch_from_db(db, i18n_info.clone(), this_id).unwrap(),
-                    ),
+                    new: (this_id, WordHit::fetch_from_db(db, this_id).unwrap()),
                 },
-                None => MaybeEdited::New((
-                    this_id,
-                    WordHit::fetch_from_db(db, i18n_info.clone(), this_id).unwrap(),
-                )),
+                None => MaybeEdited::New((this_id, WordHit::fetch_from_db(db, this_id).unwrap())),
             }
         };
 

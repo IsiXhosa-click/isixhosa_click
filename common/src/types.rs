@@ -1,7 +1,6 @@
 use crate::language::{
     ConjunctionFollowedBy, NounClassPrefixes, PartOfSpeech, Transitivity, WordLinkType,
 };
-use crate::serialization::SerializeTranslated;
 use isixhosa::noun::NounClass;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -70,11 +69,11 @@ pub struct WordHit {
     pub id: u64,
     pub english: String,
     pub xhosa: String,
-    pub part_of_speech: Option<SerializeTranslated<PartOfSpeech>>,
+    pub part_of_speech: Option<PartOfSpeech>,
     pub is_plural: bool,
     pub is_inchoative: bool,
     pub is_informal: bool,
-    pub transitivity: Option<SerializeTranslated<Transitivity>>,
+    pub transitivity: Option<Transitivity>,
     pub noun_class: Option<NounClassPrefixes>,
     pub is_suggestion: bool,
 }

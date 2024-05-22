@@ -108,6 +108,7 @@ search = Search
     .header = Search for a word
     .description = Search for a word in the free, open { site.short-name } dictionary for { target-language } and { source-language }.
     .prompt = Type {{ source-language.indef-article }} or {{ target-language }} word
+    .no-results = No results.
 
 submit = Submit a word
     .description = Submit a word to the free, open, online { site.short-name } dictionary for { target-language } and { source-language }.
@@ -145,7 +146,7 @@ moderation = Moderation
     .change-type = Change type
     .word-deleted = Word deleted
     .suggestor = Suggested by
-    .suggested-by =  <strong>Suggested by</strong> { $username }
+    .suggested-by = <strong>Suggested by</strong> { $username }
     .changes-summary = Changes summary
     .selected-class = Selected noun class
     .edit = Edit
@@ -202,11 +203,13 @@ transitivity = Transitivity
 
 transitive = transitive
     .explicit = transitive-only
+    .in-word-result = intransitive
 intransitive = intransitive
     .explicit = intransitive-only
+    .in-word-result = intransitive
 ambitransitive = either
-    .in-word-hit = {""}
     .explicit = ambitransitive
+    .in-word-result = {""}
 
 word-hit = Word hit, e.g as it appears in the search box
     .class = class
@@ -230,6 +233,7 @@ linked-words = Linked words
     .alternate = Alternate Use
 
 informal = Informal or slang?
+    .in-word-result = informal
 
 yes = yes
     .capital = Yes
@@ -243,6 +247,7 @@ no-grammatical-info =
 
 noun-class = Noun class
     .choose = Choose a noun class
+    .in-word-result = class
 infinitive = Infinitive
     .form = Infinitive form
 
@@ -250,6 +255,7 @@ inchoative = Inchoative
     .explanation =
         An inchoative (stative) verb takes the perfect tense for present tense meaning. For example, "ndilambile"
         means "I am hungry", whereas "ndiyalamba" means "I am getting hungry".
+    .in-word-result = inchoative
 
 plurality = Plurality
     .plural = plural

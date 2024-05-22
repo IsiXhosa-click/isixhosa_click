@@ -44,8 +44,14 @@ impl PartOfSpeech {
 }
 
 impl ToTranslationKey for PartOfSpeech {
+    // Ensure consistency with the serde serialization
     fn translation_key(&self) -> TranslationKey<'_> {
-        TranslationKey(Cow::Owned(format!("{:?}", self).to_lowercase()))
+        let s = match self {
+            PartOfSpeech::BoundMorpheme => "bound_morpheme".to_owned(),
+            _ => format!("{:?}", self).to_lowercase(),
+        };
+
+        TranslationKey(Cow::Owned(s))
     }
 }
 
@@ -121,6 +127,7 @@ impl FromStr for ConjunctionFollowedBy {
     Copy, Clone, Debug, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Serialize, Deserialize,
 )]
 #[repr(u8)]
+#[serde(rename_all = "snake_case")]
 pub enum Transitivity {
     Transitive,
     Intransitive,
@@ -133,7 +140,7 @@ impl ToTranslationKey for Transitivity {
         match self {
             Transitivity::Transitive => TranslationKey::new("transitive"),
             Transitivity::Intransitive => TranslationKey::new("intransitive"),
-            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.in-word-hit"),
+            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.in-word-result"),
         }
     }
 }
@@ -142,7 +149,7 @@ impl Transitivity {
     pub fn explicit_moderation_page(&self) -> TranslationKey<'static> {
         match self {
             Transitivity::Transitive => TranslationKey::new("transitive.explicit"),
-            Transitivity::Intransitive => TranslationKey::new("intransitive"),
+            Transitivity::Intransitive => TranslationKey::new("intransitive.explicit"),
             Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.explicit"),
         }
     }
@@ -159,9 +166,9 @@ impl Transitivity {
 impl DisplayHtml for Transitivity {
     fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
         let s = match self {
-            Transitivity::Transitive => TranslationKey::new("transitive"),
-            Transitivity::Intransitive => TranslationKey::new("intransitive"),
-            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.in-word-hit"),
+            Transitivity::Transitive => TranslationKey::new("transitive.in-word-result"),
+            Transitivity::Intransitive => TranslationKey::new("intransitive.in-word-result"),
+            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.in-word-result"),
         };
 
         f.write_text(&s)

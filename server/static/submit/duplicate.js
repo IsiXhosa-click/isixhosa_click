@@ -31,7 +31,7 @@ function createItemContainer(id, is_suggestion) {
     return [container, inner];
 }
 
-export function addDuplicateSearchFor(input_id, this_word_id) {
+export function addDuplicateSearchFor(translations, input_id, this_word_id) {
     let input = document.getElementById(input_id);
     /* noinspection EqualityComparisonWithCoercionJS -- this is done intentionally for string to number eq */
     new LiveSearch(
@@ -43,6 +43,7 @@ export function addDuplicateSearchFor(input_id, this_word_id) {
         createItemContainer,
         r => r.id != this_word_id &&  /* filter */
             (r.english.toLowerCase() === input.value.toLowerCase() || r.xhosa.toLowerCase() === input.value.toLowerCase()),
-        true /* include own suggestions */
+        true, /* include own suggestions */
+        translations
     );
 }

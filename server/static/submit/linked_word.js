@@ -3,7 +3,7 @@ import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;
 
-function removeLinkedWord(button_id, this_id) {
+function removeLinkedWord(translations, button_id, this_id) {
     let button = document.getElementById(button_id);
     let button_div = button.parentElement;
     let list_div = button_div.parentElement;
@@ -12,11 +12,11 @@ function removeLinkedWord(button_id, this_id) {
 
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
     if (delete_buttons.length === 0) {
-        addLinkedWord(this_id)
+        addLinkedWord(translations, this_id)
     }
 }
 
-function createLinkedWordSearch(preset_word, this_id) {
+function createLinkedWordSearch(translations, preset_word, this_id) {
     let input = document.createElement("input");
 
     let popover_container = document.createElement("div");
@@ -50,7 +50,7 @@ function createLinkedWordSearch(preset_word, this_id) {
     input.addEventListener("blur", selectFocusOut);
 
     if (preset_word != null) {
-        let last_choice = formatResult(preset_word);
+        let last_choice = formatResult(translations, preset_word);
         input.value = last_choice;
         input.setAttribute("data-last_search", preset_word.xhosa);
         input.setAttribute("data-last_choice", last_choice);
@@ -113,13 +113,14 @@ function createLinkedWordSearch(preset_word, this_id) {
         function() {},
         createLinkedWordContainer,
         r => r.id != this_id,
-        true // Include own suggestions
+        true, // Include own suggestions
+        translations
     );
 
     return { input: input, popover: popover_container, search: search };
 }
 
-export function addLinkedWord(this_word_id, link_type, other, suggestion_id, existing_id) {
+export function addLinkedWord(translations, this_word_id, link_type, other, suggestion_id, existing_id) {
     current_linked_word_id += 1;
     let list = document.getElementById("linked_words");
     let item = document.createElement("li");
@@ -186,8 +187,8 @@ export function addLinkedWord(this_word_id, link_type, other, suggestion_id, exi
 
     let linked_word = document.createElement("div");
     linked_word.className = "word_select_container";
-    let { input, popover, search } = createLinkedWordSearch(other, this_word_id);
-    delete_button.addEventListener("click", function() { removeLinkedWord(this.id, this_word_id) });
+    let { input, popover, search } = createLinkedWordSearch(translations, other, this_word_id);
+    delete_button.addEventListener("click", function() { removeLinkedWord(translations, this.id, this_word_id) });
     linked_word.appendChild(input);
     linked_word.appendChild(popover);
     select_input_container.appendChild(linked_word);
@@ -195,12 +196,12 @@ export function addLinkedWord(this_word_id, link_type, other, suggestion_id, exi
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
 }
 
-export function addLinkedWords(linked_words, this_id) {
+export function addLinkedWords(translations, linked_words, this_id) {
     for (let linked_word of linked_words) {
-        addLinkedWord(this_id, linked_word.link_type, linked_word.other, linked_word.suggestion_id, linked_word.existing_id)
+        addLinkedWord(translations, this_id, linked_word.link_type, linked_word.other, linked_word.suggestion_id, linked_word.existing_id)
     }
 
     if (linked_words.length === 0) {
-        addLinkedWord(this_id)
+        addLinkedWord(translations, this_id)
     }
 }

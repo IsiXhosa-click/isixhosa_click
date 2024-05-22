@@ -23,6 +23,7 @@ use crate::database::suggestion::SuggestedWord;
 use crate::search::{IncludeResults, TantivyClient};
 use crate::serialization::false_fn;
 use crate::session::LiveSearchSession;
+use anyhow::Result;
 use askama::Template;
 use auth::auth;
 use chrono::{DateTime, Utc};
@@ -54,7 +55,7 @@ use submit::submit;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, instrument, Span};
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
+use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, EnvFilter, Layer, Registry};
 use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
@@ -226,7 +227,7 @@ struct TemplateError(askama::Error);
 
 impl Reject for TemplateError {}
 
-fn init_tracing(cli: &CliArgs) {
+fn init_tracing(cli: &CliArgs) -> Result<()> {
     global::set_text_map_propagator(opentelemetry_jaeger_propagator::Propagator::new());
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
@@ -237,11 +238,17 @@ fn init_tracing(cli: &CliArgs) {
                 format!("isixhosa-click-{}", cli.site),
             )])),
         )
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
-        .unwrap();
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-    let fmt_layer = tracing_subscriber::fmt::layer().with_target(false);
+    let fmt_layer = tracing_subscriber::fmt::layer().compact().with_filter(
+        EnvFilter::builder()
+            .with_default_directive(LevelFilter::INFO.into())
+            .from_env()?
+            .add_directive("h2=warn".parse()?)
+            .add_directive("isixhosa_common=debug".parse()?)
+            .add_directive("isixhosa_server=debug".parse()?),
+    );
 
     let registry = Registry::default().with(LevelFilter::DEBUG).with(fmt_layer);
 
@@ -250,6 +257,8 @@ fn init_tracing(cli: &CliArgs) {
     } else {
         registry.init();
     }
+
+    Ok(())
 }
 
 #[instrument(
@@ -420,7 +429,7 @@ macro_rules! wrap_filter {
 }
 
 async fn server(cfg: Config, args: CliArgs) {
-    init_tracing(&args);
+    init_tracing(&args).unwrap();
     info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
@@ -752,12 +761,7 @@ async fn query_search(
     _db: impl PublicAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let results = tantivy
-        .search(
-            query.query.clone(),
-            IncludeResults::AcceptedOnly,
-            false,
-            i18n_info.clone(),
-        )
+        .search(query.query.clone(), IncludeResults::AcceptedOnly, false)
         .await
         .unwrap();
 
@@ -789,7 +793,7 @@ async fn duplicate_search(
     query: DuplicateQuery,
     tantivy: Arc<TantivyClient>,
     _user: FullUser,
-    i18n_info: I18nInfo,
+    _i18n_info: I18nInfo,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
@@ -798,16 +802,11 @@ async fn duplicate_search(
     let res = match suggestion.filter(|w| w.word_id.is_none()) {
         Some(w) => {
             let english = tantivy
-                .search(
-                    w.english.current().clone(),
-                    include,
-                    true,
-                    i18n_info.clone(),
-                )
+                .search(w.english.current().clone(), include, true)
                 .await
                 .unwrap();
             let xhosa = tantivy
-                .search(w.xhosa.current().clone(), include, true, i18n_info)
+                .search(w.xhosa.current().clone(), include, true)
                 .await
                 .unwrap();
 
@@ -839,7 +838,7 @@ fn live_search(
     tantivy: Arc<TantivyClient>,
     params: LiveSearchParams,
     auth: Auth,
-    i18n_info: I18nInfo,
+    _i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> impl Reply {
     ws.on_upgrade(move |websocket| {
@@ -855,7 +854,6 @@ fn live_search(
             tantivy,
             include_suggestions_from_user,
             auth.has_permissions(Permissions::Moderator),
-            i18n_info,
         );
 
         let addr = xtra::spawn_tokio(actor, Mailbox::bounded(4));

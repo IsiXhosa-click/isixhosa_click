@@ -77,8 +77,7 @@ impl WordAssociatedEdits {
     ) -> Vec<(WordHit, WordAssociatedEdits)> {
         let example_suggestions = SuggestedExample::fetch_all_for_existing_words(db);
         let example_deletions = ExampleDeletionSuggestion::fetch_all(db);
-        let linked_word_suggestions =
-            SuggestedLinkedWord::fetch_all_for_existing_words(db, i18n_info.clone());
+        let linked_word_suggestions = SuggestedLinkedWord::fetch_all_for_existing_words(db);
         let linked_word_deletion_suggestions =
             LinkedWordDeletionSuggestion::fetch_all(db, i18n_info.clone());
 
@@ -102,12 +101,7 @@ impl WordAssociatedEdits {
 
         let mut vec: Vec<(WordHit, WordAssociatedEdits)> = map
             .into_iter()
-            .map(|(id, assoc)| {
-                (
-                    WordHit::fetch_from_db(db, i18n_info.clone(), id.into()).unwrap(),
-                    assoc,
-                )
-            })
+            .map(|(id, assoc)| (WordHit::fetch_from_db(db, id.into()).unwrap(), assoc))
             .collect();
 
         Span::current().record("relevant_words", vec.len());
@@ -231,7 +225,7 @@ async fn moderation_template(
             i18n_info: i18n_info.clone(),
             previous_success,
             word_suggestions: SuggestedWord::fetch_all_full(&db, i18n_info.clone()),
-            word_deletions: WordDeletionSuggestion::fetch_all(&db, i18n_info.clone()),
+            word_deletions: WordDeletionSuggestion::fetch_all(&db),
             word_associated_edits: WordAssociatedEdits::fetch_all(&db, i18n_info),
         })
     })

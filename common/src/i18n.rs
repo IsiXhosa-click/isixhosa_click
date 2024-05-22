@@ -48,6 +48,35 @@ pub struct I18nInfo {
     pub ctx: Arc<SiteContext>,
 }
 
+impl I18nInfo {
+    pub fn js_translations(&self) -> HashMap<&'static str, String> {
+        // TODO I don't like this hack :(
+        [
+            "search.no-results",
+            "plurality.plural",
+            "informal.in-word-result",
+            "inchoative.in-word-result",
+            "transitive.in-word-result",
+            "intransitive.in-word-result",
+            "ambitransitive.in-word-result",
+            "noun-class.in-word-result",
+            "verb",
+            "noun",
+            "adjective",
+            "adverb",
+            "relative",
+            "interjection",
+            "conjunction",
+            "preposition",
+            "ideophone",
+            "bound_morpheme",
+        ]
+        .into_iter()
+        .map(|key| (key, self.ctx.site_i18n.lookup(&self.user_language, key)))
+        .collect()
+    }
+}
+
 impl Debug for I18nInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("I18nInfo")

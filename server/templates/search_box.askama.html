@@ -51,7 +51,8 @@
                 postCreateItem,
                 createItemContainer,
                 r => true, /* filter */
-                false /* include own suggestions */
+                false, /* include own suggestions */
+                {{ self.i18n_info.js_translations()|json|safe }}
             );
         });
     </script>

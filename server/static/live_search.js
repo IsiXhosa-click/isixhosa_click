@@ -12,7 +12,8 @@ export class LiveSearch {
         post_create_item,
         create_item_container,
         filter_fn,
-        include_own_suggestions
+        include_own_suggestions,
+        translations
     ) {
         this.input = input;
         this.last_value = "";
@@ -22,6 +23,7 @@ export class LiveSearch {
         this.post_create_item = post_create_item;
         this.create_item_container = create_item_container;
         this.filter_fn = filter_fn;
+        this.translations = translations
 
         this.id = next_id;
         next_id++;
@@ -91,7 +93,7 @@ export class LiveSearch {
         if (results.length === 0) {
             let p = document.createElement("p");
             p.className = "no_results";
-            let node = document.createTextNode("No results.");
+            let node = document.createTextNode(this.translations["search.no-results"]);
             p.appendChild(node);
             searcher.input.classList.remove("has_results");
 
@@ -100,8 +102,8 @@ export class LiveSearch {
             let container = searcher.create_container();
 
             results.forEach(function (result) {
-                let item = searcher.create_item(formatResult(result), result.id, result.is_suggestion);
-                formatResult(result, item);
+                let item = searcher.create_item(formatResult(searcher.translations, result), result.id, result.is_suggestion);
+                formatResult(searcher.translations, result, item);
 
                 let [item_container_parent, item_container_inner] = searcher.create_item_container(result.id, result.is_suggestion);
                 let append = item;
@@ -129,32 +131,31 @@ export class LiveSearch {
     }
 }
 
-export function formatResult(result, elt) {
+export function formatResult(translations, result, elt) {
     let plural = "";
     if (result.is_plural) {
-        plural = "plural ";
+        plural = `${translations['plurality.plural']} `;
     }
 
     let informal = "";
     if (result.is_informal) {
-        informal = "informal ";
+        informal = `${translations['informal.in-word-result']} `;
     }
 
     let inchoative = "";
     if (result.is_inchoative) {
-        inchoative = "inchoative ";
+        inchoative = `${translations['inchoative.in-word-result']} `;
     }
 
     let transitive = "";
-    if (result.transitivity != null && result.transitivity !== "") {
-        transitive = result.transitivity + " ";
+    let key = `${result.transitivity}.in-word-result`
+    if (result.transitivity != null && translations[key] !== "") {
+        transitive = translations[key] + " ";
     }
 
     let part_of_speech = "";
-    if (result.part_of_speech === "adjective") {
-        part_of_speech = "adjective (isiphawuli)";
-    } else if (result.part_of_speech != null) {
-        part_of_speech = result.part_of_speech;
+    if (result.part_of_speech != null) {
+        part_of_speech = translations[result.part_of_speech];
     }
 
     let grammar_info = `${inchoative}${informal}${transitive}${plural}${part_of_speech}`;
@@ -165,6 +166,8 @@ export function formatResult(result, elt) {
         text += ` (${grammar_info}`;
     }
 
+    let class_translated = translations['noun-class.in-word-result'];
+
     if (elt != null) {
         elt.innerText = text;
 
@@ -174,11 +177,11 @@ export function formatResult(result, elt) {
 
             if (!result.noun_class.selected_singular) {
                 strong.innerText = result.noun_class.plural;
-                elt.innerText += ` - class ${result.noun_class.singular}/`;
+                elt.innerText += ` - ${class_translated} ${result.noun_class.singular}/`;
                 elt.appendChild(strong);
             } else {
                 strong.innerText = result.noun_class.singular;
-                elt.innerText += ` - class `;
+                elt.innerText += ` - ${class_translated} `;
                 elt.appendChild(strong);
 
                 if (result.noun_class.plural != null) {
@@ -194,9 +197,9 @@ export function formatResult(result, elt) {
         let noun_class = "";
         if (result.noun_class != null) {
             if (result.noun_class.plural != null) {
-                noun_class = ` - class ${result.noun_class.singular}/${result.noun_class.plural}`;
+                noun_class = ` - ${class_translated} ${result.noun_class.singular}/${result.noun_class.plural}`;
             } else {
-                noun_class = ` - class ${result.noun_class.singular}`;
+                noun_class = ` - ${class_translated} ${result.noun_class.singular}`;
             }
         }
         text += noun_class;
