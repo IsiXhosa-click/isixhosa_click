@@ -2,11 +2,13 @@ use crate::Config;
 use anyhow::Context;
 use fluent_templates::fluent_bundle::FluentResource;
 use fluent_templates::{ArcLoader, Loader};
-use isixhosa_common::i18n::SiteContext;
 use std::path::PathBuf;
 use std::sync::{Arc, Once};
 
-pub use isixhosa_common::i18n::*;
+pub type I18nInfo = isixhosa_common::i18n::I18nInfo<ArcLoader>;
+pub type SiteContext = isixhosa_common::i18n::SiteContext<ArcLoader>;
+
+pub use isixhosa_common::i18n::{ToTranslationKey, EN_ZA};
 
 pub fn load(site: String, config: &Config) -> SiteContext {
     static ONLY_ONCE: Once = Once::new();
@@ -23,7 +25,7 @@ pub fn load(site: String, config: &Config) -> SiteContext {
     site_specific_shared.push(&site);
     site_specific_shared.push("shared.ftl");
 
-    let res = ArcLoader::builder(&base, EN_ZA)
+    let loader = ArcLoader::builder(&base, EN_ZA)
         .shared_resources(Some(&[
             ["translations", "locales", "shared.ftl"].iter().collect(),
             site_specific_shared,
@@ -50,12 +52,8 @@ pub fn load(site: String, config: &Config) -> SiteContext {
                 .expect("Couldn't parse site-specific fluent file");
             bundle.add_resource(Arc::new(site_resource)).unwrap();
         })
-        .build();
-
-    let loader = match res {
-        Ok(x) => x,
-        Err(err) => panic!("Error loading fluent resources: {err}"),
-    };
+        .build()
+        .expect("Error loading fluent resources");
 
     // Leaking is OK since this function should only be called once
     let supported: Vec<&'static str> = loader

@@ -126,11 +126,3 @@
     <meta name="og:description" content="{{ desc }}"/>
     <meta name="description" content="{{ desc }}"/>
 {%- endmacro -%}
-
-{%- macro translate(key) -%}
-    {{ key|translate(i18n_info, crate::i18n_args!()) }}
-{%- endmacro -%}
-
-{%- macro translate_with(key, args) -%}
-    {{ key|translate(i18n_info, args) }}
-{%- endmacro -%}

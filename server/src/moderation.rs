@@ -8,6 +8,7 @@ use crate::database::deletion::{
 use crate::database::submit::{submit_suggestion, WordSubmission};
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::i18n::I18nInfo;
+use crate::i18n::SiteContext;
 use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::submit::edit_suggestion_page;
@@ -18,7 +19,6 @@ use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::WordId;
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, WordOrSuggestionId};
 use isixhosa_common::format::DisplayHtml;
-use isixhosa_common::i18n::SiteContext;
 use isixhosa_common::types::{ExistingWord, WordHit};
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};

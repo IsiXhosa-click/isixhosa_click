@@ -1,6 +1,6 @@
 use fluent_templates::fluent_bundle::FluentValue;
 use fluent_templates::fs::langid;
-use fluent_templates::{ArcLoader, LanguageIdentifier, Loader};
+use fluent_templates::{LanguageIdentifier, Loader};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
@@ -8,15 +8,15 @@ use std::sync::Arc;
 
 pub const EN_ZA: LanguageIdentifier = langid!("en-ZA");
 
-pub struct SiteContext {
-    pub site_i18n: ArcLoader,
+pub struct SiteContext<L> {
+    pub site_i18n: L,
     pub supported_langs: &'static [&'static str],
     pub host: String,
 }
 
 #[macro_export]
 macro_rules! i18n_args {
-    ($($arg:expr => $val:expr),*) => {
+    ($($arg:expr => $val:expr),*$(,)?) => {
         {
             #[allow(unused_imports)]
             use ::fluent_templates::fluent_bundle::FluentValue;
@@ -42,13 +42,55 @@ macro_rules! i18n_args {
     };
 }
 
-#[derive(Clone)]
-pub struct I18nInfo {
+pub struct I18nInfo<L> {
     pub user_language: LanguageIdentifier,
-    pub ctx: Arc<SiteContext>,
+    pub ctx: Arc<SiteContext<L>>,
 }
 
-impl I18nInfo {
+impl<L: Loader + 'static> I18nInfo<L> {
+    pub fn translate_with(
+        &self,
+        key: &TranslationKey,
+        args: &HashMap<String, FluentValue<'static>>,
+    ) -> String {
+        self.ctx
+            .site_i18n
+            .lookup_with_args(&self.user_language, key.0.as_ref(), args)
+    }
+
+    pub fn t_with(
+        &self,
+        key: &TranslationKey,
+        args: &HashMap<String, FluentValue<'static>>,
+    ) -> String {
+        self.translate_with(key, args)
+    }
+
+    pub fn translate(&self, key: &TranslationKey) -> String {
+        self.translate_with(key, &HashMap::new())
+    }
+
+    pub fn t(&self, key: &TranslationKey) -> String {
+        self.translate(key)
+    }
+}
+
+impl<L> PartialEq<I18nInfo<L>> for I18nInfo<L> {
+    fn eq(&self, other: &I18nInfo<L>) -> bool {
+        self.user_language == other.user_language
+    }
+}
+
+impl<L> Clone for I18nInfo<L> {
+    fn clone(&self) -> Self {
+        I18nInfo {
+            user_language: self.user_language.clone(),
+            ctx: self.ctx.clone(),
+        }
+    }
+}
+
+impl<L: Loader + 'static> I18nInfo<L> {
     pub fn js_translations(&self) -> HashMap<&'static str, String> {
         // TODO I don't like this hack :(
         [
@@ -77,7 +119,7 @@ impl I18nInfo {
     }
 }
 
-impl Debug for I18nInfo {
+impl<L: Loader + 'static> Debug for I18nInfo<L> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("I18nInfo")
             .field("user_language", &self.user_language)
@@ -108,14 +150,4 @@ impl ToTranslationKey for &str {
     fn translation_key(&self) -> TranslationKey {
         TranslationKey(Cow::Borrowed(self))
     }
-}
-
-pub fn translate(
-    key: &TranslationKey,
-    i18n: &I18nInfo,
-    args: &HashMap<String, FluentValue<'static>>,
-) -> String {
-    i18n.ctx
-        .site_i18n
-        .lookup_with_args(&i18n.user_language, key.0.as_ref(), args)
 }

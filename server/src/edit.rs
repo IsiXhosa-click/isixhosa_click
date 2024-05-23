@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use crate::i18n::SiteContext;
 use isixhosa_common::database::{DbBase, UserAccessDb, WordId};
-use isixhosa_common::i18n::SiteContext;
 use isixhosa_common::templates::WordChangeMethod;
 use tracing::instrument;
 use warp::{body, Filter, Rejection, Reply};

@@ -1,8 +1,8 @@
 use crate::database::WordId;
 use crate::database::WordOrSuggestionId;
+use crate::i18n::I18nInfo;
 use fallible_iterator::FallibleIterator;
 use isixhosa_common::database::ModeratorAccessDb;
-use isixhosa_common::i18n::I18nInfo;
 use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, PublicUserInfo, WordHit};
 use rusqlite::{params, Row};
 use std::collections::HashMap;
@@ -222,7 +222,7 @@ impl LinkedWordDeletionSuggestion {
     fn try_from_row_populate_other(
         row: &Row<'_>,
         db: &impl ModeratorAccessDb,
-        i18n_info: I18nInfo,
+        _i18n_info: I18nInfo,
         skip_populating: u64,
     ) -> Result<Self, rusqlite::Error> {
         let suggestion_id = row.get::<&str, i64>("suggestion_id")? as u64;

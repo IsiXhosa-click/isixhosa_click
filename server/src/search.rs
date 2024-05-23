@@ -414,8 +414,6 @@ impl Actor for SearcherActor {
     async fn stopped(self) {}
 }
 
-// TODO need to add duplicate_of: Option<thingie> or a separate live search idk
-
 pub struct SearchRequest {
     query: String,
     include: IncludeResults,

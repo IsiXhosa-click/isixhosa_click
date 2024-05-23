@@ -1,9 +1,9 @@
 use crate::auth::with_any_auth;
 use crate::i18n::I18nInfo;
+use crate::i18n::SiteContext;
 use crate::{spawn_blocking_child, DebugBoxedExt, NotFound};
 use isixhosa_common::auth::Auth;
 use isixhosa_common::database::{DbBase, PublicAccessDb};
-use isixhosa_common::i18n::SiteContext;
 use isixhosa_common::templates::{WordChangeMethod, WordDetails};
 use isixhosa_common::types::ExistingWord;
 use std::sync::Arc;

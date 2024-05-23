@@ -5,6 +5,7 @@ use crate::language::{
 use crate::serialization::{DiscrimOutOfRange, WithDeleteSentinel};
 use crate::types::{ExistingExample, ExistingLinkedWord, ExistingWord, PublicUserInfo, WordHit};
 use fallible_iterator::FallibleIterator;
+use fluent_templates::ArcLoader;
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
 use r2d2::{Pool, PooledConnection};
@@ -239,7 +240,7 @@ impl ExistingLinkedWord {
     )]
     pub fn fetch(
         db: &impl PublicAccessDb,
-        i18n_info: I18nInfo,
+        _i18n_info: I18nInfo<ArcLoader>,
         id: u64,
         skip_populating: u64,
     ) -> Option<ExistingLinkedWord> {

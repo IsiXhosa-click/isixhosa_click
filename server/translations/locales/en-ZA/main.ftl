@@ -26,7 +26,7 @@ about = About
         </p>
     .submitting-edits-text =
         {"<p>"}If you'd like to help the project, submitting new words and editing old ones would be greatly appreciated!
-            First, you will need to create an account with the site. To do so, click the <a href="{ -oidc_link }">
+            First, you will need to create an account with the site. To do so, click the <a href="{ -oidc-link }">
             Sign in with Google</a> button in the top right. From your Google account, { site.short-name } will only
             record your email, in order for the team to email you about any issues regarding your account or
             the site, and your Google OpenID Connect ID, to identify you when you log in.
@@ -134,7 +134,15 @@ js-required = Javascript is required for this page to work properly due to the c
     .both = JavaScript and WebAssembly are required to play. Sorry!
 
 wordle = Wordle
+    .name = { target-language } Wordle (beta)
     .description = { target-language } Wordle on { site.short-name }!
+    .share = Share with your friends
+    .share-title = { target-language } Wordle v2 { $nth-wordle } { $score } / { $guesses }
+    .victory = Congratulations! A new wordle will be available tomorrow.
+    .loss = Unlucky... try again tomorrow.
+    .copied = Copied!
+    .word-was = Today's word was
+
 
 moderation = Moderation
     .possible-duplicates = Possible duplicates
@@ -143,6 +151,8 @@ moderation = Moderation
     .deletion-suggestions = Deletion suggestions
     .reason = Reason
     .details = Details
+    .removed = Removed
+    .none = None
     .change-type = Change type
     .word-deleted = Word deleted
     .suggestor = Suggested by
@@ -183,14 +193,15 @@ moderation = Moderation
 
 tracing = Tracing
 
+share = Share
+
 word = Word details page
     .information = Word information
-    .share = Share
     .link-copied = Link copied!
-    .suggest_edit = Suggest edit
-    .suggest_delete = Suggest deletion
-    .confirm_delete = Are you sure you want to suggest this word be deleted?
-    .success_message =
+    .suggest-edit = Suggest edit
+    .suggest-delete = Suggest deletion
+    .confirm-delete = Are you sure you want to suggest this word be deleted?
+    .success-message =
         Successfully {$action ->
             [edit] suggested edit
            *[delete] suggested deletion
@@ -209,7 +220,7 @@ intransitive = intransitive
     .in-word-result = intransitive
 ambitransitive = either
     .explicit = ambitransitive
-    .in-word-result = {""}
+    .in-word-result ={""}
 
 word-hit = Word hit, e.g as it appears in the search box
     .class = class
@@ -234,6 +245,7 @@ linked-words = Linked words
 
 informal = Informal or slang?
     .in-word-result = informal
+    .non = non-informal
 
 yes = yes
     .capital = Yes
@@ -256,6 +268,7 @@ inchoative = Inchoative
         An inchoative (stative) verb takes the perfect tense for present tense meaning. For example, "ndilambile"
         means "I am hungry", whereas "ndiyalamba" means "I am getting hungry".
     .in-word-result = inchoative
+    .non = non-inchoative
 
 plurality = Plurality
     .plural = plural

@@ -1,3 +1,4 @@
+use crate::i18n::{I18nInfo, SiteContext, EN_ZA};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use crate::{i18n, spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
@@ -8,7 +9,6 @@ use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::db_impl::DbImpl;
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb};
-use isixhosa_common::i18n::{I18nInfo, SiteContext, EN_ZA};
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
 use ordered_float::OrderedFloat;
 use rand::Rng;
@@ -817,7 +817,7 @@ async fn extract_i18n_from_user<DB>(
 where
     DB: PublicAccessDb,
 {
-    // TODO fetch from DB
+    // TODO(translations) fetch from DB
     let i18n = I18nInfo {
         user_language: i18n::EN_ZA,
         ctx,

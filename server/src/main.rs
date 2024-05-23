@@ -30,6 +30,7 @@ use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use details::details;
 use edit::edit;
+use fluent_templates::Loader;
 use futures::StreamExt;
 use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
@@ -48,7 +49,7 @@ use std::collections::HashSet;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::num::NonZeroU64;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use submit::submit;
@@ -56,6 +57,7 @@ use tokio::task::JoinHandle;
 use tracing::{debug, info, instrument, Span};
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, EnvFilter, Layer, Registry};
+use walkdir::DirEntry;
 use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
@@ -86,6 +88,7 @@ mod submit;
 mod user_management;
 
 use crate::i18n::I18nInfo;
+use crate::i18n::EN_ZA;
 pub use config::Config;
 
 const STATIC_LAST_CHANGED: &str = env!("STATIC_LAST_CHANGED");
@@ -156,21 +159,18 @@ enum UserCommand {
     LogoutAll,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = CliArgs::parse();
-    let cfg: Config = confy::load("isixhosa_click", Some(cli.site.as_ref())).unwrap();
+    let cfg: Config = confy::load("isixhosa_click", Some(cli.site.as_ref()))?;
 
     match cli.command {
-        Commands::Run => {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(server(cfg, cli));
-        }
+        Commands::Run => tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?
+            .block_on(server(cfg, cli)),
         Commands::Backup => export::run_daily_tasks(cfg),
         Commands::Restore => export::restore(cfg),
-        Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path).unwrap(),
+        Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path),
         Commands::User(command) => user_management::run_command(cfg, command.command),
     }
 }
@@ -379,7 +379,7 @@ async fn handle_error(err: Rejection) -> Result<Response, Rejection> {
 }
 
 #[instrument("Set up database PRAGMAs and tables", skip_all)]
-fn set_up_db(conn: &Connection) {
+pub fn set_up_db(conn: &Connection) -> Result<()> {
     const CREATIONS: [&str; 12] = [
         include_str!("sql/users.sql"),
         include_str!("sql/words.sql"),
@@ -403,17 +403,18 @@ fn set_up_db(conn: &Connection) {
         PRAGMA wal_autocheckpoint = 1000;
         PRAGMA wal_checkpoint(TRUNCATE);
     ",
-    )
-    .unwrap();
+    )?;
 
     for creation in &CREATIONS {
-        conn.execute(creation, params![]).unwrap();
+        conn.execute(creation, params![])?;
     }
+
+    Ok(())
 }
 
 // I cannot be bothered trying to find the right type
 macro_rules! wrap_filter {
-    ($f:expr) => {
+    ($content_lang:expr, $f:expr) => {
         $f
             .and_then(minify_and_cache)
             .with(warp::trace(|info| {
@@ -424,29 +425,40 @@ macro_rules! wrap_filter {
                 )
             }))
             .with(warp::reply::with::header(warp::http::header::X_FRAME_OPTIONS, "Deny"))
+            .with(warp::reply::with::header(warp::http::header::CONTENT_LANGUAGE, $content_lang))
             .with(gzip())
     }
 }
 
-async fn server(cfg: Config, args: CliArgs) {
-    init_tracing(&args).unwrap();
+fn walk_dir(dir: &Path) -> impl Iterator<Item = DirEntry> {
+    walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file())
+}
+
+fn walk_static_files(
+    src_static: &Path,
+    site_translation_files: &Path,
+) -> impl Iterator<Item = DirEntry> {
+    walk_dir(src_static).chain(walk_dir(site_translation_files))
+}
+
+async fn server(cfg: Config, args: CliArgs) -> Result<()> {
+    init_tracing(&args)?;
     info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
-    let pool = Pool::new(manager).unwrap();
+    let pool = Pool::new(manager)?;
     let pool_clone = pool.clone();
-    spawn_blocking_child(move || set_up_db(&pool_clone.get().unwrap()))
-        .await
-        .unwrap();
+    spawn_blocking_child(move || set_up_db(&*pool_clone.get()?)).await??;
 
-    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone())
-        .await
-        .unwrap();
+    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone()).await?;
 
     let tantivy_cloned = tantivy.clone();
     let with_tantivy = warp::any().map(move || tantivy_cloned.clone());
     let db = DbBase::new(pool);
-    let site_ctx = Arc::new(i18n::load(args.site, &cfg));
+    let site_ctx = Arc::new(i18n::load(args.site.clone(), &cfg));
 
     let search = {
         let search_page =
@@ -485,6 +497,13 @@ async fn server(cfg: Config, args: CliArgs) {
             .debug_boxed()
     };
 
+    let src_static = cfg.server_source_path.join("static");
+    let site_translation_files = cfg
+        .server_source_path
+        .join("translations")
+        .join("site-specific")
+        .join(&args.site);
+
     let simple_templates = {
         let terms_of_use = warp::path("terms_of_use")
             .and(path::end())
@@ -518,31 +537,26 @@ async fn server(cfg: Config, args: CliArgs) {
                 })
             });
 
-        let walk = || {
-            walkdir::WalkDir::new(&cfg.static_site_files)
-                .into_iter()
-                .filter_map(Result::ok)
-                .filter(|entry| entry.file_type().is_file())
-        };
-
         fn ends_with(entry: &str, pats: &[&str]) -> bool {
             pats.iter().any(|pat| entry.ends_with(pat))
         }
 
-        let (bin_files, static_files) = walk()
+        let (bin_files, static_files) = walk_static_files(&src_static, &site_translation_files)
             .map(|entry| {
-                entry
-                    .path()
-                    .strip_prefix(&cfg.static_site_files)
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_owned()
+                let relative_to_src = entry.path().strip_prefix(&cfg.server_source_path).unwrap();
+
+                // It's either a static file or a translation file
+                let relative_to_web_root = relative_to_src
+                    .strip_prefix("static")
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_else(|_| Path::new("translations").join(relative_to_src));
+
+                relative_to_web_root.to_str().unwrap().to_owned()
             })
             .filter(|entry: &String| !entry.contains("LICENSE"))
             .partition::<Vec<_>, _>(|entry| ends_with(entry, &["png", "svg", "woff2", "ico"]));
 
-        let last_modified_static = walk()
+        let last_modified_static = walk_static_files(&src_static, &site_translation_files)
             .filter_map(|entry| entry.metadata().ok())
             .filter_map(|meta| meta.modified().or(meta.created()).ok())
             .max()
@@ -552,7 +566,7 @@ async fn server(cfg: Config, args: CliArgs) {
         let last_modified_js = Utc::now(); // server boot time
         let last_modified = std::cmp::max(last_modified_static, last_modified_js);
         let last_modified = last_modified.format("%a, %d %m %Y %H:%M:%S GMT");
-        let last_modified = HeaderValue::from_str(&last_modified.to_string()).unwrap();
+        let last_modified = HeaderValue::from_str(&last_modified.to_string())?;
 
         let service_worker = warp::get()
             .and(warp::path("service_worker.js"))
@@ -610,8 +624,12 @@ async fn server(cfg: Config, args: CliArgs) {
         base.and(proxy).debug_boxed()
     };
 
-    let static_files = warp::fs::dir(cfg.static_site_files.clone())
-        .or(warp::fs::dir(cfg.other_static_files.clone()));
+    let static_files = warp::fs::dir(src_static).or(warp::fs::dir(cfg.other_static_files.clone()));
+
+    let langs = site_ctx.supported_langs;
+    let translations = warp::path("translations").and(
+        warp::fs::dir(site_translation_files).or(warp::any().map(move || reply::json(&langs))),
+    );
 
     let routes = search
         .or(simple_templates)
@@ -622,6 +640,7 @@ async fn server(cfg: Config, args: CliArgs) {
         .or(edit(db.clone(), tantivy, site_ctx.clone()))
         .or(auth(db.clone(), &cfg, site_ctx.clone()).await)
         .or(static_files)
+        .or(translations)
         .recover(handle_error)
         .debug_boxed();
 
@@ -652,26 +671,31 @@ async fn server(cfg: Config, args: CliArgs) {
         tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
     }
 
+    let content_lang = site_ctx.site_i18n.lookup(&EN_ZA, "source-language-code");
+
     // Add post filters such as minification, logging, and gzip
     let serve = jaeger_proxy
-        .or(wrap_filter!(routes))
-        .or(wrap_filter!(with_any_auth(db, site_ctx.clone()).map(
-            |auth, i18n_info, _db| {
+        .or(wrap_filter!(content_lang.clone(), routes))
+        .or(wrap_filter!(
+            content_lang,
+            with_any_auth(db, site_ctx.clone()).map(|auth, i18n_info, _db| {
                 reply::with_status(NotFound { auth, i18n_info }, StatusCode::NOT_FOUND)
                     .into_response()
-            }
-        )));
+            })
+        ));
 
     if has_reverse_proxy {
-        warp::serve(serve).run(([0, 0, 0, 0], cfg.http_port)).await
+        warp::serve(serve).run(([0, 0, 0, 0], cfg.http_port)).await;
     } else {
         warp::serve(serve)
             .tls()
             .cert_path(cfg.cert_path.unwrap())
             .key_path(cfg.key_path.unwrap())
             .run(([0, 0, 0, 0], cfg.https_port))
-            .await
+            .await;
     }
+
+    Ok(())
 }
 
 #[derive(Deserialize, Clone, Debug)]

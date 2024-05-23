@@ -25,20 +25,20 @@
                             <span lang="{{ src_lang }}">{{ word.english }}</span> - <span lang="{{ target_lang }}">{{ word.xhosa }}</span>
                         </h1>
 
-                        <button id="share_word" hidden aria-label='{{ self.t("word.share") }}'>
+                        <button id="share_word" hidden aria-label='{{ self.t("share") }}'>
                             <span class="material-icons">share</span>
                         </button>
 
-                        <a id="edit_word" title='{{ self.t("word.suggest_edit") }}' href="/word/{{ word.word_id }}/edit">
+                        <a id="edit_word" title='{{ self.t("word.suggest-edit") }}' href="/word/{{ word.word_id }}/edit">
                             <span class="material-icons">edit</span>
                         </a>
 
-                        {%- let confirm_delete = self.t("word.confirm_delete") -%}
+                        {%- let confirm_delete = self.t("word.confirm-delete") -%}
                         <form action="/word/{{ word.word_id }}/delete" method="post" enctype="application/x-www-form-urlencoded"
                               onsubmit="return confirm('{{ confirm_delete }}')"
                         >
                             <select name="method" hidden><option value="delete"></select>
-                            <button title='{{ self.t("word.suggest_delete") }}' type="submit">
+                            <button title='{{ self.t("word.suggest-delete") }}' type="submit">
                                 <span class="material-icons">delete</span>
                             </button></head>
 
@@ -57,7 +57,7 @@
                                 history.replaceState(null, null, window.location.origin + "/word/{{ word.word_id }}");
                             </script>
 
-                            <p>{{ self.t_with("word.success_message", crate::i18n_args!("method" => prev.to_string())) }}<p>
+                            <p>{{ self.t_with("word.success-message", crate::i18n_args!("action" => prev.to_string())) }}<p>
                         {%- when None -%}
                     {%- endmatch -%}
 
@@ -108,7 +108,7 @@
 
                                     {%- if word.part_of_speech == Some(PartOfSpeech::Verb)  -%}
                                         <tr>
-                                            <th scope="row" tabindex="0" data-descr='{{ self.t("inchoative.explaination") }}'>
+                                            <th scope="row" tabindex="0" data-descr='{{ self.t("inchoative.explanation") }}'>
                                                 {{ self.t("inchoative") }}
                                             </th>
                                             <td>
@@ -157,9 +157,9 @@
                                             <th scope="row">{{ self.t("informal") }}</th>
                                             <td>
                                                 {%- if word.is_informal -%}
-                                                    {{ self.t("informal.yes") }}
+                                                    {{ self.t("yes") }}
                                                 {%- else -%}
-                                                    {{ self.t("informal.no") }}
+                                                    {{ self.t("no") }}
                                                 {%- endif -%}
                                             </td>
                                         </tr>

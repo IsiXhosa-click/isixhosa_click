@@ -158,7 +158,7 @@ export function formatResult(translations, result, elt) {
         part_of_speech = translations[result.part_of_speech];
     }
 
-    let grammar_info = `${inchoative}${informal}${transitive}${plural}${part_of_speech}`;
+    let grammar_info = `${informal}${inchoative}${transitive}${plural}${part_of_speech}`;
     let has_bracketed_info = grammar_info !== "" || result.noun_class != null;
     let text = `${result.english} - ${result.xhosa}`;
 

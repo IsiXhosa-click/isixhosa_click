@@ -1,5 +1,6 @@
 use crate::format::{DisplayHtml, HtmlFormatter};
 use crate::i18n::{ToTranslationKey, TranslationKey};
+use fluent_templates::Loader;
 use isixhosa::noun::NounClass;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -55,13 +56,9 @@ impl ToTranslationKey for PartOfSpeech {
     }
 }
 
-impl DisplayHtml for PartOfSpeech {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for PartOfSpeech {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         f.write_text(&self.translation_key())
-    }
-
-    fn is_empty_str(&self) -> bool {
-        false
     }
 }
 
@@ -79,8 +76,8 @@ impl Default for ConjunctionFollowedBy {
     }
 }
 
-impl DisplayHtml for ConjunctionFollowedBy {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for ConjunctionFollowedBy {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         match self {
             ConjunctionFollowedBy::Indicative => {
                 f.write_text(&TranslationKey::new("followed-by.indicative"))
@@ -93,10 +90,6 @@ impl DisplayHtml for ConjunctionFollowedBy {
             }
             ConjunctionFollowedBy::Custom(s) => f.write_raw_str(s),
         }
-    }
-
-    fn is_empty_str(&self) -> bool {
-        matches!(self, ConjunctionFollowedBy::Custom(s) if s.is_empty())
     }
 }
 
@@ -156,15 +149,15 @@ impl Transitivity {
 
     pub fn explicit_word_details_page(&self) -> TranslationKey<'static> {
         match self {
-            Transitivity::Transitive => TranslationKey::new("transitive.explicit"),
+            Transitivity::Transitive => TranslationKey::new("transitive"),
             Transitivity::Intransitive => TranslationKey::new("intransitive"),
             Transitivity::Ambitransitive => TranslationKey::new("ambitransitive"),
         }
     }
 }
 
-impl DisplayHtml for Transitivity {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for Transitivity {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         let s = match self {
             Transitivity::Transitive => TranslationKey::new("transitive.in-word-result"),
             Transitivity::Intransitive => TranslationKey::new("intransitive.in-word-result"),
@@ -172,10 +165,6 @@ impl DisplayHtml for Transitivity {
         };
 
         f.write_text(&s)
-    }
-
-    fn is_empty_str(&self) -> bool {
-        *self == Transitivity::Ambitransitive
     }
 }
 
@@ -301,8 +290,8 @@ impl FromStr for WordLinkType {
     }
 }
 
-impl DisplayHtml for WordLinkType {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for WordLinkType {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         let s = match self {
             WordLinkType::PluralOrSingular => TranslationKey::new("linked-words.plurality"),
             WordLinkType::Antonym => TranslationKey::new("linked-words.antonym"),
@@ -312,9 +301,5 @@ impl DisplayHtml for WordLinkType {
         };
 
         f.write_text(&s)
-    }
-
-    fn is_empty_str(&self) -> bool {
-        false
     }
 }

@@ -100,7 +100,7 @@
                                         }
                                     })
                                     .catch(e => console.error(e));
-                            })
+                           1 })
                             .catch(e => console.error(e));
                     }
 
@@ -122,7 +122,7 @@
             </script>
 
             {%- macro action(method, label, suggestion_type, suggestion_id, is_new_word, prompt) -%}
-                <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded"
+                <form action="/moderation" method="post" enctype="application/x-www-form-urlencoded" {#-#}
                       {%- if (method != "edit") -%}
                         onsubmit="return confirmWithDuplicates('{{ suggestion_type }}', '{{ method }}', '{{ prompt }}', this, {{- is_new_word }}, {{ suggestion_id }})"
                       {%- endif -%}
@@ -285,10 +285,11 @@
                                             <td>{{ s.changes_summary }}</td>
                                         </tr>
 
-                                        {%- if !s.xhosa_tone_markings.is_empty_str() -%}
+                                        {%- let tone_markings = "{}"|format(s.xhosa_tone_markings.to_html(i18n_info)) -%}
+                                        {%- if !tone_markings.is_empty() -%}
                                             <tr>
                                                 <th scope="row">{{ self.t("with-tone-markings") }}</th>
-                                                <td lang="{{ target_lang }}">{{ s.xhosa_tone_markings.to_html(i18n_info)|safe }}</td>
+                                                <td lang="{{ target_lang }}">{{ tone_markings|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
@@ -299,10 +300,11 @@
                                             </tr>
                                         {%- endif -%}
 
-                                        {%- if !s.infinitive.is_empty_str() -%}
+                                        {%- let infinitive = "{}"|format(s.infinitive.to_html(i18n_info)) -%}
+                                        {%- if !infinitive.is_empty() -%}
                                             <tr>
                                                 <th scope="row">{{ self.t("infinitive.form") }}</th>
-                                                <td lang="{{ target_lang }}">{{ s.infinitive.to_html(i18n_info)|safe }}</td>
+                                                <td lang="{{ target_lang }}">{{ infinitive|safe }}</td>
                                             </tr>
                                         {%- endif -%}
 
@@ -313,10 +315,11 @@
                                             </tr>
                                         {%- endif -%}
 
-                                        {%- if !s.note.is_empty_str() -%}
+                                        {%- let note = "{}"|format(s.note.to_html(i18n_info)) -%}
+                                        {%- if !note.is_empty() -%}
                                             <tr>
-                                                <th scope="row">{{ self.t("moderation.note") }}</th>
-                                                <td>{{ s.note.to_html(i18n_info)|safe }}</td>
+                                                <th scope="row">{{ self.t("note") }}</th>
+                                                <td>{{ note|safe }}</td>
                                             </tr>
                                         {%- endif -%}
                                     </table>
@@ -452,7 +455,7 @@
 
                                                      <p>
                                                          {# Don't worry, we escape the username before rendering it #}
-                                                         {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => ex.suggesting_user.username.clone()))|safe }}
+                                                         {{ self.t_with("moderation.suggested-by", crate::i18n_args!("username" => ex.suggesting_user.username.clone()))|safe }}
                                                      </p>
                                                      <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ ex.changes_summary }}</p>
 
@@ -471,7 +474,7 @@
                                                     <p lang="{{ target_lang }}"><del>{{ del.example.xhosa }}</del></p>
 
                                                     <p>
-                                                        {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => del.suggesting_user.username.clone()))|safe }}
+                                                        {{ self.t_with("moderation.suggested-by", crate::i18n_args!("username" => del.suggesting_user.username.clone()))|safe }}
                                                     </p>
                                                     <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ del.reason }}</p>
 
@@ -496,7 +499,7 @@
                                                     - {{ l.link_type.to_html(i18n_info)|safe -}}
 
                                                     <p>
-                                                        {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => l.suggesting_user.username.clone()))|safe }}
+                                                        {{ self.t_with("moderation.suggested-by", crate::i18n_args!("username" => l.suggesting_user.username.clone()))|safe }}
                                                     </p>
                                                     <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ l.changes_summary }}</p>
 
@@ -515,7 +518,7 @@
                                                     </del>
 
                                                     <p>
-                                                        {{ self.t_with("moderation.suggested_by", crate::i18n_args!("username" => del.suggesting_user.username.clone()))|safe }}
+                                                        {{ self.t_with("moderation.suggested-by", crate::i18n_args!("username" => del.suggesting_user.username.clone()))|safe }}
                                                     </p>
                                                     <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ del.reason }}</p>
 

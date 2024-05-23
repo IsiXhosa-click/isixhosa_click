@@ -1,12 +1,13 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
+use crate::i18n::{I18nInfo, EN_ZA};
 use crate::{set_up_db, Config};
+use anyhow::Result;
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;
 use genanki_rs::{Deck, Field, Model, ModelType, Note, Template};
 use isixhosa::noun::NounClass;
 use isixhosa_common::format::DisplayHtml;
-use isixhosa_common::i18n::{I18nInfo, EN_ZA};
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use isixhosa_common::types::{ExistingExample, ExistingWord};
 use rusqlite::backup::Backup;
@@ -24,43 +25,43 @@ use std::time::Duration;
 use tempdir::TempDir;
 
 // TODO(restore users)
-pub fn restore(cfg: Config) {
-    let conn = Connection::open(&cfg.database_path).unwrap();
+pub fn restore(cfg: Config) -> Result<()> {
+    let conn = Connection::open(&cfg.database_path)?;
 
-    set_up_db(&conn);
-    restore_words(&cfg, &conn);
-    restore_examples(&cfg, &conn);
-    restore_linked_words(&cfg, &conn);
-    restore_contributions(&cfg, &conn);
+    set_up_db(&conn)?;
+    restore_words(&cfg, &conn)?;
+    restore_examples(&cfg, &conn)?;
+    restore_linked_words(&cfg, &conn)?;
+    restore_contributions(&cfg, &conn)?;
 
     // Force reindex on next start
-    std::fs::remove_dir_all(&cfg.tantivy_path).unwrap();
-    std::fs::create_dir_all(&cfg.tantivy_path).unwrap();
+    std::fs::remove_dir_all(&cfg.tantivy_path)?;
+    std::fs::create_dir_all(&cfg.tantivy_path)?;
+
+    Ok(())
 }
 
-pub fn run_daily_tasks(cfg: Config) {
-    let conn = Connection::open(&cfg.database_path).unwrap();
-    sweep_tokens(&conn);
-    export(&cfg, &conn);
+pub fn run_daily_tasks(cfg: Config) -> Result<()> {
+    let conn = Connection::open(&cfg.database_path)?;
+    sweep_tokens(&conn)?;
+    export(&cfg, &conn)
 }
 
-fn export(cfg: &Config, src: &Connection) {
-    let temp_dir = TempDir::new("isixhosa_click_backup").unwrap();
+fn export(cfg: &Config, src: &Connection) -> Result<()> {
+    let temp_dir = TempDir::new("isixhosa_click_backup")?;
     let temp_db = temp_dir.path().join("isixhosa_click.bak.db");
-    let mut dest = Connection::open(temp_db).unwrap();
+    let mut dest = Connection::open(temp_db)?;
 
     {
-        let backup = Backup::new(src, &mut dest).unwrap();
-        backup
-            .run_to_completion(5, Duration::from_millis(250), None)
-            .unwrap();
+        let backup = Backup::new(src, &mut dest)?;
+        backup.run_to_completion(5, Duration::from_millis(250), None)?;
     }
 
-    write_words(cfg, &dest);
-    write_examples(cfg, &dest);
-    write_linked_words(cfg, &dest);
-    write_users(cfg, &dest);
-    write_contributions(cfg, &dest);
+    write_words(cfg, &dest)?;
+    write_examples(cfg, &dest)?;
+    write_linked_words(cfg, &dest)?;
+    write_users(cfg, &dest)?;
+    write_contributions(cfg, &dest)?;
 
     let output = Command::new("git")
         .current_dir(&cfg.plaintext_export_path)
@@ -73,20 +74,19 @@ fn export(cfg: &Config, src: &Connection) {
                 Utc::now().date_naive()
             ),
         ])
-        .output()
-        .unwrap();
+        .output()?;
 
-    io::stdout().write_all(&output.stdout).unwrap();
-    io::stderr().write_all(&output.stderr).unwrap();
+    io::stdout().write_all(&output.stdout)?;
+    io::stderr().write_all(&output.stderr)?;
 
     let output = Command::new("git")
         .current_dir(&cfg.plaintext_export_path)
         .arg("push")
-        .output()
-        .unwrap();
+        .output()?;
 
-    io::stdout().write_all(&output.stdout).unwrap();
-    io::stderr().write_all(&output.stderr).unwrap();
+    io::stdout().write_all(&output.stdout)?;
+    io::stderr().write_all(&output.stderr)?;
+    Ok(())
 }
 
 #[serde_as]
@@ -371,21 +371,21 @@ impl TryFrom<&Row<'_>> for UserRecord {
     }
 }
 
-fn csv_writer(cfg: &Config, file: &str) -> csv::Writer<BufWriter<File>> {
+fn csv_writer(cfg: &Config, file: &str) -> Result<csv::Writer<BufWriter<File>>> {
     let path = cfg.plaintext_export_path.join(file);
-    let writer = BufWriter::new(File::create(path).unwrap());
-    csv::Writer::from_writer(writer)
+    let writer = BufWriter::new(File::create(path)?);
+    Ok(csv::Writer::from_writer(writer))
 }
 
-fn csv_reader(cfg: &Config, file: &str) -> csv::Reader<BufReader<File>> {
+fn csv_reader(cfg: &Config, file: &str) -> Result<csv::Reader<BufReader<File>>> {
     let path = cfg.plaintext_export_path.join(file);
-    let reader = BufReader::new(File::open(path).unwrap());
-    csv::Reader::from_reader(reader)
+    let reader = BufReader::new(File::open(path)?);
+    Ok(csv::Reader::from_reader(reader))
 }
 
-// TODO do per-site & translate
+// TODO(translations) do per-site & translate anki
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn write_words(cfg: &Config, conn: &Connection) {
+fn write_words(cfg: &Config, conn: &Connection) -> Result<()> {
     const ANKI_DESC: &str = "All the words on IsiXhosa.click, as of %d-%m-%Y.";
 
     const SELECT_WORDS: &str = "
@@ -398,11 +398,11 @@ fn write_words(cfg: &Config, conn: &Connection) {
 
     const SELECT_EXAMPLE: &str = "SELECT english, xhosa FROM examples WHERE word_id = ?1 LIMIT 1;";
 
-    let mut select_example = conn.prepare(SELECT_EXAMPLE).unwrap();
+    let mut select_example = conn.prepare(SELECT_EXAMPLE)?;
 
-    let mut full_word_csv = csv_writer(cfg, "words.csv");
+    let mut full_word_csv = csv_writer(cfg, "words.csv")?;
 
-    let file = File::create(cfg.other_static_files.join("anki_deck.txt")).unwrap();
+    let file = File::create(cfg.other_static_files.join("anki_deck.txt"))?;
     let writer = BufWriter::new(file);
     let mut plaintext_deck = csv::WriterBuilder::new()
         .delimiter(b'\t')
@@ -416,13 +416,10 @@ fn write_words(cfg: &Config, conn: &Connection) {
     );
 
     let words: Vec<WordRecord> = conn
-        .prepare(SELECT_WORDS)
-        .unwrap()
-        .query(params![])
-        .unwrap()
+        .prepare(SELECT_WORDS)?
+        .query(params![])?
         .map(|row| Ok(WordRecord::from(ExistingWord::try_from(row)?)))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let ctx = crate::i18n::load("isixhosa".to_string(), cfg);
     let i18n_info = I18nInfo {
@@ -435,17 +432,14 @@ fn write_words(cfg: &Config, conn: &Connection) {
             .query_row(params![word.word_id], |row| {
                 Ok((row.get("english")?, row.get("xhosa")?))
             })
-            .optional()
-            .unwrap()
+            .optional()?
             .unwrap_or_default();
 
-        full_word_csv.serialize(&word).unwrap();
+        full_word_csv.serialize(&word)?;
 
-        let (note, fields) = word
-            .render_note(i18n_info.clone(), en_example, xh_example)
-            .unwrap();
+        let (note, fields) = word.render_note(i18n_info.clone(), en_example, xh_example)?;
         deck.add_note(note);
-        plaintext_deck.write_record(fields).unwrap();
+        plaintext_deck.write_record(fields)?;
     }
 
     deck.write_to_file(
@@ -453,12 +447,13 @@ fn write_words(cfg: &Config, conn: &Connection) {
             .join("anki_deck.apkg")
             .to_str()
             .unwrap(),
-    )
-    .unwrap();
+    )?;
+
+    Ok(())
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn restore_words(cfg: &Config, conn: &Connection) {
+fn restore_words(cfg: &Config, conn: &Connection) -> Result<()> {
     const INSERT: &str = "
         INSERT INTO words (
             word_id, english, xhosa, part_of_speech, xhosa_tone_markings, infinitive, is_plural,
@@ -466,110 +461,104 @@ fn restore_words(cfg: &Config, conn: &Connection) {
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);
     ";
 
-    let mut csv = csv_reader(cfg, "words.csv");
-    let mut insert = conn.prepare(INSERT).unwrap();
+    let mut csv = csv_reader(cfg, "words.csv")?;
+    let mut insert = conn.prepare(INSERT)?;
 
     for res in csv.deserialize() {
-        let w: WordRecord = res.unwrap();
+        let w: WordRecord = res?;
 
-        insert
-            .execute(params![
-                w.word_id,
-                w.english,
-                w.xhosa,
-                w.part_of_speech,
-                w.xhosa_tone_markings,
-                w.infinitive,
-                w.is_plural,
-                w.is_inchoative,
-                w.is_informal,
-                w.transitivity,
-                w.followed_by.unwrap_or_default(),
-                w.noun_class.map(|x| x as u8),
-                w.note
-            ])
-            .unwrap();
+        insert.execute(params![
+            w.word_id,
+            w.english,
+            w.xhosa,
+            w.part_of_speech,
+            w.xhosa_tone_markings,
+            w.infinitive,
+            w.is_plural,
+            w.is_inchoative,
+            w.is_informal,
+            w.transitivity,
+            w.followed_by.unwrap_or_default(),
+            w.noun_class.map(|x| x as u8),
+            w.note
+        ])?;
     }
+
+    Ok(())
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn write_examples(cfg: &Config, conn: &Connection) {
+fn write_examples(cfg: &Config, conn: &Connection) -> Result<()> {
     const SELECT: &str = "
         SELECT example_id, word_id, english, xhosa
         FROM examples
         ORDER BY example_id;
     ";
 
-    let mut csv = csv_writer(cfg, "examples.csv");
+    let mut csv = csv_writer(cfg, "examples.csv")?;
 
-    conn.prepare(SELECT)
-        .unwrap()
-        .query(params![])
-        .unwrap()
+    conn.prepare(SELECT)?
+        .query(params![])?
         .map(|row| ExistingExample::try_from(row))
         .map_err(|e| -> anyhow::Error { e.into() })
         .for_each(|example| csv.serialize(example).map_err(Into::into))
-        .unwrap()
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn restore_examples(cfg: &Config, conn: &Connection) {
+fn restore_examples(cfg: &Config, conn: &Connection) -> Result<()> {
     const INSERT: &str = "
         INSERT INTO examples (example_id, word_id, english, xhosa) VALUES (?1, ?2, ?3, ?4);
     ";
 
-    let mut csv = csv_reader(cfg, "examples.csv");
-    let mut insert = conn.prepare(INSERT).unwrap();
+    let mut csv = csv_reader(cfg, "examples.csv")?;
+    let mut insert = conn.prepare(INSERT)?;
 
     for res in csv.deserialize() {
-        let e: ExistingExample = res.unwrap();
-        insert
-            .execute(params![e.example_id, e.word_id, e.english, e.xhosa])
-            .unwrap();
+        let e: ExistingExample = res?;
+        insert.execute(params![e.example_id, e.word_id, e.english, e.xhosa])?;
     }
+
+    Ok(())
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn write_linked_words(cfg: &Config, conn: &Connection) {
+fn write_linked_words(cfg: &Config, conn: &Connection) -> Result<()> {
     const SELECT: &str = "
         SELECT link_id, link_type, first_word_id, second_word_id
         FROM linked_words
         ORDER BY link_id;
     ";
 
-    let mut csv = csv_writer(cfg, "linked_words.csv");
+    let mut csv = csv_writer(cfg, "linked_words.csv")?;
 
-    conn.prepare(SELECT)
-        .unwrap()
-        .query(params![])
-        .unwrap()
+    conn.prepare(SELECT)?
+        .query(params![])?
         .map(|row| LinkedWordRecord::try_from(row))
         .map_err(|e| -> anyhow::Error { e.into() })
         .for_each(|example| csv.serialize(example).map_err(Into::into))
-        .unwrap()
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn restore_linked_words(cfg: &Config, conn: &Connection) {
+fn restore_linked_words(cfg: &Config, conn: &Connection) -> Result<()> {
     const INSERT: &str = "
         INSERT INTO linked_words
             (link_id, link_type, first_word_id, second_word_id)
         VALUES (?1, ?2, ?3, ?4);
     ";
 
-    let mut csv = csv_reader(cfg, "linked_words.csv");
-    let mut insert = conn.prepare(INSERT).unwrap();
+    let mut csv = csv_reader(cfg, "linked_words.csv")?;
+    let mut insert = conn.prepare(INSERT)?;
 
     for res in csv.deserialize() {
-        let l: LinkedWordRecord = res.unwrap();
-        insert
-            .execute(params![l.link_id, l.link_type, l.first, l.second])
-            .unwrap();
+        let l: LinkedWordRecord = res?;
+        insert.execute(params![l.link_id, l.link_type, l.first, l.second])?;
     }
+
+    Ok(())
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn write_contributions(cfg: &Config, conn: &Connection) {
+fn write_contributions(cfg: &Config, conn: &Connection) -> Result<()> {
     const SELECT: &str = "
         SELECT
             user_attributions.word_id, user_attributions.user_id
@@ -579,57 +568,57 @@ fn write_contributions(cfg: &Config, conn: &Connection) {
         ORDER BY word_id;
     ";
 
-    let mut csv = csv_writer(cfg, "user_attributions.csv");
+    let mut csv = csv_writer(cfg, "user_attributions.csv")?;
 
-    conn.prepare(SELECT)
-        .unwrap()
-        .query(params![])
-        .unwrap()
+    conn.prepare(SELECT)?
+        .query(params![])?
         .map(|row| ContributionRecord::try_from(row))
         .map_err(|e| -> anyhow::Error { e.into() })
-        .for_each(|example| csv.serialize(example).map_err(Into::into))
-        .unwrap()
+        .for_each(|example| csv.serialize(example).map_err(Into::into))?;
+
+    Ok(())
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn restore_contributions(cfg: &Config, conn: &Connection) {
+fn restore_contributions(cfg: &Config, conn: &Connection) -> Result<()> {
     const INSERT: &str = "
         INSERT INTO user_attributions (word_id, user_id) VALUES (?1, ?2);
     ";
 
-    let mut csv = csv_reader(cfg, "user_attributions.csv");
-    let mut insert = conn.prepare(INSERT).unwrap();
+    let mut csv = csv_reader(cfg, "user_attributions.csv")?;
+    let mut insert = conn.prepare(INSERT)?;
 
     for res in csv.deserialize() {
-        let l: ContributionRecord = res.unwrap();
-        insert.execute(params![l.word_id, l.user_id]).unwrap();
+        let l: ContributionRecord = res?;
+        insert.execute(params![l.word_id, l.user_id])?;
     }
+
+    Ok(())
 }
 
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn write_users(cfg: &Config, conn: &Connection) {
+fn write_users(cfg: &Config, conn: &Connection) -> Result<()> {
     const SELECT: &str =
         "SELECT user_id, username FROM users WHERE display_name = 1 ORDER BY user_id;";
 
-    let mut csv = csv_writer(cfg, "users.csv");
+    let mut csv = csv_writer(cfg, "users.csv")?;
 
-    conn.prepare(SELECT)
-        .unwrap()
-        .query(params![])
-        .unwrap()
+    conn.prepare(SELECT)?
+        .query(params![])?
         .map(|row| UserRecord::try_from(row))
         .map_err(|e| -> anyhow::Error { e.into() })
-        .for_each(|example| csv.serialize(example).map_err(Into::into))
-        .unwrap()
+        .for_each(|example| csv.serialize(example).map_err(Into::into))?;
+
+    Ok(())
 }
 
-fn sweep_tokens(conn: &Connection) {
+fn sweep_tokens(conn: &Connection) -> Result<()> {
     const DELETE: &str =
         "DELETE FROM login_tokens WHERE JULIANDAY(?1) - JULIANDAY(last_used) > ?2;";
     const TOKEN_EXPIRY_DAYS: f64 = 30.0;
 
-    conn.prepare(DELETE)
-        .unwrap()
-        .execute(params![chrono::Utc::now(), TOKEN_EXPIRY_DAYS])
-        .unwrap();
+    conn.prepare(DELETE)?
+        .execute(params![Utc::now(), TOKEN_EXPIRY_DAYS])?;
+
+    Ok(())
 }

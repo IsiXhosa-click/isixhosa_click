@@ -3,3 +3,4 @@
 -style-guide-url = /style_guide
 -edit-url-start = /word/
 -edit-url-end = /edit
+empty-string ={""}

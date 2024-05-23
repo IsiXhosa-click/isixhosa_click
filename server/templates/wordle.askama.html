@@ -18,7 +18,7 @@
         </div>
 
         <script type="module">
-            import init from '/wasm/isixhosa_wordle.js';
+            import init, { start_wordle } from '/wasm/isixhosa_wordle.js';
 
             const supported = (() => {
                 try {
@@ -34,7 +34,8 @@
             })();
 
             if (supported) {
-                  init();
+                await (await init());
+                start_wordle('{{ self.host() }}', '{{ self.i18n_info.user_language }}');
             } else {
                 let msg = document.createElement("p");
                 msg.innerText = '{{ self.t("js-required.wasm") }}';
