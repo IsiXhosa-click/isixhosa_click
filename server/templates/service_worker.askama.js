@@ -69,9 +69,23 @@ self.addEventListener("fetch", (event) => {
         );
     } else {
         event.respondWith(
-            caches.match(event.request).then(function(response) {
-                return response || fetch(event.request);
-            })
+            caches.match(event.request)
+                .then(function(response) {
+                    // Return cached response
+                    if (response) {
+                        return response;
+                    } else {
+                        // Fall back to fetch from internet
+                        return fetch(event.request)
+                            .catch(function(err) {
+                                return caches.open(STATIC_FILES_CACHE)
+                                    .then(function(cache) {
+                                        console.error(`Error fetching: ${err}`);
+                                        return cache.match(OFFLINE_URL);
+                                    });
+                            });
+                    }
+                })
         );
     }
 });
