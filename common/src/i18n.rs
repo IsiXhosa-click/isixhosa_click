@@ -14,6 +14,31 @@ pub struct SiteContext<L> {
     pub host: String,
 }
 
+#[derive(Ord, PartialOrd, Eq, PartialEq)]
+pub struct Language {
+    pub name: String,
+    pub flag: String,
+    pub id: LanguageIdentifier,
+}
+
+impl<L: Loader> SiteContext<L> {
+    pub fn supported_languages(&self) -> Vec<Language> {
+        let mut vec: Vec<Language> = self
+            .site_i18n
+            .locales()
+            .map(|id| {
+                Language {
+                    name: self.site_i18n.lookup(id, "ui-language"),
+                    flag: self.site_i18n.lookup(id, "ui-language.flag"),
+                    id: id.clone(),
+                }
+            })
+            .collect();
+        vec.sort();
+        vec
+    }
+}
+
 #[macro_export]
 macro_rules! i18n_args {
     ($($arg:expr => $val:expr),*$(,)?) => {
@@ -113,9 +138,9 @@ impl<L: Loader + 'static> I18nInfo<L> {
             "ideophone",
             "bound_morpheme",
         ]
-        .into_iter()
-        .map(|key| (key, self.ctx.site_i18n.lookup(&self.user_language, key)))
-        .collect()
+            .into_iter()
+            .map(|key| (key, self.ctx.site_i18n.lookup(&self.user_language, key)))
+            .collect()
     }
 }
 

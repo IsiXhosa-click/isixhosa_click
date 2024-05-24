@@ -1,10 +1,11 @@
 use crate::i18n::{I18nInfo, SiteContext, EN_ZA};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
-use crate::{i18n, spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
+use crate::{spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration, SameSite};
 use dashmap::DashMap;
+use fluent_templates::LanguageIdentifier;
 use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::db_impl::DbImpl;
@@ -13,6 +14,7 @@ use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Toke
 use ordered_float::OrderedFloat;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use sha2::Digest;
 use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
@@ -216,9 +218,12 @@ pub struct OpenIdState {
     pub csrf_token: String,
 }
 
+#[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct SignupForm {
     username: String,
+    #[serde_as(as = "DisplayFromStr")]
+    language: LanguageIdentifier,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
     dont_display_name: bool,
@@ -247,6 +252,8 @@ pub struct FullUser {
     pub permissions: Permissions,
     #[tabled(rename = "Locked?")]
     pub locked: bool,
+    #[tabled(rename = "Language")]
+    pub language: LanguageIdentifier,
 }
 
 impl From<FullUser> for isixhosa_common::auth::User {
@@ -255,6 +262,7 @@ impl From<FullUser> for isixhosa_common::auth::User {
             user_id: user.id,
             username: user.username,
             permissions: user.permissions,
+            language: user.language,
         }
     }
 }
@@ -673,6 +681,7 @@ async fn signup_form_submit(
             !form.dont_display_name,
             email,
             Permissions::User,
+            form.language,
         )
     })
     .await
@@ -792,6 +801,14 @@ async fn extract_i18n_from_auth(
     db: impl PublicAccessDb,
     accept_lang: Option<String>,
 ) -> Result<(Auth, I18nInfo, impl PublicAccessDb), Rejection> {
+    if let Some(user) = auth.user() {
+        let i18n = I18nInfo {
+            user_language: user.language.clone(),
+            ctx,
+        };
+        return Ok((auth, i18n, db));
+    }
+
     let all = accept_language::intersection_with_quality(
         accept_lang.as_deref().unwrap_or("en-ZA"),
         ctx.supported_langs,
@@ -817,9 +834,8 @@ async fn extract_i18n_from_user<DB>(
 where
     DB: PublicAccessDb,
 {
-    // TODO(translations) fetch from DB
     let i18n = I18nInfo {
-        user_language: i18n::EN_ZA,
+        user_language: user.language.clone(),
         ctx,
     };
 

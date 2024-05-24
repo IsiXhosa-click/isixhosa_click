@@ -52,6 +52,20 @@
                 </div>
 
                 <div>
+                    <label for="language" tabindex="0" data-descr='{{ self.t("select-language.explanation") }}'>
+                        {{ self.t("select-language")|safe }}<span class="required">*</span>:
+                    </label>
+                    <select id="language" name="language" required>
+                        {%- for language in i18n_info.ctx.supported_languages() -%}
+                            <option value="{{ language.id }}" {% if language.id == crate::i18n::EN_ZA -%} selected {%- endif -%}>
+                                {{ language.flag }}
+                                {{ language.name }}
+                            </option>
+                        {%- endfor -%}
+                    </select>
+                </div>
+
+                <div>
                     <input type="checkbox" id="dont_display_name" name="dont_display_name">
                     <label for="dont_display_name">
                         {{ self.t("username.do-not-credit") }}

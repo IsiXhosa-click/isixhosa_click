@@ -1,6 +1,7 @@
 use crate::auth::{random_string_token, FullUser, StaySignedInToken};
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;
+use fluent_templates::LanguageIdentifier;
 use isixhosa_common::auth::Permissions;
 use isixhosa_common::database::{ModeratorAccessDb, PublicAccessDb, UserAccessDb};
 use openid::{Token, Userinfo};
@@ -30,6 +31,7 @@ impl TryFrom<&Row<'_>> for FullUser {
                 Permissions::User
             },
             locked: row.get("locked")?,
+            language: row.get::<&str, String>("language")?.parse().unwrap(),
         })
     }
 }
@@ -39,7 +41,8 @@ impl FullUser {
     pub fn fetch_by_id(db: &impl PublicAccessDb, id: u64) -> Option<FullUser> {
         const SELECT: &str = "
             SELECT
-                user_id, username, display_name, email, is_moderator, is_administrator, locked
+                user_id, username, display_name, email, is_moderator, is_administrator, locked,
+                language
             FROM users
             WHERE user_id = ?1;
         ";
@@ -67,7 +70,8 @@ impl FullUser {
     ) -> Option<FullUser> {
         const SELECT: &str = "
             SELECT
-                user_id, username, display_name, email, is_moderator, is_administrator, locked
+                user_id, username, display_name, email, is_moderator, is_administrator, locked,
+                language
             FROM users
             WHERE oidc_id = ?1;
         ";
@@ -91,7 +95,8 @@ impl FullUser {
     pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<FullUser> {
         const SELECT: &str = "
             SELECT
-                user_id, username, display_name, email, is_moderator, is_administrator, locked
+                user_id, username, display_name, email, is_moderator, is_administrator, locked,
+                language
             FROM users;
         ";
 
@@ -161,11 +166,12 @@ impl FullUser {
         display_name: bool,
         email: String,
         permissions: Permissions,
+        language: LanguageIdentifier,
     ) -> FullUser {
         const INSERT: &str = "
             INSERT INTO users
-                (oidc_id, username, display_name, email, is_moderator, is_administrator, locked)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) RETURNING user_id;
+                (oidc_id, username, display_name, email, is_moderator, is_administrator, locked, language)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) RETURNING user_id;
         ";
 
         let conn = db.get().unwrap();
@@ -178,6 +184,7 @@ impl FullUser {
             permissions.contains(Permissions::Moderator), // is_moderator
             permissions.contains(Permissions::Administrator), // is_administrator,
             false,                                        // locked
+            language.to_string(),
         ];
 
         let id: i64 = stmt.query_row(params, |row| row.get("user_id")).unwrap();
@@ -189,6 +196,7 @@ impl FullUser {
             email,
             permissions,
             locked: false,
+            language,
         }
     }
 }

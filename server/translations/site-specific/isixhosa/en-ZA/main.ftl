@@ -5,7 +5,7 @@ site = IsiXhosa.click Live Dictionary
     .license-url = https://creativecommons.org/licenses/by-sa/4.0/
     .anki-url = https://ankiweb.net/shared/info/1123338173
     .aim-text =
-        IsiXhosa.click is an online dictionary for Xhosa and English. The project aims to create a free,
+        IsiXhosa.click is an online dictionary for IsiXhosa and English. The project aims to create a free,
         open-source, and easily usable dictionary for learners of isiXhosa.
 
 source-language = English

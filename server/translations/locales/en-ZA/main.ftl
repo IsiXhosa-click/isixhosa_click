@@ -1,3 +1,6 @@
+ui-language = English (South Africa)
+    .flag = 🇿🇦
+
 nav = Navigation
     .site-icon = Site icon
     .menu = Menu
@@ -331,9 +334,14 @@ sign-up = Sign up
                        required in case { site.short-name } moderators or admins need to contact you about the status of
                        your account or for legal reasons. Try to log in again with a different Google account.
         }
-     .terms-of-use-agreement =
-         I agree to the <a href="{ -tou-url }">terms of use and privacy policy</a> of { site.short-name },
-         and verify that I am over the age of 13.
+    .terms-of-use-agreement =
+        I agree to the <a href="{ -tou-url }">terms of use and privacy policy</a> of { site.short-name },
+        and verify that I am over the age of 13.
+
+select-language = Select <strong>interface</strong> language
+    .explanation =
+        This is the language that will be used for the user interface of the site. It does not change anything about the
+        language of entries in the dictionary.
 
 license-agreement =
      I agree that any content which I submit I will allow { site.short-name } to use subject to

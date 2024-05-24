@@ -1,11 +1,13 @@
 use std::fmt::{Display, Formatter};
 use std::num::NonZeroU64;
+use fluent_templates::LanguageIdentifier;
 
 #[derive(Clone, Debug)]
 pub struct User {
     pub user_id: NonZeroU64,
     pub username: String,
     pub permissions: Permissions,
+    pub language: LanguageIdentifier,
 }
 
 #[cfg_attr(feature = "server", derive(clap::ValueEnum))]
@@ -57,7 +59,7 @@ impl From<User> for Auth {
 }
 
 impl Auth {
-    fn user(&self) -> Option<&User> {
+    pub fn user(&self) -> Option<&User> {
         match self {
             Auth::LoggedIn(user) => Some(user),
             _ => None,
