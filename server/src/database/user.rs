@@ -1,4 +1,5 @@
 use crate::auth::{random_string_token, FullUser, StaySignedInToken};
+use anyhow::anyhow;
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;
 use fluent_templates::LanguageIdentifier;
@@ -156,6 +157,40 @@ impl FullUser {
             .unwrap();
 
         changed != 0
+    }
+
+    #[instrument(level = "info", name = "Update user settings", skip(db))]
+    pub fn update_settings(
+        &mut self,
+        db: &impl UserAccessDb,
+        display_name: bool,
+        username: String,
+        language: LanguageIdentifier,
+    ) -> anyhow::Result<()> {
+        const UPDATE: &str = "
+            UPDATE users
+                SET display_name = ?1, username = ?2, language = ?3
+            WHERE user_id = ?4
+        ";
+
+        self.display_name = display_name;
+        self.username = username;
+        self.language = language;
+
+        let conn = db.get().unwrap();
+
+        let changed = conn.prepare(UPDATE)?.execute(params![
+            self.display_name,
+            self.username,
+            self.language.to_string(),
+            self.id.get()
+        ])?;
+
+        if changed == 1 {
+            Ok(())
+        } else {
+            Err(anyhow!("Failed to update user"))
+        }
     }
 
     #[instrument(name = "Register user", skip(db, userinfo))]

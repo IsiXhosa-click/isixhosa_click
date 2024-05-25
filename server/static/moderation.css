@@ -40,17 +40,6 @@ table {
     word-wrap: break-word;
 }
 
-#confirm_buttons {
-    display: flex;
-    flex-direction: row;
-    gap: 2rem;
-    justify-content: center;
-}
-
-#confirm_buttons > button {
-    width: 3rem;
-}
-
 #confirm_duplicates:empty {
     display: none;
 }

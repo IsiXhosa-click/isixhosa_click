@@ -37,7 +37,7 @@
                 <div id="login_bar_container">
                     <div>
                         <div>
-                            <button id="login_bar" class="row_list"
+                            <button id="login_bar" class="row_list" {#-#}
                                     aria-label='{{ self.t_with("nav.user", crate::i18n_args!("username" => username.to_owned())) }}'
                             >
                                 <div class="material-icons" id="user_icon">account_circle</div>
@@ -46,10 +46,20 @@
 
                             <div id="login_popover_container">
                                 <div id="login_popover" hidden>
-                                    <a href="/logout/" aria-label='{{ self.t("nav.log-out") }}'>
-                                        <div class="material-icons login_popover_icon">logout</div>
-                                        <div class="login_popover_text">Log out</div>
-                                    </a>
+                                    <menu>
+                                        <li>
+                                            <a href="/settings/" aria-label='{{ self.t("settings") }}'>
+                                                <div class="material-icons login_popover_icon" aria-hidden="true">settings</div>
+                                                <div class="login_popover_text">{{ self.t("settings") }}</div>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="/logout/" aria-label='{{ self.t("nav.log-out") }}'>
+                                                <div class="material-icons login_popover_icon" aria-hidden="true">logout</div>
+                                                <div class="login_popover_text">{{ self.t("nav.log-out") }}</div>
+                                            </a>
+                                        </li>
+                                    </menu>
                                 </div>
                             </div>
                         </div>

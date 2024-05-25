@@ -9,6 +9,12 @@ nav = Navigation
     .log-out = Log out
     .user = User settings for { $username }
 
+settings = Settings
+    .save = Save
+    .confirm = Are you sure you want to save these settings?
+    .success = Successfully saved settings.
+    .failure = There was an error saving settings.
+
 about = About
     .description = { site.short-name } is a free, open, online dictionary for { target-language } and { source-language }.
     .aim = Aim
