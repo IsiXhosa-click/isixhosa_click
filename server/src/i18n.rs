@@ -37,8 +37,13 @@ pub fn load(site: String, config: &Config) -> SiteContext {
             site_ftl_path.push("main.ftl");
 
             if !site_ftl_path.is_file() {
-                tracing::info!("Falling back to en-ZA site-specific file for {site} in {}", bundle.locales[0]);
-                site_ftl_path = ["translations", "site-specific", &site, "en-ZA", "main.ftl"].iter().collect();
+                tracing::info!(
+                    "Falling back to en-ZA site-specific file for {site} in {}",
+                    bundle.locales[0]
+                );
+                site_ftl_path = ["translations", "site-specific", &site, "en-ZA", "main.ftl"]
+                    .iter()
+                    .collect();
             }
 
             let site_ftl = std::fs::read_to_string(&site_ftl_path)

@@ -549,7 +549,12 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
                 let relative_to_web_root = relative_to_src
                     .strip_prefix("static")
                     .map(ToOwned::to_owned)
-                    .unwrap_or_else(|_| Path::new("translations").join(relative_to_src));
+                    .unwrap_or_else(|_| {
+                        let relative_to_site = relative_to_src
+                            .strip_prefix(&format!("translations/site-specific/{}/", &args.site))
+                            .expect("Couldn't find site-specific translations");
+                        Path::new("translations").join(relative_to_site)
+                    });
 
                 relative_to_web_root.to_str().unwrap().to_owned()
             })

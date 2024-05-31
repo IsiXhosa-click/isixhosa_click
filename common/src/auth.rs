@@ -1,6 +1,6 @@
+use fluent_templates::LanguageIdentifier;
 use std::fmt::{Display, Formatter};
 use std::num::NonZeroU64;
-use fluent_templates::LanguageIdentifier;
 
 #[derive(Clone, Debug)]
 pub struct User {

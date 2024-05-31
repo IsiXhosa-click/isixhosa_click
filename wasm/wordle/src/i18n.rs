@@ -22,16 +22,13 @@ static_loader! {
 
 async fn get_translation(lang: &str) -> Result<String> {
     let url = format!("/translations/{lang}/main.ftl");
-    let res = Request::get(&url)
-        .send()
-        .await?;
+    let res = Request::get(&url).send().await?;
 
     if res.status() != 200 {
         bail!("Not 200 OK for fetching resource at {url}!");
     }
 
-    res
-        .text()
+    res.text()
         .await
         .with_context(|| format!("Failed to fetch resource at {url}"))
 }
@@ -48,7 +45,9 @@ pub async fn load() -> Result<&'static StaticLoader> {
 
         let raw = match raw {
             Ok(r) => r,
-            Err(_) => get_translation("en-ZA").await.expect("Failed to fetch en-ZA site files"),
+            Err(_) => get_translation("en-ZA")
+                .await
+                .expect("Failed to fetch en-ZA site files"),
         };
 
         let resource = FluentResource::try_new(raw)

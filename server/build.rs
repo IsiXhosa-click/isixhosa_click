@@ -6,7 +6,7 @@ fn get_last_changed(path: &str) -> String {
         .args([
             "-c",
             &format!(
-                "find {path} -type f -print0 | xargs -0 stat --format '%y' |\
+                "find {path} -type f -print0 | xargs -0 stat --format '%Y' |\
                  sort -nr | cut -d: -f2- | head -1"
             ),
         ])
