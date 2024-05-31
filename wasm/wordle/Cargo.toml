@@ -28,3 +28,4 @@ fluent-templates = "0.9.4"
 itertools = "0.13.0"
 isixhosa_common = { path = "../../common" }
 askama = "0.12.1"
+console_error_panic_hook = "0.1.7"

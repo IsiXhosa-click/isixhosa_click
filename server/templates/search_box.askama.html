@@ -59,7 +59,6 @@
 
     <noscript>
         <form id="search" action="/search" method="GET" role="search">
-
             <input type="search" id="query" name="query" value="{{ start_query }}" {#--#}
                 placeholder='{{ self.t("search.prompt") }}' autofocus spellcheck="false" aria-label='{{ self.t("search.header") }}' {#--#}
                 class="searchbox_input {% if has_results %} has_results {% endif -%}">

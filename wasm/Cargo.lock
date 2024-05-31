@@ -699,6 +699,7 @@ dependencies = [
  "ascii",
  "askama",
  "chrono",
+ "console_error_panic_hook",
  "csv",
  "fluent-templates",
  "getrandom",

@@ -283,7 +283,6 @@ caption, .caption {
     padding: 0.75rem 0.5rem;
     text-overflow: ellipsis;
     overflow: hidden;
-    white-space: nowrap;
 }
 
 #login_bar.not_signed_in {

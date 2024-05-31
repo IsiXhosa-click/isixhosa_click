@@ -909,6 +909,7 @@ async fn extract_i18n_from_auth(
         return Ok((auth, i18n, db));
     }
 
+    // TODO select en appropriately if just en is given
     let all = accept_language::intersection_with_quality(
         accept_lang.as_deref().unwrap_or("en-ZA"),
         ctx.supported_langs,

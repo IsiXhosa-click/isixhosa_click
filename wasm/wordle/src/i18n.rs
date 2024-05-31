@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use fluent_templates::fluent_bundle::FluentResource;
 use fluent_templates::{static_loader, StaticLoader};
 use gloo::net::http::Request;
@@ -20,6 +20,22 @@ static_loader! {
     };
 }
 
+async fn get_translation(lang: &str) -> Result<String> {
+    let url = format!("/translations/{lang}/main.ftl");
+    let res = Request::get(&url)
+        .send()
+        .await?;
+
+    if res.status() != 200 {
+        bail!("Not 200 OK for fetching resource at {url}!");
+    }
+
+    res
+        .text()
+        .await
+        .with_context(|| format!("Failed to fetch resource at {url}"))
+}
+
 pub async fn load() -> Result<&'static StaticLoader> {
     log::debug!("Fetching available locales");
     let supported_langs: Vec<LanguageIdentifier> =
@@ -28,13 +44,12 @@ pub async fn load() -> Result<&'static StaticLoader> {
     log::debug!("Fetching site locale files");
     let mut site_files = HashMap::new();
     for lang in supported_langs {
-        let url = format!("/translations/{lang}/main.ftl");
-        let raw = Request::get(&url)
-            .send()
-            .await?
-            .text()
-            .await
-            .with_context(|| format!("Failed to fetch resource at {url}"))?;
+        let raw = get_translation(&lang.to_string()).await;
+
+        let raw = match raw {
+            Ok(r) => r,
+            Err(_) => get_translation("en-ZA").await.expect("Failed to fetch en-ZA site files"),
+        };
 
         let resource = FluentResource::try_new(raw)
             .map_err(|(_res, errs)| {
@@ -47,7 +62,7 @@ pub async fn load() -> Result<&'static StaticLoader> {
 
                 anyhow!(err)
             })
-            .with_context(|| format!("Invalid fluent resource at {url}"))?;
+            .context("Invalid fluent resource")?;
 
         site_files.insert(lang, resource);
     }

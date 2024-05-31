@@ -628,7 +628,7 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
 
     let langs = site_ctx.supported_langs;
     let translations = warp::path("translations").and(
-        warp::fs::dir(site_translation_files).or(warp::any().map(move || reply::json(&langs))),
+        warp::fs::dir(site_translation_files).or(path::end().map(move || reply::json(&langs))),
     );
 
     let routes = search

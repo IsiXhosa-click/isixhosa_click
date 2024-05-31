@@ -101,6 +101,10 @@ about = About
                 excellent book "Xhosa for Second-Language Learners".</li>
             <li><strong>Cuan Dugmore,</strong> for giving us permission to use his word lists containing
                 thousands of words that he has collected over the years.</li>
+            <li><a href="https://sit.uct.ac.za/department-computer-science">The UCT Department of Computer Science</a>,
+                for hosting the site's server.</li>
+            <li><a href="https://sit.uct.ac.za/contacts/craig-balfour"><strong>Craig Balfour,</strong></a> for his
+                assistance in setting up the server at UCT.</li>
         </ul>
     .contact = Contact
     .contact-text =
