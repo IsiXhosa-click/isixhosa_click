@@ -132,82 +132,11 @@ export class LiveSearch {
 }
 
 export function formatResult(translations, result, elt) {
-    let plural = "";
-    if (result.is_plural) {
-        plural = `${translations['plurality.plural']} `;
-    }
-
-    let informal = "";
-    if (result.is_informal) {
-        informal = `${translations['informal.in-word-result']} `;
-    }
-
-    let inchoative = "";
-    if (result.is_inchoative) {
-        inchoative = `${translations['inchoative.in-word-result']} `;
-    }
-
-    let transitive = "";
-    let key = `${result.transitivity}.in-word-result`
-    if (result.transitivity != null && translations[key] !== "") {
-        transitive = translations[key] + " ";
-    }
-
-    let part_of_speech = "";
-    if (result.part_of_speech != null) {
-        part_of_speech = translations[result.part_of_speech];
-    }
-
-    let grammar_info = `${informal}${inchoative}${transitive}${plural}${part_of_speech}`;
-    let has_bracketed_info = grammar_info !== "" || result.noun_class != null;
-    let text = `${result.english} - ${result.xhosa}`;
-
-    if (has_bracketed_info) {
-        text += ` (${grammar_info}`;
-    }
-
-    let class_translated = translations['noun-class.in-word-result'];
-
     if (elt != null) {
-        elt.innerText = text;
-
-        if (result.noun_class != null) {
-            let strong = document.createElement("strong");
-            strong.className = "noun_class_prefix";
-
-            if (!result.noun_class.selected_singular) {
-                strong.innerText = result.noun_class.plural;
-                elt.innerText += ` - ${class_translated} ${result.noun_class.singular}/`;
-                elt.appendChild(strong);
-            } else {
-                strong.innerText = result.noun_class.singular;
-                elt.innerText += ` - ${class_translated} `;
-                elt.appendChild(strong);
-
-                if (result.noun_class.plural != null) {
-                    elt.innerHTML += `/${result.noun_class.plural}`;
-                }
-            }
-        }
-
-        if (has_bracketed_info) {
-            elt.innerHTML += ")";
-        }
+        elt.innerHTML = result.html;
     } else {
-        let noun_class = "";
-        if (result.noun_class != null) {
-            if (result.noun_class.plural != null) {
-                noun_class = ` - ${class_translated} ${result.noun_class.singular}/${result.noun_class.plural}`;
-            } else {
-                noun_class = ` - ${class_translated} ${result.noun_class.singular}`;
-            }
-        }
-        text += noun_class;
-
-        if (has_bracketed_info) {
-            text += ")";
-        }
-
-        return text;
+        let div = document.createElement("div");
+        div.innerHTML = result.html;
+        return div.innerText;
     }
 }

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::i18n::{I18nInfo, TranslationKey};
 use crate::language::{NounClassExt, NounClassPrefixes};
 use crate::types::{PublicUserInfo, WordHit};
@@ -8,6 +9,7 @@ use fluent_templates::{ArcLoader, Loader};
 use isixhosa::noun::NounClass;
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter, Write};
+use crate::i18n_args;
 
 pub fn escape(s: &str) -> MarkupDisplay<Html, &str> {
     MarkupDisplay::new_unsafe(s, Html)
@@ -15,7 +17,7 @@ pub fn escape(s: &str) -> MarkupDisplay<Html, &str> {
 
 pub struct HtmlFormatter<'a, L: Loader = ArcLoader> {
     pub fmt: &'a mut dyn Write,
-    i18n_info: &'a I18nInfo<L>,
+    pub i18n_info: &'a I18nInfo<L>,
     plain_text: bool,
 }
 
@@ -238,6 +240,43 @@ impl<L: Loader + 'static> DisplayHtml<L> for HyperlinkWrapper<'_> {
     }
 }
 
+fn is_not_isolator_or_whitespace(c: char) -> bool {
+    !c.is_whitespace() && (c < '\u{2066}' || c > '\u{206f}')
+}
+
+/// Prepare a grammar info section (e.g `informal intransitive verb`) by:
+/// - Stripping whitespace inside unicode isolating characters before the first printable chars
+/// - Rewriting all whitespace to ' '
+/// - Replacing double-whitespace with single-whitespace
+fn prepare_grammar_info(s: &str) -> String {
+    if s.is_empty() {
+        return String::new();
+    }
+
+    let mut trimmed = String::new();
+
+    let first_printable = s.chars().position(is_not_isolator_or_whitespace).unwrap();
+    let last_printable = s.chars().count() - s.chars().rev().position(is_not_isolator_or_whitespace).unwrap();
+
+    let mut last_printable_was_whitespace = false;
+    for (i, c) in s.chars().enumerate() {
+        if !((i < first_printable || i > last_printable) && c.is_whitespace()) {
+            if c.is_whitespace() {
+                if !last_printable_was_whitespace {
+                    trimmed.push(' ');
+                    last_printable_was_whitespace = true;
+                }
+            } else {
+                last_printable_was_whitespace = false;
+                trimmed.push(c);
+            }
+        }
+    }
+
+    trimmed
+}
+
+// TODO better diffing here
 // TODO: use askama template?
 macro_rules! impl_display_html {
     ($($typ:ty),*) => {
@@ -249,14 +288,22 @@ macro_rules! impl_display_html {
 
                 if self.has_grammatical_information() {
                     f.write_raw_str(" (")?;
-                    f.join_if_non_empty(" ", [
-                        &if self.is_informal { TranslationKey::new("informal.in-word-result") } else { TranslationKey::new("empty-string") },
-                        &if self.is_inchoative { TranslationKey::new("inchoative.in-word-result") } else { TranslationKey::new("empty-string") },
-                        &self.transitivity as &dyn DisplayHtml<L>,
-                        &if self.is_plural { TranslationKey::new("plurality.plural") } else { TranslationKey::new("empty-string") },
-                        &self.part_of_speech,
-                        &self.noun_class.as_ref().map(NounClassInHit),
-                    ])?;
+
+                    let mut args = i18n_args!(
+                        "plural" => self.is_plural.to_string(),
+                        "informal" => self.is_informal.to_string(),
+                        "inchoative" => self.is_inchoative.to_string(),
+                        "transitivity" => self.transitivity.map(|t| t.name()).unwrap_or_default(),
+                        "part-of-speech" => self.part_of_speech.map(|p| p.name()).unwrap_or_default(),
+                    );
+
+                    // Done separately so as not to escape the class argument (which we trust and
+                    // has formatting)
+                    let class = self.noun_class.as_ref().map(|c| c.to_html(f.i18n_info).to_string()).unwrap_or_else(|| "none".to_string());
+                    args.insert("class".to_string(), FluentValue::String(Cow::Owned(class)));
+
+                    let grammar_info = f.i18n_info.translate_with(&TranslationKey::new("word-hit.grammar-info"), &args);
+                    f.write_unescaped_str(&prepare_grammar_info(&grammar_info))?;
                     f.write_raw_str(")")?;
                 }
 

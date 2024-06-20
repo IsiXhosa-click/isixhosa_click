@@ -2,19 +2,21 @@ use crate::search::{IncludeResults, TantivyClient};
 use crate::spawn_send_interval;
 use futures::stream::SplitSink;
 use futures::SinkExt;
-use isixhosa_common::types::WordHit;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
 use xtra::prelude::*;
+use isixhosa_common::format::DisplayHtml;
+use crate::i18n::I18nInfo;
 
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,
     pub tantivy: Arc<TantivyClient>,
     include: IncludeResults,
     heartbeat: Instant,
+    i18n_info: I18nInfo,
 }
 
 impl LiveSearchSession {
@@ -23,6 +25,7 @@ impl LiveSearchSession {
         tantivy: Arc<TantivyClient>,
         include_suggestions_from_user: Option<NonZeroU64>,
         is_moderator: bool,
+        i18n_info: I18nInfo,
     ) -> Self {
         let include = match (include_suggestions_from_user, is_moderator) {
             (Some(_), true) => IncludeResults::AcceptedAndAllSuggestions,
@@ -35,6 +38,7 @@ impl LiveSearchSession {
             tantivy,
             include,
             heartbeat: Instant::now(),
+            i18n_info,
         }
     }
 }
@@ -95,8 +99,18 @@ impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
 
                     #[derive(Serialize)]
                     struct Reply {
-                        results: Vec<WordHit>,
+                        results: Vec<ReplyWord>,
                         state: String,
+                    }
+
+                    #[derive(Serialize)]
+                    struct ReplyWord {
+                        id: u64,
+                        html: String,
+
+                        // Used by duplicate search
+                        english: String,
+                        xhosa: String,
                     }
 
                     let reply = Reply {
@@ -104,7 +118,15 @@ impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
                             .tantivy
                             .search(query.search, self.include, false)
                             .await
-                            .unwrap(),
+                            .unwrap()
+                            .into_iter()
+                            .map(|hit| ReplyWord {
+                                id: hit.id,
+                                html: hit.to_html(&self.i18n_info).to_string(),
+                                english: hit.english,
+                                xhosa: hit.xhosa,
+                            })
+                            .collect(),
                         state: query.state,
                     };
 

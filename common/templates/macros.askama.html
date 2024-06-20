@@ -6,7 +6,7 @@
             <span id="site_name">{{ self.t("site") }}</span>
         </a>
         <button id="hamburger" aria-label='{{ self.t("nav.menu") }}'>
-            <span class="material-icons">menu</span>
+            {{ crate::icon!("mdi:menu")|safe }}
         </button>
 
         <a href="/search">{{ self.t("search") }}</a>
@@ -40,7 +40,7 @@
                             <button id="login_bar" class="row_list" {#-#}
                                     aria-label='{{ self.t_with("nav.user", crate::i18n_args!("username" => username.to_owned())) }}'
                             >
-                                <div class="material-icons" id="user_icon">account_circle</div>
+                                {{ crate::icon!("mdi:account-circle" "id"="user_icon")|safe }}
                                 <div id="login_bar_text">{{- username -}}</div>
                             </button>
 
@@ -49,13 +49,13 @@
                                     <menu>
                                         <li>
                                             <a href="/settings/" aria-label='{{ self.t("settings") }}'>
-                                                <div class="material-icons login_popover_icon" aria-hidden="true">settings</div>
+                                               {{ crate::icon!("mdi:settings" class="login_popover_icon" "aria-hidden"="true")|safe }}
                                                 <div class="login_popover_text">{{ self.t("settings") }}</div>
                                             </a>
                                         </li>
                                         <li>
                                             <a href="/logout/" aria-label='{{ self.t("nav.log-out") }}'>
-                                                <div class="material-icons login_popover_icon" aria-hidden="true">logout</div>
+                                                {{ crate::icon!("mdi:logout" class="login_popover_icon" "aria-hidden"="true")|safe }}
                                                 <div class="login_popover_text">{{ self.t("nav.log-out") }}</div>
                                             </a>
                                         </li>
@@ -120,6 +120,10 @@
                 });
             });
         }
+    </script>
+
+    <script>
+        let FIREFOX_FOUC_FIX; // ??? https://stackoverflow.com/a/64158043
     </script>
 {%- endmacro -%}
 

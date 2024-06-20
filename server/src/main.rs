@@ -70,7 +70,7 @@ use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
 use xtra::{Handler, Mailbox, WeakAddress};
 
-pub use isixhosa_common::i18n_args;
+pub use isixhosa_common::{i18n_args, icon};
 
 mod auth;
 mod config;
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
             .enable_all()
             .build()?
             .block_on(server(cfg, cli)),
-        Commands::Backup => export::run_daily_tasks(cfg),
+        Commands::Backup => export::run_daily_tasks(&cfg, &cli),
         Commands::Restore => export::restore(cfg),
         Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path),
         Commands::User(command) => user_management::run_command(cfg, command.command),
@@ -867,7 +867,7 @@ fn live_search(
     tantivy: Arc<TantivyClient>,
     params: LiveSearchParams,
     auth: Auth,
-    _i18n_info: I18nInfo,
+    i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> impl Reply {
     ws.on_upgrade(move |websocket| {
@@ -883,6 +883,7 @@ fn live_search(
             tantivy,
             include_suggestions_from_user,
             auth.has_permissions(Permissions::Moderator),
+            i18n_info
         );
 
         let addr = xtra::spawn_tokio(actor, Mailbox::bounded(4));

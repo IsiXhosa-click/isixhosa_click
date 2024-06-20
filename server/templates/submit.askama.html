@@ -227,7 +227,7 @@
                         </div>
 
                         <div class="verb_option" hidden>
-                            <label for="is_inchoative" tabindex="0" data-descr='{{ self.t("inchoative.explanation") }}.' >
+                            <label for="is_inchoative" tabindex="0" data-descr='{{ self.t("inchoative.explanation") }}' >
                                 {{ self.t("submit.select-inchoative") }}
                             </label>
                             <input type="checkbox" id="is_inchoative" name="is_inchoative"
@@ -332,6 +332,10 @@
                 </div>
             </form>
 
+            <template id="delete-button-template">
+                {{ crate::icon!("mdi:delete")|safe }}
+            </template>
+
             <script type="module">
                 import { addExample, addExamples } from "/submit/example.js";
                 import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
@@ -366,14 +370,14 @@
                 window.addEventListener("load", function() {
                     {%- let this_word_id = self.this_word_id_js() -%}
 
-                    addExamples({{ word.examples|json|safe }});
+                    addExamples(translations, {{ word.examples|json|safe }});
                     addLinkedWords(translations, {{ word.linked_words|json|safe }}, {{ this_word_id }});
                     partOfSpeechChange(); /* Refresh part of speech sections */
                     addDuplicateSearchFor(translations, "english", {{ this_word_id }});
                     addDuplicateSearchFor(translations, "xhosa", {{ this_word_id }});
 
                     document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
-                    document.getElementById("add_example").addEventListener("click", function() { addExample() });
+                    document.getElementById("add_example").addEventListener("click", function() { addExample(translations) });
                     document.getElementById("add_linked_word").addEventListener("click", function() {
                         addLinkedWord(translations, {{ this_word_id }});
                     });

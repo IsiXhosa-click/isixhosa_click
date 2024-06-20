@@ -17,7 +17,7 @@
     {%- call macros::navbar() -%}
     <div id="main_wrap">
         <header id="main_header">
-            <h1>Search for a word</h1>
+            <h1>{{ self.t("search.header") }}</h1>
         </header>
 
         <main class="search_container">
@@ -31,7 +31,7 @@
                             <li class="hit_container">
                                 <a class="hit" href="/word/{{ hit.id }}">
                                     <span>{{ hit.to_html(i18n_info)|safe }}</span>
-                                    <span class="material-icons go_arrow">arrow_forward</span>
+                                    {{ crate::icon!("mdi:arrow-forward" class="go_arrow")|safe }}
                                 </a>
                             </li>
                         {%- endfor -%}

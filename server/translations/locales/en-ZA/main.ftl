@@ -14,6 +14,7 @@ settings = Settings
     .confirm = Are you sure you want to save these settings?
     .success = Successfully saved settings.
     .failure = There was an error saving settings.
+    .unsaved = You have unsaved changes.
 
 about = About
     .description = { site.short-name } is a free, open, online dictionary for { target-language } and { source-language }.
@@ -156,7 +157,6 @@ wordle = Wordle
     .copied = Copied!
     .word-was = Today's word was
 
-
 moderation = Moderation
     .possible-duplicates = Possible duplicates
     .suggestions = Suggestions
@@ -227,7 +227,7 @@ transitivity = Transitivity
 
 transitive = transitive
     .explicit = transitive-only
-    .in-word-result = intransitive
+    .in-word-result = transitive
 intransitive = intransitive
     .explicit = intransitive-only
     .in-word-result = intransitive
@@ -236,6 +236,43 @@ ambitransitive = either
     .in-word-result ={""}
 
 word-hit = Word hit, e.g as it appears in the search box
+    .grammar-info =
+        { $plural ->
+            [true] plural
+           *[other]{""}
+        }
+        { $informal ->
+            [true] informal
+           *[other]{""}
+        }
+        { $inchoative ->
+            [true] inchoative
+           *[other]{""}
+        }
+        { $transitivity ->
+            [transitive] { transitive.in-word-result }
+            [intransitive] { intransitive.in-word-result }
+            [ambitransitive] { ambitransitive.in-word-result }
+           *[other]{""}
+        }
+        { $part-of-speech ->
+            [verb] { verb }
+            [noun]
+                    { noun }
+                    { $class ->
+                        [none] {""}
+                       *[any] - class { $class }
+                    }
+            [adjective] { adjective }
+            [adverb] { adverb }
+            [relative] { relative }
+            [interjection] { interjection }
+            [conjunction] { conjunction }
+            [preposition] { preposition }
+            [ideophone] { ideophone }
+            [boundmorpheme] { boundmorpheme }
+           *[other]{""}
+        }
     .class = class
 
 followed-by = Followed by
@@ -250,11 +287,13 @@ with-tone-markings = { target-language } with tone markings
 linked-words = Linked words
     .link-type = Link type
     .other-word = Other word
-    .plurality = Plural or singular form
+    .plurality = Singular or plural form
     .antonym = Antonym
     .related = Related meaning
     .confusable = Confusable
     .alternate = Alternate Use
+    .choose = Choose how the words are related
+    .search = Search for a linked word...
 
 informal = Informal or slang?
     .in-word-result = informal
@@ -312,6 +351,10 @@ boundmorpheme = bound morpheme
     .capitalised = Bound morpheme
 
 examples = Example sentences
+    .source = { source-language } example
+    .target = { target-language } example
+
+delete = Delete
 
 contributors = Contributors
 

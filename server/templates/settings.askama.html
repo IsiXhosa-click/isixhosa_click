@@ -20,8 +20,6 @@
             <script type="module">
                 window.addEventListener("DOMContentLoaded", function() {
                     let all = Array.from(document.querySelectorAll(":required"));
-                    let button = document.getElementById("save-button");
-                    button.classList.add("disabled");
                     let changes = false;
                     let chosen_submit = false;
                     let unsaved_changes = document.getElementById("unsaved-changes");
@@ -36,7 +34,6 @@
                         elt.setAttribute("data-orig", orig);
 
                         elt.addEventListener(event, function() {
-                            button.classList.toggle("disabled", all.some(elt => !elt.checkValidity()));
                             changes = all.some(elt => elt.value !== elt.getAttribute("data-orig"));
                             unsaved_changes.hidden = !changes;
                         });
@@ -55,6 +52,13 @@
                         chosen_submit = true;
                         form.submit();
                     };
+
+                    document.getElementById("confirm_no").onclick = function() {
+                        chosen_submit = false;
+                        document.getElementById("confirm").classList.remove("open");
+                    };
+
+
                     form.addEventListener("submit", function(evt) {
                         document.getElementById("confirm").classList.add("open");
                         evt.preventDefault();
@@ -113,7 +117,7 @@
                 </div>
 
                 <div>
-                    <div id="unsaved-changes" hidden>You have unsaved changes.</div>
+                    <div id="unsaved-changes" hidden>{{ self.t("settings.unsaved") }}</div>
                     <button type="submit" id="save-button">{{ self.t("settings.save") }}</button>
                 </div>
             </form>

@@ -1,4 +1,4 @@
-ui-language = IsiZulu (Ningizimu Afrika)
+ui-language = IsiZulu (eNingizimu Afrika)
     .flag = 🇿🇦
 
 nav = Navigation
@@ -8,6 +8,12 @@ nav = Navigation
     .sign-in-with-google = Ngena ekhasini ngokufaka imininingwane yakho ye-Google
     .log-out = Phuma ekhasini
     .user = Ukulungisa kwa { $username }
+
+settings = Ukuhlela
+    .save = Londoloza
+    .confirm = Unesiqiniseko sokuba ufuna ukulondoloza lokhu okuhlelile?
+    .success = Ukuhlela okulondolozwe ngempumelelo.
+    .failure = Kube khona inkinga ngenkathi kulondolozwa okuhleliwe.
 
 about = Okumayelana naleli khasi
     .description = { site.short-name } isichazamazwi sesizindalwazi esisetshenziswa mahhala se { target-language } kanye { source-language }.
@@ -97,7 +103,7 @@ submit = Hambisa igama
     .description = Hambisa igama mahhala { site.short-name } kulesi sichazamazwi nge- { target-language } kanye nange- { source-language }.
     .submit-success = Igama lihanjiswe ngempumelelo!
     .submit-fail = Igama alihambanga ngempumelelo.
-    .check-style = Buka lapha ukuze ubone ukuthi igama lihanjiswa kanjani <a href="{ -style-guide-url }">style guide</a> ngaphambi kokuba ulihambise.
+    .check-style = Buka lapha ukuze ubone ukuthi igama lihanjiswa kanjani <a href="{ -style-guide-url }">{ style-guide.lower }</a> ngaphambi kokuba ulihambise.
     .required-field = Izikhala okuphoqelekile ukuba zigcwaliswe zinaloluphawu <span class="required">*</span>.
     .translation = Ukuhumusha
     .possible-duplicates = Okungenzeka ukuba kuphindaphindekile (edlula)
@@ -196,14 +202,62 @@ transitivity = Isenzo esilandelwa umenzi
 
 transitive = isenzo esilandelwa umenzi
     .explicit = isenzo esilandelwa umenzi kuphela
+    .in-word-result = isenzo esilandelwa umenzi
 intransitive = isenzo esingalandelwa umenzi
     .explicit = isenzo esingalandelwa umenzi
+    .in-word-result = isenzo esingalandelwa umenzi
 ambitransitive = isenzo esilandelwa omenzi ababili
-    .in-word-hit = {""}
     .explicit = isenzo esilandelwa omenzi ababili
+    .in-word-result ={""}
 
 word-hit = Igama elivelayo, isbn, njengoba livela esikhaleni
+    .grammar-info =
+        { $part-of-speech ->
+            [verb]
+                    { $inchoative ->
+                        [true] { inchoative.in-word-result }
+                       *[other] isenzo
+                    }
+                    { $transitivity ->
+                        [transitive] esilandelwa umenzi
+                        [intransitive] esingalandelwa umenzi
+                       *[other]{""}
+                    }
+            [noun]
+                    { noun }
+                    { $plural ->
+                        [true] elibuningi
+                       *[other]{""}
+                    }
+                    { $informal ->
+                        [true] elisiTsotsi
+                       *[other] {""}
+                    }
+                    { $class ->
+                        [none] {""}
+                       *[any] elinesigaba esiyi-{ $class }
+                    }
+            [adjective] { adjective }
+            [adverb] { adverb }
+            [relative] { relative }
+            [interjection] { interjection }
+            [conjunction] { conjunction }
+            [preposition] { preposition }
+            [ideophone] { ideophone }
+            [boundmorpheme] { boundmorpheme }
+           *[other]{""}
+        }
+        { $informal ->
+            [true]
+                { $part-of-speech ->
+                    [preposition] osisiTsotsi
+                    [noun] elisiTsotsi
+                   *[other] esisiTsotsi
+                }
+             *[other] {""}
+        }
     .class = isigaba
+
 
 followed-by = Kulandelwa yi
     .explanation = Ibinzana eliyisenzo noma umusho olandelwa yileli gama.
@@ -246,7 +300,7 @@ infinitive = Ibizosenzo
 inchoative = Isenzoqalasimo
     .explanation =
         Isenzoqalasimo (okuphathelene nesimo) siba senkathini esandakwenzeka. Isibonelo, "ngilambile"
-        kusho ukuthi "ngilambile", kanti-ke ukuthi "ngiyalamba" kusho ukuthi "ngiyalamba".
+        kusho ukuthi "angidlanga", kanti-ke ukuthi "ngiyalamba" kusho ukuthi "angidli".
     .in-word-result = isenzoqalasimo
     .non = okungeyiso isiqalasimo
 
@@ -311,17 +365,22 @@ sign-up = Bhalisa
          Ngiyavuma nge- <a href="{ -tou-url }">imigomo nemibandela yokusebenzisa lolu hlelo</a> of { site.short-name },
          ngiyavuma ukuthi ngineminyaka engaphezulu kweyishuminantathu.
 
+select-language = Khetha <strong>inkundla</strong> yolimi
+    .explanation =
+        Lolu yilona limi oluzosetshenziswa enkundleni yaleli khasi. Lokhu akushintshi ulimi lwamagama afakwayo kwisichazamazwi.
+
 license-agreement =
      Ngiyavuma ukuthi konke engikufakayo lapha kungasetshenziswa { site.short-name } ngaphansi kwalemigomo nemibandela <a href="{ -tou-url }">imigomo nemibandela</a> ngaphansi kwe-
      <a href="{ site.license-url }">{ site.license-full }</a>.
 
-username = Veza igama
+username = Igama lakho lokuveza
     .explanation = Leli yilona gama abanye abantu abazokubona ngalo, futhi yilo ozobonakala ngalo lapho khona uthumela igama.
     .placeholder = Luthando Dube
     .do-not-credit =
         Ungalivezi ndawo igama lami kuleli khasi lapho khona ngithumela igama. Qhaphela ukuthi uma ukhetha ukuthi igama lakho lingavezwa, ususa ilungelo lakho lokuba abantu, kanye nomphakathi wonkana wazi ukuba wuwe ofake igama elisha - funda imibandela yokusebenza kwalolu hlaka ukuze uqonde kabanzi ngalokhu.
 
 style-guide = Indlela yokuloba
+    .lower = indlela yokuloba
     .description = Indlela yokuloba lapho khona kufakwa amagama kwi- { site.short-name }.
     .entry-guidelines = Indlela yokuloba uma kufakwa amagama
     .entry-definition = Uku <dfn>fakwa</dfn> kuyikhasi elilodwa legama.

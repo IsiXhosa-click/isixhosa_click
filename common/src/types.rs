@@ -64,7 +64,7 @@ impl ExistingWord {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WordHit {
     pub id: u64,
     pub english: String,

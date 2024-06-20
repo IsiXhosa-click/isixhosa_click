@@ -1,7 +1,7 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
 use crate::i18n::{I18nInfo, EN_ZA};
-use crate::{set_up_db, Config};
+use crate::{set_up_db, Config, CliArgs};
 use anyhow::Result;
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;
@@ -41,13 +41,13 @@ pub fn restore(cfg: Config) -> Result<()> {
     Ok(())
 }
 
-pub fn run_daily_tasks(cfg: Config) -> Result<()> {
+pub fn run_daily_tasks(cfg: &Config, args: &CliArgs) -> Result<()> {
     let conn = Connection::open(&cfg.database_path)?;
     sweep_tokens(&conn)?;
-    export(&cfg, &conn)
+    export(&cfg, &args.site, &conn)
 }
 
-fn export(cfg: &Config, src: &Connection) -> Result<()> {
+fn export(cfg: &Config, site: &str, src: &Connection) -> Result<()> {
     let temp_dir = TempDir::new("isixhosa_click_backup")?;
     let temp_db = temp_dir.path().join("isixhosa_click.bak.db");
     let mut dest = Connection::open(temp_db)?;
@@ -57,7 +57,7 @@ fn export(cfg: &Config, src: &Connection) -> Result<()> {
         backup.run_to_completion(5, Duration::from_millis(250), None)?;
     }
 
-    write_words(cfg, &dest)?;
+    write_words(cfg, site, &dest)?;
     write_examples(cfg, &dest)?;
     write_linked_words(cfg, &dest)?;
     write_users(cfg, &dest)?;
@@ -385,7 +385,7 @@ fn csv_reader(cfg: &Config, file: &str) -> Result<csv::Reader<BufReader<File>>> 
 
 // TODO(translations) do per-site & translate anki
 #[allow(clippy::redundant_closure)] // "implementation of FnOnce is not general enough"
-fn write_words(cfg: &Config, conn: &Connection) -> Result<()> {
+fn write_words(cfg: &Config, site: &str, conn: &Connection) -> Result<()> {
     const ANKI_DESC: &str = "All the words on IsiXhosa.click, as of %d-%m-%Y.";
 
     const SELECT_WORDS: &str = "
@@ -399,6 +399,10 @@ fn write_words(cfg: &Config, conn: &Connection) -> Result<()> {
     const SELECT_EXAMPLE: &str = "SELECT english, xhosa FROM examples WHERE word_id = ?1 LIMIT 1;";
 
     let mut select_example = conn.prepare(SELECT_EXAMPLE)?;
+
+    let wordle_path = cfg.other_static_files.join("wordle_words.csv");
+    let writer = BufWriter::new(File::create(wordle_path)?);
+    let mut wordle_csv = csv::Writer::from_writer(writer);
 
     let mut full_word_csv = csv_writer(cfg, "words.csv")?;
 
@@ -421,7 +425,7 @@ fn write_words(cfg: &Config, conn: &Connection) -> Result<()> {
         .map(|row| Ok(WordRecord::from(ExistingWord::try_from(row)?)))
         .collect()?;
 
-    let ctx = crate::i18n::load("isixhosa".to_string(), cfg);
+    let ctx = crate::i18n::load(site.to_owned(), cfg);
     let i18n_info = I18nInfo {
         user_language: EN_ZA,
         ctx: Arc::new(ctx),
@@ -436,6 +440,7 @@ fn write_words(cfg: &Config, conn: &Connection) -> Result<()> {
             .unwrap_or_default();
 
         full_word_csv.serialize(&word)?;
+        wordle_csv.serialize(&word)?;
 
         let (note, fields) = word.render_note(i18n_info.clone(), en_example, xh_example)?;
         deck.add_note(note);

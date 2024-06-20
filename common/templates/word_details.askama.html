@@ -26,11 +26,11 @@
                         </h1>
 
                         <button id="share_word" hidden aria-label='{{ self.t("share") }}'>
-                            <span class="material-icons">share</span>
+                            {{ crate::icon!("material-symbols:share")|safe }}
                         </button>
 
                         <a id="edit_word" title='{{ self.t("word.suggest-edit") }}' href="/word/{{ word.word_id }}/edit">
-                            <span class="material-icons">edit</span>
+                            {{ crate::icon!("mdi:edit")|safe }}
                         </a>
 
                         {%- let confirm_delete = self.t("word.confirm-delete") -%}
@@ -39,9 +39,8 @@
                         >
                             <select name="method" hidden><option value="delete"></select>
                             <button title='{{ self.t("word.suggest-delete") }}' type="submit">
-                                <span class="material-icons">delete</span>
-                            </button></head>
-
+                                {{ crate::icon!("mdi:delete")|safe }}
+                            </button>
                         </form>
                     </header>
 

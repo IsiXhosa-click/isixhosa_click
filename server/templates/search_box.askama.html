@@ -1,6 +1,6 @@
 {%- macro searchbox(start_query, has_results) -%}
-    <script type="module">import {LiveSearch} from "/live_search.js";
-
+    <script type="module">
+        import {LiveSearch} from "/live_search.js";
         window.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
 
@@ -27,10 +27,7 @@
 
             function postCreateItem(span) {
                 let link = span.parentElement;
-                let goArrow = document.createElement("span");
-                goArrow.classList.add("material-icons", "go_arrow");
-                goArrow.innerText = "arrow_forward";
-                link.appendChild(goArrow);
+                link.insertAdjacentHTML('beforeend', `{{ crate::icon!("mdi:arrow-forward" class="go_arrow")|safe }}`);
             }
 
             function createItemContainer(id) {

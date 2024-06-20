@@ -12,13 +12,13 @@ use serde::Deserialize;
 use std::fmt;
 use std::iter;
 use std::sync::Arc;
+use gloo::net::http::Request;
 use tinyvec::ArrayVec;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use yew::{function_component, html, Callback, Component, Context, Html, Properties};
 
 const SEED: u64 = 11530789889988543623;
-static CSV: &[u8] = include_bytes!("../words.csv");
 const WORD_LENGTH: usize = 6;
 const GUESSES: usize = 6;
 
@@ -235,6 +235,7 @@ impl<L: Loader + 'static> DisplayHtml<L> for Game {
 #[derive(Properties, PartialEq)]
 struct GameProperties {
     i18n_info: I18nInfo<&'static StaticLoader>,
+    csv: String,
 }
 
 impl Component for Game {
@@ -242,7 +243,7 @@ impl Component for Game {
     type Properties = GameProperties;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let list: Vec<_> = csv::Reader::from_reader(CSV)
+        let list: Vec<_> = csv::Reader::from_reader(ctx.props().csv.as_bytes())
             .deserialize::<WordRecord>()
             .flatten()
             .collect();
@@ -384,6 +385,7 @@ impl Component for Game {
         }
     }
 
+    //noinspection RsCompileErrorMacro - For some reason it does not think it can find the icons/ dir
     fn view(&self, ctx: &Context<Self>) -> Html {
         let guesses_padded = self
             .guesses
@@ -448,7 +450,10 @@ impl Component for Game {
 
                 <div id="wordle_modal" class={ modal_classes }>
                     <div class="column_list">
-                        <button id="close_modal" class="material-icons" onclick={ on_close }>{ "close" }</button>
+
+                        <button id="close_modal" onclick={ on_close }>
+                            <SafeHtml html={ isixhosa_common::icon!("mdi:close") }/>
+                        </button>
                         <p id="result">{ t(message) }</p>
 
                         <p id="todays_word">
@@ -460,7 +465,7 @@ impl Component for Game {
 
                         <button id="share" onclick={ on_share }>
                             { t("wordle.share") }
-                            <span class="material-icons">{ "share" }</span>
+                            <SafeHtml html={ isixhosa_common::icon!("material-symbols:share") }/>
                         </button>
                         <p id="shared">{ t(shared) }</p>
                     </div>
@@ -554,7 +559,16 @@ pub async fn start_wordle(host: String, lang: &str) {
         }),
     };
 
-    yew::start_app_with_props_in_element::<Game>(wrap.unwrap(), GameProperties { i18n_info });
+    log::info!("Loading wordle csv");
+    let csv = Request::get("/wordle_words.csv")
+        .send()
+        .await
+        .expect("Failed to fetch wordle words!")
+        .text()
+        .await
+        .expect("Failed to fetch wordle words!");
+
+    yew::start_app_with_props_in_element::<Game>(wrap.unwrap(), GameProperties { i18n_info, csv });
 }
 
 #[derive(Deserialize, Debug)]
@@ -609,4 +623,17 @@ enum GameState {
     Won,
     Continue,
     Lost,
+}
+
+// Thanks to noxue: https://github.com/yewstack/yew/issues/1281#issuecomment-1032906972
+#[derive(Properties, PartialEq)]
+pub struct SafeHtmlProps {
+    pub html: String,
+}
+
+#[function_component(SafeHtml)]
+pub fn safe_html(props: &SafeHtmlProps) -> Html {
+    let div = gloo::utils::document().create_element("div").unwrap();
+    div.set_inner_html(&props.html.clone());
+    Html::VRef(div.into())
 }

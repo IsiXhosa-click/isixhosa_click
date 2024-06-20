@@ -236,6 +236,7 @@ fieldset.contains_table > legend {
 }
 
 .duplicates_popover {
+    width: max-content;
     position: absolute;
     visibility: hidden;
     left: 0;

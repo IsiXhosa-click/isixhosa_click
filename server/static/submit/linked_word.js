@@ -39,12 +39,12 @@ function createLinkedWordSearch(translations, preset_word, this_id) {
         popover_container.hidden = false;
     }
 
-    input.placeholder = "Search for a linked word...";
+    input.placeholder = translations["linked-words.search"];
     input.className = "word_select_search";
     input.type = "text";
     input.name = `linked_words[${current_linked_word_id}][other]`;
     input.autocomplete = "off";
-    input.setAttribute("aria-label", "Search for a word to link");
+    input.setAttribute("aria-label", translations["linked-words.search"]);
     input.setAttribute("data-lpignore", "true");
     input.addEventListener("focus", selectFocusIn);
     input.addEventListener("blur", selectFocusOut);
@@ -133,11 +133,9 @@ export function addLinkedWord(translations, this_word_id, link_type, other, sugg
     let delete_button = document.createElement("button");
     delete_button.type = "button";
 
-    let icon = document.createElement("span");
-    icon.className = "material-icons";
-    icon.innerText = "delete";
+    let icon = document.getElementById("delete-button-template").content.cloneNode(true);
     delete_button.appendChild(icon);
-    delete_button.setAttribute("aria-label", "delete");
+    delete_button.setAttribute("aria-label", translations["delete"]);
 
     delete_button.id = `linked_word-${current_linked_word_id}`;
     delete_button.classList.add("delete_linked_word", "delete_button");
@@ -155,12 +153,12 @@ export function addLinkedWord(translations, this_word_id, link_type, other, sugg
     type_select.name = `linked_words[${current_linked_word_id}][link_type]`;
 
     const types_list = [
-        { value: "", text: "Choose how the words are related" },
-        { value: "plural_or_singular", text: "Singular or plural form" },
-        { value: "alternate_use", text: "Alternate use" },
-        { value: "antonym", text: "Antonym" },
-        { value: "related", text: "Related meaning" },
-        { value: "confusable", text: "Confusable" },
+        { value: "", text: `    ${translations["linked-words.choose"]}` },
+        { value: "plural_or_singular", text: translations["linked-words.plurality"] },
+        { value: "alternate_use", text: translations["linked-words.alternate"] },
+        { value: "antonym", text: translations["linked-words.antonym"] },
+        { value: "related", text: translations["linked-words.related"] },
+        { value: "confusable", text: translations["linked-words.confusable"] },
     ];
 
     for (let type of types_list) {

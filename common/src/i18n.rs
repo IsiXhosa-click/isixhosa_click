@@ -135,6 +135,16 @@ impl<L: Loader + 'static> I18nInfo<L> {
             "preposition",
             "ideophone",
             "bound_morpheme",
+            "linked-words.choose",
+            "linked-words.search",
+            "linked-words.plurality",
+            "linked-words.alternate",
+            "linked-words.antonym",
+            "linked-words.related",
+            "linked-words.confusable",
+            "examples.source",
+            "examples.target",
+            "delete"
         ]
         .into_iter()
         .map(|key| (key, self.ctx.site_i18n.lookup(&self.user_language, key)))

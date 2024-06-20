@@ -44,6 +44,15 @@ impl PartOfSpeech {
     }
 }
 
+impl PartOfSpeech {
+    pub fn name(&self) -> String {
+        match self {
+            PartOfSpeech::BoundMorpheme => "bound_morpheme".to_owned(),
+            _ => format!("{:?}", self).to_lowercase(),
+        }
+    }
+}
+
 impl ToTranslationKey for PartOfSpeech {
     // Ensure consistency with the serde serialization
     fn translation_key(&self) -> TranslationKey<'_> {
@@ -125,6 +134,16 @@ pub enum Transitivity {
     Transitive,
     Intransitive,
     Ambitransitive,
+}
+
+impl Transitivity {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Transitivity::Transitive => "transitive",
+            Transitivity::Intransitive => "intransitive",
+            Transitivity::Ambitransitive => "ambitransitive",
+        }
+    }
 }
 
 /// This is used to serialize in WordHit
