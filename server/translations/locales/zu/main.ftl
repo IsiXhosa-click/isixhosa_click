@@ -98,6 +98,7 @@ search = Bheka
     .header = Bheka igama
     .description = Bheka igama mahhala { site.short-name } kulesi sichazamazwi nge- { target-language } kanye nange- { source-language }.
     .prompt = Loba {{ source-language.indef-article }} noma {{ target-language }} igama olifunayo
+    .no-results = Ayikho imiphumela.
 
 submit = Hambisa igama
     .description = Hambisa igama mahhala { site.short-name } kulesi sichazamazwi nge- { target-language } kanye nange- { source-language }.
@@ -269,6 +270,8 @@ with-tone-markings = { target-language } okunokulotshwa kwezimpawu eziveza isimo
     .explanation = { target-language }  okunokulotshwa kwezimpawu eziveza isimo sokuphimisela. Isbn: "bónákala".
 
 linked-words = Amagama axhunyiwe
+    .search = Bheka igama okuxhunywe kulo...
+    .choose = Khetha ukuba amagama axhumene kanjani
     .link-type = Uhlobo oluxhunyiwe
     .other-word = Elinye igama
     .plurality = Ubuningi noma ubunye
@@ -333,6 +336,8 @@ boundmorpheme = isakhiqho esingazimeliyo
     .capitalised = Isakhiqho esingazimeliyo
 
 examples = Imisho eyizibonelo
+    .source = { source-language } isibonelo
+    .target = { target-language } isibonelo
 
 contributors = Abalobi
 
