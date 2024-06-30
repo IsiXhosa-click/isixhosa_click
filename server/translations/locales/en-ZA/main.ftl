@@ -110,8 +110,8 @@ about = About
     .contact = Contact
     .contact-text =
         <p>You can get in touch with us on
-            <a href="https://join.slack.com/t/isixhosaclick/shared_invite/zt-17xo8auw6-f05kut4xJBCaEFhM5I7nqw">
-                our Slack workspace.</a> Anyone is free to join and there are no obligations or requirements
+            <a href="https://discord.gg/Hk2kgCjykm">
+                our Discord server.</a> Anyone is free to join and there are no obligations or requirements
         except to act respectfully 🙂.</p>
         <address>Otherwise, feel free to get in touch by email:
             <a href="mailto:restiosondev@gmail.com">restiosondev@gmail.com</a>.
