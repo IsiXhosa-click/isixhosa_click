@@ -87,8 +87,8 @@ about = Okumayelana naleli khasi
     .contact = Ukuxhumana
     .contact-text =
         <p>Ungaxhumana nathi lapha
-            <a href="https://join.slack.com/t/isixhosaclick/shared_invite/zt-17xo8auw6-f05kut4xJBCaEFhM5I7nqw">
-                our Slack workspace.</a> Noma ngubani angaba yingxenye yalolu hlaka, inqobo nje uma ezozithoba futhi ezohlonipha imithetho yalesi sizinda 🙂.</p>
+            <a href="https://discord.gg/Hk2kgCjykm">
+                i-Discord server yethu.</a> Noma ngubani angaba yingxenye yalolu hlaka, inqobo nje uma ezozithoba futhi ezohlonipha imithetho yalesi sizinda 🙂.</p>
         <address>Ngaphandle kwalokho, ungaxhumana nathi ngombikombani:
             <a href="mailto:restiosondev@gmail.com">restiosondev@gmail.com</a>.
         </address>
