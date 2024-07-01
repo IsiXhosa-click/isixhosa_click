@@ -69,6 +69,7 @@
 }
 
 body {
+    overflow-x: hidden;
     background-color: white;
     color: #080808;
     margin: 0;
@@ -148,6 +149,10 @@ input[type='radio'] {
     margin: 0;
 }
 
+input {
+    width: 100%;
+}
+
 input, textarea {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.9rem;
@@ -163,6 +168,8 @@ textarea {
 select {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.9rem;
+    width: 100%;
+    text-overflow: ellipsis;
 }
 
 .column_list {
