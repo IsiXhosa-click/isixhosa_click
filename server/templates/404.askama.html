@@ -1,12 +1,12 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>404 - IsiXhosa.click</title>
-    <meta name="og:title" content="404 - IsiXhosa.click"/>
-    <meta name="og:description" content="Content not found">
-    <meta name="og:url" content="https://isixhosa.click/"/>
+    <title>404 - {{ self.t("site.short-name") }}</title>
+    <meta name="og:title" content='404 - {{ self.t("site.short-name") }}'/>
+    <meta name="og:description" content='{{ self.t("not-found") }}'>
+    <meta name="og:url" content="https://{{ self.host() }}/"/>
     <meta name="robots" content="noindex">
     {%- call macros::meta() -%}
 </head>
@@ -14,10 +14,10 @@
 <body>
     {%- call macros::navbar() -%}
     <div id="main_wrap">
-        <header><h1>404 - Page not found</h1></header>
+        <header><h1>404 - {{ self.t("not-found") }}</h1></header>
 
         <main>
-            <p>This page was not found. Sorry!</p>
+            <p>{{ self.t("not-found.sorry") }}</p>
         </main>
     </div>
 </body>

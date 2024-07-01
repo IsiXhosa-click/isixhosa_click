@@ -1,4 +1,6 @@
 use crate::format::{DisplayHtml, HtmlFormatter};
+use crate::i18n::{ToTranslationKey, TranslationKey};
+use fluent_templates::Loader;
 use isixhosa::noun::NounClass;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -42,26 +44,30 @@ impl PartOfSpeech {
     }
 }
 
-impl Display for PartOfSpeech {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            PartOfSpeech::Relative => "relative (adjective)".to_owned(),
-            PartOfSpeech::Adjective => "adjective (isiphawuli)".to_owned(),
-            PartOfSpeech::BoundMorpheme => "bound morpheme".to_owned(),
+impl PartOfSpeech {
+    pub fn name(&self) -> String {
+        match self {
+            PartOfSpeech::BoundMorpheme => "bound_morpheme".to_owned(),
             _ => format!("{:?}", self).to_lowercase(),
-        };
-
-        f.write_str(&s)
+        }
     }
 }
 
-impl DisplayHtml for PartOfSpeech {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
-        f.write_text(&format!("{}", self))
-    }
+impl ToTranslationKey for PartOfSpeech {
+    // Ensure consistency with the serde serialization
+    fn translation_key(&self) -> TranslationKey<'_> {
+        let s = match self {
+            PartOfSpeech::BoundMorpheme => "bound_morpheme".to_owned(),
+            _ => format!("{:?}", self).to_lowercase(),
+        };
 
-    fn is_empty_str(&self) -> bool {
-        false
+        TranslationKey(Cow::Owned(s))
+    }
+}
+
+impl<L: Loader + 'static> DisplayHtml<L> for PartOfSpeech {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
+        f.write_text(&self.translation_key())
     }
 }
 
@@ -79,30 +85,20 @@ impl Default for ConjunctionFollowedBy {
     }
 }
 
-impl AsRef<str> for ConjunctionFollowedBy {
-    fn as_ref(&self) -> &str {
+impl<L: Loader + 'static> DisplayHtml<L> for ConjunctionFollowedBy {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         match self {
-            ConjunctionFollowedBy::Indicative => "indicative mood",
-            ConjunctionFollowedBy::Subjunctive => "subjunctive mood",
-            ConjunctionFollowedBy::Participial => "participial mood",
-            ConjunctionFollowedBy::Custom(s) => s,
+            ConjunctionFollowedBy::Indicative => {
+                f.write_text(&TranslationKey::new("followed-by.indicative"))
+            }
+            ConjunctionFollowedBy::Subjunctive => {
+                f.write_text(&TranslationKey::new("followed-by.subjunctive"))
+            }
+            ConjunctionFollowedBy::Participial => {
+                f.write_text(&TranslationKey::new("followed-by.participial"))
+            }
+            ConjunctionFollowedBy::Custom(s) => f.write_raw_str(s),
         }
-    }
-}
-
-impl Display for ConjunctionFollowedBy {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Display::fmt(self.as_ref(), f)
-    }
-}
-
-impl DisplayHtml for ConjunctionFollowedBy {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
-        f.write_text(self.as_ref())
-    }
-
-    fn is_empty_str(&self) -> bool {
-        self.as_ref().is_empty()
     }
 }
 
@@ -133,6 +129,7 @@ impl FromStr for ConjunctionFollowedBy {
     Copy, Clone, Debug, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive, Serialize, Deserialize,
 )]
 #[repr(u8)]
+#[serde(rename_all = "snake_case")]
 pub enum Transitivity {
     Transitive,
     Intransitive,
@@ -140,42 +137,53 @@ pub enum Transitivity {
 }
 
 impl Transitivity {
-    pub fn explicit_moderation_page(&self) -> &'static str {
+    pub fn name(&self) -> &'static str {
         match self {
-            Transitivity::Transitive => "transitive-only",
+            Transitivity::Transitive => "transitive",
             Transitivity::Intransitive => "intransitive",
             Transitivity::Ambitransitive => "ambitransitive",
         }
     }
+}
 
-    pub fn explicit_word_details_page(&self) -> &'static str {
+/// This is used to serialize in WordHit
+impl ToTranslationKey for Transitivity {
+    fn translation_key(&self) -> TranslationKey<'_> {
         match self {
-            Transitivity::Transitive => "transitive-only",
-            Transitivity::Intransitive => "intransitive",
-            Transitivity::Ambitransitive => "either",
+            Transitivity::Transitive => TranslationKey::new("transitive"),
+            Transitivity::Intransitive => TranslationKey::new("intransitive"),
+            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.in-word-result"),
         }
     }
 }
 
-impl AsRef<str> for Transitivity {
-    fn as_ref(&self) -> &str {
-        self.explicit_word_details_page()
+impl Transitivity {
+    pub fn explicit_moderation_page(&self) -> TranslationKey<'static> {
+        match self {
+            Transitivity::Transitive => TranslationKey::new("transitive.explicit"),
+            Transitivity::Intransitive => TranslationKey::new("intransitive.explicit"),
+            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.explicit"),
+        }
+    }
+
+    pub fn explicit_word_details_page(&self) -> TranslationKey<'static> {
+        match self {
+            Transitivity::Transitive => TranslationKey::new("transitive"),
+            Transitivity::Intransitive => TranslationKey::new("intransitive"),
+            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive"),
+        }
     }
 }
 
-impl DisplayHtml for Transitivity {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for Transitivity {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         let s = match self {
-            Transitivity::Transitive => "transitive-only",
-            Transitivity::Intransitive => "intransitive",
-            Transitivity::Ambitransitive => "",
+            Transitivity::Transitive => TranslationKey::new("transitive.in-word-result"),
+            Transitivity::Intransitive => TranslationKey::new("intransitive.in-word-result"),
+            Transitivity::Ambitransitive => TranslationKey::new("ambitransitive.in-word-result"),
         };
 
-        f.write_text(s)
-    }
-
-    fn is_empty_str(&self) -> bool {
-        *self == Transitivity::Ambitransitive
+        f.write_text(&s)
     }
 }
 
@@ -301,20 +309,16 @@ impl FromStr for WordLinkType {
     }
 }
 
-impl DisplayHtml for WordLinkType {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for WordLinkType {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         let s = match self {
-            WordLinkType::PluralOrSingular => "Plural or singular form",
-            WordLinkType::Antonym => "Antonym",
-            WordLinkType::Related => "Related meaning",
-            WordLinkType::Confusable => "Confusable",
-            WordLinkType::AlternateUse => "Alternate use",
+            WordLinkType::PluralOrSingular => TranslationKey::new("linked-words.plurality"),
+            WordLinkType::Antonym => TranslationKey::new("linked-words.antonym"),
+            WordLinkType::Related => TranslationKey::new("linked-words.related"),
+            WordLinkType::Confusable => TranslationKey::new("linked-words.confusable"),
+            WordLinkType::AlternateUse => TranslationKey::new("linked-words.alternate"),
         };
 
-        f.write_text(s)
-    }
-
-    fn is_empty_str(&self) -> bool {
-        false
+        f.write_text(&s)
     }
 }

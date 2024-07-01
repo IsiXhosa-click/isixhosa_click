@@ -1,8 +1,8 @@
-use crate::search::{IncludeResults, TantivyClient};
+use crate::i18n::I18nInfo;
+use crate::search::{IncludeResults, JsWordHit, TantivyClient};
 use crate::spawn_send_interval;
 use futures::stream::SplitSink;
 use futures::SinkExt;
-use isixhosa_common::types::WordHit;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
 use std::sync::Arc;
@@ -15,6 +15,7 @@ pub struct LiveSearchSession {
     pub tantivy: Arc<TantivyClient>,
     include: IncludeResults,
     heartbeat: Instant,
+    i18n_info: I18nInfo,
 }
 
 impl LiveSearchSession {
@@ -23,6 +24,7 @@ impl LiveSearchSession {
         tantivy: Arc<TantivyClient>,
         include_suggestions_from_user: Option<NonZeroU64>,
         is_moderator: bool,
+        i18n_info: I18nInfo,
     ) -> Self {
         let include = match (include_suggestions_from_user, is_moderator) {
             (Some(_), true) => IncludeResults::AcceptedAndAllSuggestions,
@@ -35,6 +37,7 @@ impl LiveSearchSession {
             tantivy,
             include,
             heartbeat: Instant::now(),
+            i18n_info,
         }
     }
 }
@@ -95,14 +98,14 @@ impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
 
                     #[derive(Serialize)]
                     struct Reply {
-                        results: Vec<WordHit>,
+                        results: Vec<JsWordHit>,
                         state: String,
                     }
 
                     let reply = Reply {
                         results: self
                             .tantivy
-                            .search(query.search, self.include, false)
+                            .search(query.search, self.include, false, self.i18n_info.clone())
                             .await
                             .unwrap(),
                         state: query.state,
@@ -117,9 +120,14 @@ impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
                         return;
                     }
 
-                    let results = self
+                    let results: Vec<JsWordHit> = self
                         .tantivy
-                        .search(query.to_owned(), IncludeResults::AcceptedOnly, false)
+                        .search(
+                            query.to_owned(),
+                            IncludeResults::AcceptedOnly,
+                            false,
+                            self.i18n_info.clone(),
+                        )
                         .await
                         .unwrap();
                     serde_json::to_string(&results).unwrap()

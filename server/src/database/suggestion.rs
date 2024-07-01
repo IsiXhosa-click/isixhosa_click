@@ -1,12 +1,15 @@
 use crate::database::WordId;
 use crate::database::{add_attribution, WordOrSuggestionId};
+use crate::i18n::I18nInfo;
 use crate::search::{TantivyClient, WordDocument};
 use crate::DebugExt;
 use fallible_iterator::FallibleIterator;
+use fluent_templates::Loader;
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::{ModeratorAccessDb, UserAccessDb};
 use isixhosa_common::format::{DisplayHtml, HtmlFormatter, HyperlinkWrapper, NounClassInHit};
+use isixhosa_common::i18n::TranslationKey;
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use isixhosa_common::serialization::WithDeleteSentinel;
 use isixhosa_common::types::{ExistingExample, ExistingWord, PublicUserInfo, WordHit};
@@ -27,6 +30,7 @@ pub struct SuggestedWord {
 
     pub changes_summary: String,
 
+    // TODO(translations): a TargetLanguage vs SourceLanguage string could be cool
     pub english: MaybeEdited<String>,
     pub xhosa: MaybeEdited<String>,
     pub part_of_speech: MaybeEdited<Option<PartOfSpeech>>,
@@ -61,7 +65,7 @@ impl SuggestedWord {
         fields(results),
         skip(db)
     )]
-    pub fn fetch_all_full(db: &impl ModeratorAccessDb) -> Vec<SuggestedWord> {
+    pub fn fetch_all_full(db: &impl ModeratorAccessDb, i18n_info: &I18nInfo) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "
             SELECT
                 suggestion_id, suggesting_user, existing_word_id, changes_summary,
@@ -80,7 +84,8 @@ impl SuggestedWord {
             .map(|row| {
                 let mut w = SuggestedWord::from_row_fetch_original(row, db);
                 w.examples = SuggestedExample::fetch_all_for_suggestion(db, w.suggestion_id);
-                w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, w.suggestion_id);
+                w.linked_words =
+                    SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, w.suggestion_id);
 
                 Ok(w)
             })
@@ -128,11 +133,15 @@ impl SuggestedWord {
 
     /// Returns the suggested word with examples and linked words populated.
     #[instrument(name = "Fetch full suggested word", fields(found), skip(db))]
-    pub fn fetch_full(db: &impl UserAccessDb, id: u64) -> Option<SuggestedWord> {
+    pub fn fetch_full(
+        db: &impl UserAccessDb,
+        i18n_info: &I18nInfo,
+        id: u64,
+    ) -> Option<SuggestedWord> {
         let mut word = SuggestedWord::fetch_alone(db, id);
         if let Some(w) = word.as_mut() {
             w.examples = SuggestedExample::fetch_all_for_suggestion(db, id);
-            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, id);
+            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, &i18n_info, id);
         }
 
         Span::current().record("found", word.is_some());
@@ -147,7 +156,7 @@ impl SuggestedWord {
             suggestion_id = self.suggestion_id,
             existing_id = self.word_id,
             accepted_id,
-            hit = %self.to_plaintext(),
+            hit = ?self,
         ),
         skip_all
     )]
@@ -556,7 +565,11 @@ pub struct SuggestedLinkedWord {
 
 impl SuggestedLinkedWord {
     #[instrument(name = "Fetch suggested linked word", skip(db))]
-    pub fn fetch(db: &impl UserAccessDb, suggestion: u64) -> SuggestedLinkedWord {
+    pub fn fetch(
+        db: &impl UserAccessDb,
+        _i18n_info: I18nInfo,
+        suggestion: u64,
+    ) -> SuggestedLinkedWord {
         const SELECT_SUGGESTION: &str = "
             SELECT linked_word_suggestions.suggestion_id, linked_word_suggestions.link_type,
                    linked_word_suggestions.changes_summary, linked_word_suggestions.existing_linked_word_id,
@@ -587,10 +600,11 @@ impl SuggestedLinkedWord {
         level = "trace",
         name = "Fetch all suggested linked words for suggested word",
         fields(results),
-        skip(db)
+        skip(db, _i18n_info)
     )]
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
+        _i18n_info: &I18nInfo,
         suggested_word_id: u64,
     ) -> Vec<SuggestedLinkedWord> {
         const SELECT_SUGGESTION: &str = "
@@ -994,40 +1008,32 @@ where
         }
     }
 }
-impl<T: DisplayHtml> DisplayHtml for MaybeEdited<T> {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static, T: DisplayHtml<L>> DisplayHtml<L> for MaybeEdited<T> {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         match self {
             MaybeEdited::Edited { new, old } => {
-                f.fmt.write_str("<ins>")?;
-                if new.is_empty_str() {
-                    f.fmt.write_str("[Removed]")?;
-                } else {
-                    new.fmt(f)?;
-                }
-                f.fmt.write_str("</ins> ")?;
+                f.write_unescaped_str("<ins>")?;
+                f.fmt_if_non_empty_or(new, |f| {
+                    f.write_raw_str("[")?;
+                    f.write_text(&TranslationKey::new("moderation.removed"))?;
+                    f.write_raw_str("]")
+                })?;
+                f.write_unescaped_str("</ins> ")?;
 
-                f.fmt.write_str("<del>")?;
-                if old.is_empty_str() {
-                    f.fmt.write_str("[None]")?;
-                } else {
-                    old.fmt(f)?;
-                }
-                f.fmt.write_str("</del>")
+                f.write_unescaped_str("<del>")?;
+                f.fmt_if_non_empty_or(old, |f| {
+                    f.write_raw_str("[")?;
+                    f.write_text(&TranslationKey::new("moderation.none"))?;
+                    f.write_raw_str("]")
+                })?;
+                f.write_unescaped_str("</del>")
             }
             MaybeEdited::Old(old) => old.fmt(f),
             MaybeEdited::New(new) => {
-                f.fmt.write_str("<ins>")?;
+                f.write_unescaped_str("<ins>")?;
                 new.fmt(f)?;
-                f.fmt.write_str("</ins>")
+                f.write_unescaped_str("</ins>")
             }
-        }
-    }
-
-    fn is_empty_str(&self) -> bool {
-        match self {
-            MaybeEdited::Edited { new, old } => new.is_empty_str() && old.is_empty_str(),
-            MaybeEdited::Old(v) => v.is_empty_str(),
-            MaybeEdited::New(v) => v.is_empty_str(),
         }
     }
 }
@@ -1048,48 +1054,61 @@ impl TextIfBoolIn for MaybeEdited<bool> {
     }
 }
 
-fn text_if_bool<T: TextIfBoolIn>(
-    yes: &'static str,
-    no: &'static str,
+fn text_if_bool<'a, T: TextIfBoolIn>(
+    yes: TranslationKey<'a>,
+    no: TranslationKey<'a>,
     b: T,
     show_no_when_new: bool,
-) -> MaybeEdited<&'static str> {
+) -> MaybeEdited<TranslationKey<'a>> {
     match b.into_maybe_edited() {
         MaybeEdited::Edited { new, old } => MaybeEdited::Edited {
-            new: if new { yes } else { no },
+            new: if new { yes.clone() } else { no.clone() },
             old: if old { yes } else { no },
         },
         MaybeEdited::New(b) if show_no_when_new => MaybeEdited::New(if b { yes } else { no }),
         MaybeEdited::New(b) if b => MaybeEdited::New(yes),
         MaybeEdited::Old(b) if b => MaybeEdited::Old(yes),
-        _ => MaybeEdited::Old(""),
+        _ => MaybeEdited::Old(TranslationKey::new("empty-string")),
     }
 }
 
-impl DisplayHtml for SuggestedWord {
-    fn fmt(&self, f: &mut HtmlFormatter) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for SuggestedWord {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
+        f.write_unescaped_str("<span lang=\"")?;
+        f.write_text(&TranslationKey::new("source-language-code"))?;
+        f.write_unescaped_str("\">")?;
         DisplayHtml::fmt(&self.english, f)?;
-        f.fmt.write_str(" - <span lang=\"xh\">")?;
+        f.write_unescaped_str("</span>")?;
+
+        f.write_unescaped_str(" - <span lang=\"")?;
+        f.write_text(&TranslationKey::new("target-language-code"))?;
+        f.write_unescaped_str("\">")?;
+
         DisplayHtml::fmt(&self.xhosa, f)?;
-        f.fmt.write_str("</span> (")?;
+        f.write_unescaped_str("</span> (")?;
 
         f.join_if_non_empty(
             " ",
             [
-                &text_if_bool("informal", "non-informal", self.is_informal, false),
                 &text_if_bool(
-                    "inchoative",
-                    "non-inchoative",
+                    TranslationKey::new("informal.in-word-result"),
+                    TranslationKey::new("informal.non"),
+                    self.is_informal,
+                    false,
+                ),
+                &text_if_bool(
+                    TranslationKey::new("inchoative.in-word-result"),
+                    TranslationKey::new("inchoative.non"),
                     self.is_inchoative,
                     self.part_of_speech.was_or_is(&Some(PartOfSpeech::Verb)),
                 ),
                 &self
                     .transitivity
                     .map(|x| x.map(|x| Transitivity::explicit_moderation_page(&x)))
-                    as &dyn DisplayHtml,
+                    as &dyn DisplayHtml<L>,
                 &text_if_bool(
-                    "plural",
-                    "singular",
+                    TranslationKey::new("plurality.plural"),
+                    TranslationKey::new("plurality.singular"),
                     self.is_plural,
                     self.part_of_speech.was_or_is(&Some(PartOfSpeech::Noun)),
                 ),
@@ -1097,10 +1116,6 @@ impl DisplayHtml for SuggestedWord {
                 &self.noun_class.map(|opt| opt.map(NounClassInHit)),
             ],
         )?;
-        f.write_text(")")
-    }
-
-    fn is_empty_str(&self) -> bool {
-        false
+        f.write_raw_str(")")
     }
 }

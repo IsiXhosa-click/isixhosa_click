@@ -7,11 +7,14 @@ use crate::database::deletion::{
 };
 use crate::database::submit::{submit_suggestion, WordSubmission};
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
+use crate::i18n::I18nInfo;
+use crate::i18n::SiteContext;
 use crate::search::TantivyClient;
 use crate::serialization::qs_form;
 use crate::submit::edit_suggestion_page;
 use crate::{spawn_blocking_child, DebugBoxedExt};
 use askama::Template;
+use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::WordId;
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, WordOrSuggestionId};
@@ -22,10 +25,11 @@ use serde_with::{serde_as, DisplayFromStr};
 use tracing::{error, instrument, Span};
 use warp::{body, Filter, Rejection, Reply};
 
-#[derive(Template, Debug)]
+#[derive(Template, I18nTemplate, Debug)]
 #[template(path = "moderation.askama.html")]
 struct ModerationTemplate {
     auth: Auth,
+    i18n_info: I18nInfo,
     previous_success: Option<Success>,
     word_suggestions: Vec<SuggestedWord>,
     word_deletions: Vec<WordDeletionSuggestion>,
@@ -37,6 +41,18 @@ impl ModerationTemplate {
         self.word_suggestions.is_empty()
             && self.word_deletions.is_empty()
             && self.word_associated_edits.is_empty()
+    }
+
+    fn prev_action_method(&self) -> &'static str {
+        match &self.previous_success {
+            None => "other",
+            Some(success) => match success.method {
+                None => "other",
+                Some(Method::Edit) => "edit",
+                Some(Method::Accept) => "accept",
+                Some(Method::Reject) => "reject",
+            },
+        }
     }
 }
 
@@ -55,11 +71,15 @@ impl WordAssociatedEdits {
         fields(relevant_words),
         skip(db)
     )]
-    pub fn fetch_all(db: &impl ModeratorAccessDb) -> Vec<(WordHit, WordAssociatedEdits)> {
+    pub fn fetch_all(
+        db: &impl ModeratorAccessDb,
+        i18n_info: &I18nInfo,
+    ) -> Vec<(WordHit, WordAssociatedEdits)> {
         let example_suggestions = SuggestedExample::fetch_all_for_existing_words(db);
         let example_deletions = ExampleDeletionSuggestion::fetch_all(db);
         let linked_word_suggestions = SuggestedLinkedWord::fetch_all_for_existing_words(db);
-        let linked_word_deletion_suggestions = LinkedWordDeletionSuggestion::fetch_all(db);
+        let linked_word_deletion_suggestions =
+            LinkedWordDeletionSuggestion::fetch_all(db, i18n_info.clone());
 
         let mut map: HashMap<WordId, WordAssociatedEdits> = HashMap::new();
 
@@ -138,25 +158,26 @@ enum ActionTarget {
 pub fn moderation(
     db: DbBase,
     tantivy: Arc<TantivyClient>,
+    site_ctx: Arc<SiteContext>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let with_tantivy = warp::any().map(move || tantivy.clone());
 
     let show_all = warp::get()
         .and(warp::any().map(|| None)) // previous_success is None
-        .and(with_moderator_auth(db.clone()))
+        .and(with_moderator_auth(db.clone(), site_ctx.clone()))
         .and_then(moderation_template);
 
     let process_one = warp::post()
         .and(with_tantivy.clone())
-        .and(warp::body::form::<Action>())
-        .and(with_moderator_auth(db.clone()))
+        .and(body::form::<Action>())
+        .and(with_moderator_auth(db.clone(), site_ctx.clone()))
         .and_then(process_one);
 
     let submit_edit = warp::post()
         .and(body::content_length_limit(64 * 1024))
         .and(with_tantivy)
         .and(qs_form())
-        .and(with_moderator_auth(db.clone()))
+        .and(with_moderator_auth(db.clone(), site_ctx.clone()))
         .and_then(edit_suggestion_form);
 
     let edit_failed = warp::any()
@@ -167,7 +188,7 @@ pub fn moderation(
                 next_suggestion: None,
             })
         }))
-        .and(with_moderator_auth(db.clone()))
+        .and(with_moderator_auth(db.clone(), site_ctx.clone()))
         .and_then(moderation_template);
 
     let other_failed = warp::any()
@@ -178,7 +199,7 @@ pub fn moderation(
                 next_suggestion: None,
             })
         }))
-        .and(with_moderator_auth(db))
+        .and(with_moderator_auth(db, site_ctx.clone()))
         .and_then(moderation_template);
 
     let root = warp::path::end().and(show_all.or(process_one).or(other_failed));
@@ -195,15 +216,17 @@ pub fn moderation(
 async fn moderation_template(
     previous_success: Option<Success>,
     user: FullUser,
+    i18n_info: I18nInfo,
     db: impl ModeratorAccessDb,
-) -> Result<impl warp::Reply, Rejection> {
+) -> Result<impl Reply, Rejection> {
     spawn_blocking_child(move || {
         Ok(ModerationTemplate {
             auth: user.into(),
+            i18n_info: i18n_info.clone(),
             previous_success,
-            word_suggestions: SuggestedWord::fetch_all_full(&db),
+            word_suggestions: SuggestedWord::fetch_all_full(&db, &i18n_info),
             word_deletions: WordDeletionSuggestion::fetch_all(&db),
-            word_associated_edits: WordAssociatedEdits::fetch_all(&db),
+            word_associated_edits: WordAssociatedEdits::fetch_all(&db, &i18n_info),
         })
     })
     .await
@@ -222,10 +245,11 @@ async fn edit_suggestion_form(
     tantivy: Arc<TantivyClient>,
     submission: WordSubmission,
     user: FullUser,
+    i18n_info: I18nInfo,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let next_suggestion = submission.suggestion_anchor_ord;
-    submit_suggestion(submission, tantivy, &user, &db).await;
+    submit_suggestion(submission, tantivy, &user, &db, i18n_info.clone()).await;
     moderation_template(
         Some(Success {
             success: true,
@@ -233,6 +257,7 @@ async fn edit_suggestion_form(
             next_suggestion,
         }),
         user,
+        i18n_info,
         db,
     )
     .await
@@ -240,12 +265,13 @@ async fn edit_suggestion_form(
 
 async fn accept_suggested_word(
     db: &impl ModeratorAccessDb,
+    i18n_info: I18nInfo,
     tantivy: Arc<TantivyClient>,
     suggestion: u64,
 ) -> bool {
     let db = db.clone();
     spawn_blocking_child(move || {
-        SuggestedWord::fetch_full(&db, suggestion)
+        SuggestedWord::fetch_full(&db, &i18n_info, suggestion)
             .unwrap()
             .accept_whole_word_suggestion(&db, tantivy);
     })
@@ -333,11 +359,17 @@ async fn reject_example_deletion(db: &impl ModeratorAccessDb, suggestion: u64) -
     true
 }
 
-async fn accept_linked_word(db: &impl ModeratorAccessDb, suggestion: u64) -> bool {
+async fn accept_linked_word(
+    db: &impl ModeratorAccessDb,
+    i18n_info: I18nInfo,
+    suggestion: u64,
+) -> bool {
     let db = db.clone();
-    spawn_blocking_child(move || SuggestedLinkedWord::fetch(&db, suggestion).accept(&db))
-        .await
-        .unwrap();
+    spawn_blocking_child(move || {
+        SuggestedLinkedWord::fetch(&db, i18n_info, suggestion).accept(&db)
+    })
+    .await
+    .unwrap();
     true
 }
 
@@ -370,6 +402,7 @@ async fn process_one(
     tantivy: Arc<TantivyClient>,
     params: Action,
     user: FullUser,
+    i18n_info: I18nInfo,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let db_clone = db.clone();
@@ -387,11 +420,19 @@ async fn process_one(
         },
         ActionTarget::Word(suggestion) => match params.method {
             Method::Edit => {
-                return edit_suggestion_page(db, user, suggestion, params.suggestion_anchor_ord)
-                    .await
-                    .map(Reply::into_response)
+                return edit_suggestion_page(
+                    db,
+                    i18n_info,
+                    user,
+                    suggestion,
+                    params.suggestion_anchor_ord,
+                )
+                .await
+                .map(Reply::into_response)
             }
-            Method::Accept => accept_suggested_word(&db, tantivy, suggestion).await,
+            Method::Accept => {
+                accept_suggested_word(&db, i18n_info.clone(), tantivy, suggestion).await
+            }
             Method::Reject => reject_suggested_word(&db, tantivy, suggestion).await,
         },
         ActionTarget::Example(suggestion) => match params.method {
@@ -406,7 +447,7 @@ async fn process_one(
         },
         ActionTarget::LinkedWord(suggestion) => match params.method {
             Method::Edit => todo!("Linked word standalone editing"),
-            Method::Accept => accept_linked_word(&db, suggestion).await,
+            Method::Accept => accept_linked_word(&db, i18n_info.clone(), suggestion).await,
             Method::Reject => reject_linked_word(&db, suggestion).await,
         },
         ActionTarget::LinkedWordDeletion(suggestion) => match params.method {
@@ -423,6 +464,7 @@ async fn process_one(
             next_suggestion: params.suggestion_anchor_ord.checked_sub(1),
         }),
         user,
+        i18n_info,
         db_clone,
     )
     .await

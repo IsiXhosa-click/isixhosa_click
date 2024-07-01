@@ -1,11 +1,15 @@
-<html lang="en-ZA">
+{%- import "macros.askama.html" as macros -%}
+
+<html lang="{{ self.lang() }}">
 <head>
     <meta http-equiv="refresh" content="0;URL='{{ redirect_url }}'"/>
-    <title>Redirecting... - IsiXhosa.click</title>
+    {%- call macros::title("redirect") -%}
+    <meta name="robots" content="noindex">
 </head>
 <body>
     <p>
-        Redirecting you to the site. Click <a href="{{ redirect_url }}">here</a> if this is taking too long.
+        {{ self.t("redirect.explanation") }} <a href="{{ redirect_url }}">{{ self.t("redirect.click-here") -}}</a>
+        {{ self.t("redirect.if-too-long") }}
     </p>
 </body>
 </html>

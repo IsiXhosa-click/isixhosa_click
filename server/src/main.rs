@@ -20,16 +20,19 @@
 
 use crate::auth::*;
 use crate::database::suggestion::SuggestedWord;
-use crate::search::{IncludeResults, TantivyClient};
+use crate::search::{IncludeResults, JsWordHit, TantivyClient};
 use crate::serialization::false_fn;
 use crate::session::LiveSearchSession;
+use anyhow::Result;
 use askama::Template;
 use auth::auth;
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use details::details;
 use edit::edit;
+use fluent_templates::Loader;
 use futures::StreamExt;
+use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb};
 use isixhosa_common::format::DisplayHtml;
@@ -46,14 +49,15 @@ use std::collections::HashSet;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::num::NonZeroU64;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use submit::submit;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, instrument, Span};
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Registry};
+use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, EnvFilter, Layer, Registry};
+use walkdir::DirEntry;
 use warp::filters::compression::gzip;
 #[cfg(debug_assertions)]
 use warp::filters::BoxedFilter;
@@ -66,12 +70,15 @@ use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
 use xtra::{Handler, Mailbox, WeakAddress};
 
+pub use isixhosa_common::{i18n_args, icon};
+
 mod auth;
 mod config;
 mod database;
 mod details;
 mod edit;
 mod export;
+mod i18n;
 mod import_zulu;
 mod moderation;
 mod search;
@@ -80,6 +87,8 @@ mod session;
 mod submit;
 mod user_management;
 
+use crate::i18n::I18nInfo;
+use crate::i18n::EN_ZA;
 pub use config::Config;
 
 const STATIC_LAST_CHANGED: &str = env!("STATIC_LAST_CHANGED");
@@ -150,21 +159,18 @@ enum UserCommand {
     LogoutAll,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = CliArgs::parse();
-    let cfg: Config = confy::load("isixhosa_click", Some(cli.site.as_ref())).unwrap();
+    let cfg: Config = confy::load("isixhosa_click", Some(cli.site.as_ref()))?;
 
     match cli.command {
-        Commands::Run => {
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(server(cfg, cli));
-        }
-        Commands::Backup => export::run_daily_tasks(cfg),
+        Commands::Run => tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?
+            .block_on(server(cfg, cli)),
+        Commands::Backup => export::run_daily_tasks(&cfg, &cli),
         Commands::Restore => export::restore(cfg),
-        Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path).unwrap(),
+        Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path),
         Commands::User(command) => user_management::run_command(cfg, command.command),
     }
 }
@@ -221,7 +227,7 @@ struct TemplateError(askama::Error);
 
 impl Reject for TemplateError {}
 
-fn init_tracing(cli: &CliArgs) {
+fn init_tracing(cli: &CliArgs) -> Result<()> {
     global::set_text_map_propagator(opentelemetry_jaeger_propagator::Propagator::new());
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
@@ -232,11 +238,17 @@ fn init_tracing(cli: &CliArgs) {
                 format!("isixhosa-click-{}", cli.site),
             )])),
         )
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
-        .unwrap();
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-    let fmt_layer = tracing_subscriber::fmt::layer().with_target(false);
+    let fmt_layer = tracing_subscriber::fmt::layer().compact().with_filter(
+        EnvFilter::builder()
+            .with_default_directive(LevelFilter::INFO.into())
+            .from_env()?
+            .add_directive("h2=warn".parse()?)
+            .add_directive("isixhosa_common=debug".parse()?)
+            .add_directive("isixhosa_server=debug".parse()?),
+    );
 
     let registry = Registry::default().with(LevelFilter::DEBUG).with(fmt_layer);
 
@@ -245,6 +257,8 @@ fn init_tracing(cli: &CliArgs) {
     } else {
         registry.init();
     }
+
+    Ok(())
 }
 
 #[instrument(
@@ -365,7 +379,7 @@ async fn handle_error(err: Rejection) -> Result<Response, Rejection> {
 }
 
 #[instrument("Set up database PRAGMAs and tables", skip_all)]
-fn set_up_db(conn: &Connection) {
+pub fn set_up_db(conn: &Connection) -> Result<()> {
     const CREATIONS: [&str; 12] = [
         include_str!("sql/users.sql"),
         include_str!("sql/words.sql"),
@@ -389,17 +403,18 @@ fn set_up_db(conn: &Connection) {
         PRAGMA wal_autocheckpoint = 1000;
         PRAGMA wal_checkpoint(TRUNCATE);
     ",
-    )
-    .unwrap();
+    )?;
 
     for creation in &CREATIONS {
-        conn.execute(creation, params![]).unwrap();
+        conn.execute(creation, params![])?;
     }
+
+    Ok(())
 }
 
 // I cannot be bothered trying to find the right type
 macro_rules! wrap_filter {
-    ($f:expr) => {
+    ($content_lang:expr, $f:expr) => {
         $f
             .and_then(minify_and_cache)
             .with(warp::trace(|info| {
@@ -410,52 +425,66 @@ macro_rules! wrap_filter {
                 )
             }))
             .with(warp::reply::with::header(warp::http::header::X_FRAME_OPTIONS, "Deny"))
+            .with(warp::reply::with::header(warp::http::header::CONTENT_LANGUAGE, $content_lang))
             .with(gzip())
     }
 }
 
-async fn server(cfg: Config, args: CliArgs) {
-    init_tracing(&args);
+fn walk_dir(dir: &Path) -> impl Iterator<Item = DirEntry> {
+    walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file())
+}
+
+fn walk_static_files(
+    src_static: &Path,
+    site_translation_files: &Path,
+) -> impl Iterator<Item = DirEntry> {
+    walk_dir(src_static).chain(walk_dir(site_translation_files))
+}
+
+async fn server(cfg: Config, args: CliArgs) -> Result<()> {
+    init_tracing(&args)?;
     info!("IsiXhosa server startup");
 
     let manager = SqliteConnectionManager::file(&cfg.database_path);
-    let pool = Pool::new(manager).unwrap();
+    let pool = Pool::new(manager)?;
     let pool_clone = pool.clone();
-    spawn_blocking_child(move || set_up_db(&pool_clone.get().unwrap()))
-        .await
-        .unwrap();
+    spawn_blocking_child(move || set_up_db(&*pool_clone.get()?)).await??;
 
-    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone())
-        .await
-        .unwrap();
+    let tantivy = TantivyClient::start(&cfg.tantivy_path, pool.clone()).await?;
 
     let tantivy_cloned = tantivy.clone();
     let with_tantivy = warp::any().map(move || tantivy_cloned.clone());
     let db = DbBase::new(pool);
+    let site_ctx = Arc::new(i18n::load(args.site.clone(), &cfg));
 
     let search = {
-        let search_page = with_any_auth(db.clone()).map(|auth, _db| Search {
-            auth,
-            hits: Default::default(),
-            query: Default::default(),
-        });
+        let search_page =
+            with_any_auth(db.clone(), site_ctx.clone()).map(|auth, i18n_info, _db| Search {
+                auth,
+                i18n_info,
+                hits: Default::default(),
+                query: Default::default(),
+            });
 
         let query_search = path::end()
             .and(warp::query())
             .and(with_tantivy.clone())
-            .and(with_any_auth(db.clone()))
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
             .and_then(query_search);
         let live_search = path::end()
             .and(warp::ws())
             .and(with_tantivy.clone())
             .and(warp::query())
-            .and(with_any_auth(db.clone()))
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
             .map(live_search);
         let duplicate_search = warp::path("duplicates")
             .and(path::end())
             .and(warp::query())
             .and(with_tantivy)
-            .and(with_moderator_auth(db.clone()))
+            .and(with_moderator_auth(db.clone(), site_ctx.clone()))
             .and_then(duplicate_search);
 
         warp::path("search")
@@ -468,30 +497,39 @@ async fn server(cfg: Config, args: CliArgs) {
             .debug_boxed()
     };
 
+    let src_static = cfg.server_source_path.join("static");
+    let site_translation_files = cfg
+        .server_source_path
+        .join("translations")
+        .join("site-specific")
+        .join(&args.site);
+
     let simple_templates = {
         let terms_of_use = warp::path("terms_of_use")
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .map(|auth, _| TermsOfUse { auth });
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|auth, i18n_info, _| TermsOfUse { auth, i18n_info });
         let style_guide = warp::path("style_guide")
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .map(|auth, _| StyleGuide { auth });
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|auth, i18n_info, _| StyleGuide { auth, i18n_info });
         let wordle = warp::path("wordle")
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .map(|auth, _| Wordle { auth });
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|auth, i18n_info, _| Wordle { auth, i18n_info });
         let offline = warp::get()
             .and(warp::path("offline"))
             .and(path::end())
-            .map(|| Offline);
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .map(|_auth, i18n_info, _db| Offline { i18n_info });
 
         let about = warp::get()
             .and(warp::path("about"))
             .and(path::end())
-            .and(with_any_auth(db.clone()))
-            .and_then(|auth, db| async move {
+            .and(with_any_auth(db.clone(), site_ctx.clone()))
+            .and_then(|auth, i18n_info, db| async move {
                 Ok::<About, Infallible>(About {
+                    i18n_info,
                     auth,
                     word_count: spawn_blocking_child(move || ExistingWord::count_all(&db))
                         .await
@@ -499,31 +537,31 @@ async fn server(cfg: Config, args: CliArgs) {
                 })
             });
 
-        let walk = || {
-            walkdir::WalkDir::new(&cfg.static_site_files)
-                .into_iter()
-                .filter_map(Result::ok)
-                .filter(|entry| entry.file_type().is_file())
-        };
-
         fn ends_with(entry: &str, pats: &[&str]) -> bool {
             pats.iter().any(|pat| entry.ends_with(pat))
         }
 
-        let (bin_files, static_files) = walk()
+        let (bin_files, static_files) = walk_static_files(&src_static, &site_translation_files)
             .map(|entry| {
-                entry
-                    .path()
-                    .strip_prefix(&cfg.static_site_files)
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_owned()
+                let relative_to_src = entry.path().strip_prefix(&cfg.server_source_path).unwrap();
+
+                // It's either a static file or a translation file
+                let relative_to_web_root = relative_to_src
+                    .strip_prefix("static")
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_else(|_| {
+                        let relative_to_site = relative_to_src
+                            .strip_prefix(&format!("translations/site-specific/{}/", &args.site))
+                            .expect("Couldn't find site-specific translations");
+                        Path::new("translations").join(relative_to_site)
+                    });
+
+                relative_to_web_root.to_str().unwrap().to_owned()
             })
             .filter(|entry: &String| !entry.contains("LICENSE"))
             .partition::<Vec<_>, _>(|entry| ends_with(entry, &["png", "svg", "woff2", "ico"]));
 
-        let last_modified_static = walk()
+        let last_modified_static = walk_static_files(&src_static, &site_translation_files)
             .filter_map(|entry| entry.metadata().ok())
             .filter_map(|meta| meta.modified().or(meta.created()).ok())
             .max()
@@ -533,7 +571,7 @@ async fn server(cfg: Config, args: CliArgs) {
         let last_modified_js = Utc::now(); // server boot time
         let last_modified = std::cmp::max(last_modified_static, last_modified_js);
         let last_modified = last_modified.format("%a, %d %m %Y %H:%M:%S GMT");
-        let last_modified = HeaderValue::from_str(&last_modified.to_string()).unwrap();
+        let last_modified = HeaderValue::from_str(&last_modified.to_string())?;
 
         let service_worker = warp::get()
             .and(warp::path("service_worker.js"))
@@ -591,18 +629,23 @@ async fn server(cfg: Config, args: CliArgs) {
         base.and(proxy).debug_boxed()
     };
 
-    let static_files = warp::fs::dir(cfg.static_site_files.clone())
-        .or(warp::fs::dir(cfg.other_static_files.clone()));
+    let static_files = warp::fs::dir(src_static).or(warp::fs::dir(cfg.other_static_files.clone()));
+
+    let langs = site_ctx.supported_langs;
+    let translations = warp::path("translations").and(
+        warp::fs::dir(site_translation_files).or(path::end().map(move || reply::json(&langs))),
+    );
 
     let routes = search
         .or(simple_templates)
         .or(redirects)
-        .or(submit(db.clone(), tantivy.clone()))
-        .or(moderation(db.clone(), tantivy.clone()))
-        .or(details(db.clone()))
-        .or(edit(db.clone(), tantivy))
-        .or(auth(db.clone(), &cfg).await)
+        .or(submit(db.clone(), tantivy.clone(), site_ctx.clone()))
+        .or(moderation(db.clone(), tantivy.clone(), site_ctx.clone()))
+        .or(details(db.clone(), site_ctx.clone()))
+        .or(edit(db.clone(), tantivy, site_ctx.clone()))
+        .or(auth(db.clone(), &cfg, site_ctx.clone()).await)
         .or(static_files)
+        .or(translations)
         .recover(handle_error)
         .debug_boxed();
 
@@ -633,23 +676,31 @@ async fn server(cfg: Config, args: CliArgs) {
         tokio::spawn(http_redirect.run(([0, 0, 0, 0], cfg.http_port)));
     }
 
+    let content_lang = site_ctx.site_i18n.lookup(&EN_ZA, "source-language-code");
+
     // Add post filters such as minification, logging, and gzip
     let serve = jaeger_proxy
-        .or(wrap_filter!(routes))
-        .or(wrap_filter!(with_any_auth(db).map(|auth, _db| {
-            reply::with_status(NotFound { auth }, StatusCode::NOT_FOUND).into_response()
-        })));
+        .or(wrap_filter!(content_lang.clone(), routes))
+        .or(wrap_filter!(
+            content_lang,
+            with_any_auth(db, site_ctx.clone()).map(|auth, i18n_info, _db| {
+                reply::with_status(NotFound { auth, i18n_info }, StatusCode::NOT_FOUND)
+                    .into_response()
+            })
+        ));
 
     if has_reverse_proxy {
-        warp::serve(serve).run(([0, 0, 0, 0], cfg.http_port)).await
+        warp::serve(serve).run(([0, 0, 0, 0], cfg.http_port)).await;
     } else {
         warp::serve(serve)
             .tls()
             .cert_path(cfg.cert_path.unwrap())
             .key_path(cfg.key_path.unwrap())
             .run(([0, 0, 0, 0], cfg.https_port))
-            .await
+            .await;
     }
+
+    Ok(())
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -665,35 +716,40 @@ struct SearchQuery {
     raw: bool,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "404.askama.html")]
 struct NotFound {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "about.askama.html")]
 struct About {
+    i18n_info: I18nInfo,
     auth: Auth,
     word_count: u64,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "terms_of_use.askama.html")]
 struct TermsOfUse {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "style_guide.askama.html")]
 struct StyleGuide {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "wordle.askama.html")]
 struct Wordle {
     auth: Auth,
+    i18n_info: I18nInfo,
 }
 
 #[derive(Template, Clone, Debug)]
@@ -703,14 +759,17 @@ struct ServiceWorker {
     static_bin_files: Vec<String>,
 }
 
-#[derive(Template, Clone, Debug)]
+#[derive(Template, I18nTemplate, Clone, Debug)]
 #[template(path = "offline.askama.html")]
-struct Offline;
+struct Offline {
+    i18n_info: I18nInfo,
+}
 
-#[derive(Template)]
+#[derive(Template, I18nTemplate)]
 #[template(path = "search.askama.html")]
 struct Search {
     auth: Auth,
+    i18n_info: I18nInfo,
     hits: Vec<WordHit>,
     query: String,
 }
@@ -727,16 +786,23 @@ async fn query_search(
     query: SearchQuery,
     tantivy: Arc<TantivyClient>,
     auth: Auth,
+    i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let results = tantivy
-        .search(query.query.clone(), IncludeResults::AcceptedOnly, false)
+        .search(
+            query.query.clone(),
+            IncludeResults::AcceptedOnly,
+            false,
+            i18n_info.clone(),
+        )
         .await
         .unwrap();
 
     if !query.raw {
         let template = Search {
             auth,
+            i18n_info,
             query: query.query,
             hits: results,
         };
@@ -761,6 +827,7 @@ async fn duplicate_search(
     query: DuplicateQuery,
     tantivy: Arc<TantivyClient>,
     _user: FullUser,
+    i18n: I18nInfo,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
@@ -769,22 +836,22 @@ async fn duplicate_search(
     let res = match suggestion.filter(|w| w.word_id.is_none()) {
         Some(w) => {
             let english = tantivy
-                .search(w.english.current().clone(), include, true)
+                .search(w.english.current().clone(), include, true, i18n.clone())
                 .await
                 .unwrap();
             let xhosa = tantivy
-                .search(w.xhosa.current().clone(), include, true)
+                .search(w.xhosa.current().clone(), include, true, i18n)
                 .await
                 .unwrap();
 
-            let mut results = HashSet::with_capacity(english.len() + xhosa.len());
+            let mut results: HashSet<JsWordHit> =
+                HashSet::with_capacity(english.len() + xhosa.len());
             results.extend(english);
             results.extend(xhosa);
             // Exclude this suggestion and the original of this suggestion (the word being edited)
             results.retain(|res| {
                 let is_this_suggestion = res.id == query.suggestion.get() && res.is_suggestion;
                 let is_original = Some(res.id) == w.word_id && !res.is_suggestion;
-                dbg!(res, is_this_suggestion, is_original);
                 !(is_this_suggestion || is_original)
             });
             results
@@ -805,6 +872,7 @@ fn live_search(
     tantivy: Arc<TantivyClient>,
     params: LiveSearchParams,
     auth: Auth,
+    i18n_info: I18nInfo,
     _db: impl PublicAccessDb,
 ) -> impl Reply {
     ws.on_upgrade(move |websocket| {
@@ -820,6 +888,7 @@ fn live_search(
             tantivy,
             include_suggestions_from_user,
             auth.has_permissions(Permissions::Moderator),
+            i18n_info,
         );
 
         let addr = xtra::spawn_tokio(actor, Mailbox::bounded(4));

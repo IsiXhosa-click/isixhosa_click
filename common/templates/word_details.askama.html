@@ -1,17 +1,16 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click</title>
-    <meta name="og:title" content="{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click"/>
-    <meta name="og:url" content="https://isixhosa.click/word/{{- word.word_id -}}"/>
-    <meta name="og:description" content="{{ word.to_plaintext() }}"/>
-    <meta name="description" content="{{ word.to_plaintext() }}"/>
+    <title>{{ word.english }} - {{ word.xhosa }} - {{ self.t("site.short-name") }}</title>
+    <meta name="og:title" content='{{ word.english }} - {{ word.xhosa }} - {{ self.t("site.short-name") }}'/>
+    <meta name="og:url" content="https://{{ self.host() }}/word/{{- word.word_id -}}"/>
+    <meta name="og:description" content="{{ word.to_plaintext(i18n_info) }}"/>
+    <meta name="description" content="{{ word.to_plaintext(i18n_info) }}"/>
     <link rel="stylesheet" href="/details.css">
     {%- call macros::meta() -%}
 </head>
-
 <body>
     {%- call macros::navbar() -%}
 
@@ -20,22 +19,27 @@
             <article>
                 <div>
                     <header id="word_header" class="row_list">
-                        <h1>{{ word.english }} - <span lang="xh">{{ word.xhosa }}</span></h1>
+                        {%- let src_lang = self.t("source-language-code") -%}
+                        {%- let target_lang = self.t("target-language-code") -%}
+                        <h1>
+                            <span lang="{{ src_lang }}">{{ word.english }}</span> - <span lang="{{ target_lang }}">{{ word.xhosa }}</span>
+                        </h1>
 
-                        <button id="share_word" hidden>
-                            <span class="material-icons">share</span>
+                        <button id="share_word" hidden aria-label='{{ self.t("share") }}'>
+                            {{ crate::icon!("material-symbols:share")|safe }}
                         </button>
 
-                        <a id="edit_word" title="Suggest edit" href="/word/{{ word.word_id }}/edit">
-                            <span class="material-icons">edit</span>
+                        <a id="edit_word" title='{{ self.t("word.suggest-edit") }}' href="/word/{{ word.word_id }}/edit">
+                            {{ crate::icon!("mdi:edit")|safe }}
                         </a>
 
+                        {%- let confirm_delete = self.t("word.confirm-delete") -%}
                         <form action="/word/{{ word.word_id }}/delete" method="post" enctype="application/x-www-form-urlencoded"
-                              onsubmit="return confirm('Are you sure you want to suggest this word be deleted?')"
+                              onsubmit="return confirm('{{ confirm_delete }}')"
                         >
                             <select name="method" hidden><option value="delete"></select>
-                            <button title="Suggest deletion" type="submit">
-                                <span class="material-icons">delete</span>
+                            <button title='{{ self.t("word.suggest-delete") }}' type="submit">
+                                {{ crate::icon!("mdi:delete")|safe }}
                             </button>
                         </form>
                     </header>
@@ -52,18 +56,7 @@
                                 history.replaceState(null, null, window.location.origin + "/word/{{ word.word_id }}");
                             </script>
 
-                            <p>
-                                Successfully
-
-                                {%- match prev -%}
-                                    {%- when WordChangeMethod::Edit %}
-                                        suggested edit.
-                                    {%- when WordChangeMethod::Delete %}
-                                        suggested deletion.
-                                {%- endmatch %}
-
-                                It will be reviewed by moderators shortly, thank you!
-                            <p>
+                            <p>{{ self.t_with("word.success-message", crate::i18n_args!("action" => prev.to_string())) }}<p>
                         {%- when None -%}
                     {%- endmatch -%}
 
@@ -71,26 +64,26 @@
                         {# This div prevents the table from expanding to the width of the whole page #}
                         <div>
                             <table>
-                                <caption>Word information</caption>
+                                <caption>{{ self.t("word.information") }}</caption>
 
                                 <tbody>
                                     {% match word.part_of_speech %}
                                         {%- when Some with (part_of_speech) -%}
                                             <tr>
-                                                <th scope="row">Part of speech</th>
-                                                <td>{{ part_of_speech }}</td>
+                                                <th scope="row">{{ self.t("part-of-speech") }}</th>
+                                                <td>{{ self.t(part_of_speech) }}</td>
                                             </tr>
                                         {%- when None -%}
                                     {%- endmatch -%}
 
                                     {%- if word.part_of_speech == Some(PartOfSpeech::Noun) || word.is_plural -%}
                                         <tr>
-                                            <th scope="row">Plurality</th>
+                                            <th scope="row">{{ self.t("plurality") }}</th>
                                             <td>
                                                 {%- if word.is_plural -%}
-                                                    plural
+                                                    {{ self.t("plurality.plural") }}
                                                 {%- else -%}
-                                                    singular
+                                                    {{ self.t("plurality.singular") }}
                                                 {%- endif -%}
                                             </td>
                                         </tr>
@@ -99,42 +92,41 @@
                                     {%- match word.noun_class -%}
                                         {%- when Some with (class) -%}
                                             <tr>
-                                                <th scope="row">Noun class</th>
-                                                <td>{{ class.to_html()|safe }}</td>
+                                                <th scope="row">{{ self.t("noun-class") }}</th>
+                                                <td>{{ class.to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- when None -%}
                                     {%- endmatch -%}
 
                                     {%- if !word.infinitive.is_empty() -%}
                                         <tr>
-                                            <th scope="row">Infinitive</th>
-                                            <td lang="xh">{{ word.infinitive }}</td>
+                                            <th scope="row">{{ self.t("infinitive") }}</th>
+                                            <td lang="{{ target_lang }}">{{ word.infinitive }}</td>
                                         </tr>
                                     {%- endif -%}
 
                                     {%- if word.part_of_speech == Some(PartOfSpeech::Verb)  -%}
                                         <tr>
-                                            <th scope="row" tabindex="0"
-                                                 {#-#} data-descr="An inchoative (stative) verb takes the perfect tense
-                                                 {#-#} for present tense meaning. For example, &quot;ndilambile&quot;
-                                                 {#-#} means &quot;I am hungry&quot; whereas &quot;ndiyalamba&quot; means
-                                                 {#-#} &quot;I am getting hungry&quot;."
-                                            >
-                                                Inchoative
+                                            <th scope="row" tabindex="0" data-descr='{{ self.t("inchoative.explanation") }}'>
+                                                {{ self.t("inchoative") }}
                                             </th>
-                                            <td>{%- if word.is_inchoative -%} yes {%- else -%} no {%- endif -%}</td>
+                                            <td>
+                                                {%- if word.is_inchoative -%}
+                                                    {{ self.t("yes") }}
+                                                {%- else -%}
+                                                    {{ self.t("no") }}
+                                                {%- endif -%}
+                                            </td>
                                         </tr>
                                     {%- endif -%}
 
                                     {%- match word.transitivity -%}
                                         {%- when Some with (transitivity) -%}
                                             <tr>
-                                                <th scope="row" tabindex="0"
-                                                    {#-#} data-descr="Whether the verb can take a direct object or not."
-                                                >
-                                                    Transitivity
+                                                <th scope="row" tabindex="0" data-descr='{{ self.t("transitivity.explanation") }}'>
+                                                    {{ self.t("transitivity") }}
                                                 </th>
-                                                <td>{{ transitivity.explicit_word_details_page() }}</td>
+                                                <td>{{ transitivity.explicit_word_details_page().to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- when None -%}
                                     {%- endmatch -%}
@@ -142,40 +134,39 @@
                                     {%- match word.followed_by -%}
                                         {%- when Some with (followed_by) -%}
                                             <tr>
-                                                <th scope="row" tabindex="0"
-                                                    {#-#} data-descr="The verbial mood or construction the conjunction
-                                                    {#-#} is followed by."
-                                                >
-                                                    Followed by
+                                                <th scope="row" tabindex="0" data-descr='{{ self.t("followed-by.explanation") }}'>
+                                                    {{ self.t("followed-by") }}
                                                 </th>
-                                                <td>{{ followed_by.to_html()|safe }}</td>
+                                                <td>{{ followed_by.to_html(i18n_info)|safe }}</td>
                                             </tr>
                                         {%- when None -%}
                                     {%- endmatch -%}
 
                                     {%- if !word.xhosa_tone_markings.is_empty() -%}
                                         <tr>
-                                            <th scope="row" tabindex="0"
-                                                {#-#} data-descr="Xhosa with tone markings written out as diacritics."
-                                            >
-                                                Xhosa with tone markings
+                                            <th scope="row" tabindex="0" data-descr='{{ self.t("with-tone-markings.explanation") }}'>
+                                                {{ self.t("with-tone-markings") }}
                                             </th>
-                                            <td lang="xh">{{ word.xhosa_tone_markings }}</td>
+                                            <td lang="{{ target_lang }}">{{ word.xhosa_tone_markings }}</td>
                                         </tr>
                                     {%- endif -%}
 
                                     {%- if word.is_informal -%}
                                         <tr>
-                                            <th scope="row">Informal or slang?</th>
+                                            <th scope="row">{{ self.t("informal") }}</th>
                                             <td>
-                                                {%- if word.is_informal -%} yes {%- else -%} no {%- endif -%}
+                                                {%- if word.is_informal -%}
+                                                    {{ self.t("yes") }}
+                                                {%- else -%}
+                                                    {{ self.t("no") }}
+                                                {%- endif -%}
                                             </td>
                                         </tr>
                                     {%- endif -%}
 
                                     {%- if !word.note.is_empty() -%}
                                         <tr>
-                                            <th scope="row">Note</th>
+                                            <th scope="row">{{ self.t("note") }}</th>
                                             <td>{{ word.note }}</td>
                                         </tr>
                                     {%- endif -%}
@@ -183,22 +174,23 @@
                             </table>
 
                             {%- if !word.has_grammatical_information() -%}
-                                This word doesn't have any further information yet. You can help by
-                                <a href="/word/{{ word.word_id }}/edit">editing this entry</a>.
+                                {%- let word_id = word.word_id -%}
+                                {%- let args = crate::i18n_args!("word" => word_id) -%}
+                                {{ self.t_with("no-grammatical-info", args)|safe }}
                             {%- endif -%}
                         </div>
 
                         {%- if !word.examples.is_empty() -%}
                             <div>
-                                <h2 class="caption">Examples</h2>
+                                <h2 class="caption">{{ self.t("examples") }}</h2>
 
                                 <ul class="examples">
                                 {%- for ex in word.examples -%}
                                     <li id="example-{{ ex.example_id }}">
-                                        <h3>English</h3>
-                                        <p>{{ ex.english }}</p>
-                                        <h3>Xhosa</h3>
-                                        <p lang="xh">{{ ex.xhosa }}</p>
+                                        <h3>{{ self.t("source-language") }}</h3>
+                                        <p lang="{{ src_lang }}">{{ ex.english }}</p>
+                                        <h3>{{ self.t("target-language") }}</h3>
+                                        <p lang="{{ target_lang }}">{{ ex.xhosa }}</p>
                                     </li>
                                 {%- endfor -%}
                                 </ul>
@@ -208,20 +200,20 @@
                         {%- if !word.linked_words.is_empty() -%}
                             <div>
                                 <table>
-                                    <caption>Linked words</caption>
+                                    <caption>{{ self.t("linked-words") }}</caption>
 
                                     <thead>
                                         <tr>
-                                            <th scope="col">Link type</th>
-                                            <th scope="col">Other word</th>
+                                            <th scope="col">{{ self.t("linked-words.link-type") }}</th>
+                                            <th scope="col">{{ self.t("linked-words.other-word") }}</th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
                                         {%- for link in word.linked_words -%}
                                             <tr id="link-{{ link.link_id }}">
-                                                <td>{{ link.link_type.to_html()|safe }}</td>
-                                                <td><a href="/word/{{ link.other.id }}">{{ link.other.to_html()|safe }}</a></td>
+                                                <td>{{ link.link_type.to_html(i18n_info)|safe }}</td>
+                                                <td><a href="/word/{{ link.other.id }}">{{ link.other.to_html(i18n_info)|safe }}</a></td>
                                             </tr>
                                         {%- endfor -%}
                                     </tbody>
@@ -231,10 +223,10 @@
 
                         {%- if !word.contributors.is_empty() -%}
                             <details>
-                                <summary>Contributors</summary>
+                                <summary>{{ self.t("contributors") }}</summary>
                                 <ul id="contributors">
                                     {%- for contributor in word.contributors -%}
-                                        <li>{{ contributor.to_html()|safe }}</li>
+                                        <li>{{ contributor.to_html(i18n_info)|safe }}</li>
                                     {%- endfor -%}
                                 </ul>
                             </details>
@@ -253,22 +245,21 @@
             }
 
             document.getElementById("share_word").addEventListener("click", function() {
-                let url = "https://isixhosa.click/word/{{ word.word_id }}";
+                let url = "https://{{ self.host() }}.click/word/{{ word.word_id }}";
                 if (navigator.share) {
                     navigator.share({
-                        title: "{{ word.english }} - {{ word.xhosa }} - IsiXhosa.click",
-                        text: "{{ word.to_plaintext() }}",
+                        title: '{{ word.english }} - {{ word.xhosa }} - {{ self.t("site.short-name") }}',
+                        text: "{{ word.to_plaintext(i18n_info) }}",
                         url,
                     })
                     .then(() => console.log("Successful share"))
                     .catch((error) => console.log("Error sharing", error));
                 } else if (navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(url);
-                    share.setAttribute("data-tooltip", "Link copied!");
+                    share.setAttribute("data-tooltip", '{{ self.t("word.link-copied") }}');
                 }
             });
         });
     </script>
 </body>
-
 </html>

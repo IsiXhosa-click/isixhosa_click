@@ -3,12 +3,12 @@
 
 <!DOCTYPE html>
 
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
     <title>Live Dictionary - IsiXhosa.click</title>
     <meta name="og:title" content="Search - IsiXhosa.click"/>
     <meta name="og:url" content="https://isixhosa.click/search"/>
-    {%- call macros::description("Search for a word in the free, open IsiXhosa.click dictionary for Xhosa and English.") -%}
+    {%- call macros::description("search.description") -%}
     <link rel="stylesheet" href="/search.css">
     {%- call macros::meta() -%}
 </head>
@@ -17,7 +17,7 @@
     {%- call macros::navbar() -%}
     <div id="main_wrap">
         <header id="main_header">
-            <h1>Search for a word</h1>
+            <h1>{{ self.t("search.header") }}</h1>
         </header>
 
         <main class="search_container">
@@ -25,16 +25,20 @@
 
             <div id="searchbox"></div>
             <div id="hits">
-                <ol class="hits">
-                    {%- for hit in hits -%}
-                        <li class="hit_container">
-                            <a class="hit" href="/word/{{ hit.id }}">
-                                <span>{{ hit.to_html()|safe }}</span>
-                                <span class="material-icons go_arrow">arrow_forward</span>
-                            </a>
-                        </li>
-                    {%- endfor -%}
-                </ol>
+                {%- if !hits.is_empty() -%}
+                    <ol class="hits">
+                        {%- for hit in hits -%}
+                            <li class="hit_container">
+                                <a class="hit" href="/word/{{ hit.id }}">
+                                    <span>{{ hit.to_html(i18n_info)|safe }}</span>
+                                    {{ crate::icon!("mdi:arrow-forward" class="go_arrow")|safe }}
+                                </a>
+                            </li>
+                        {%- endfor -%}
+                    </ol>
+                {%- else -%}
+                    <noscript>{{ self.t("search.no-results") }}</noscript>
+                {%- endif -%}
             </div>
         </main>
     </div>

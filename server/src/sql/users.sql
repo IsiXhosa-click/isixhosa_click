@@ -6,5 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
     email                 TEXT NOT NULL,
     is_moderator          BOOLEAN NOT NULL,
     is_administrator      BOOLEAN NOT NULL,
-    locked                BOOLEAN NOT NULL
+    locked                BOOLEAN NOT NULL,
+    language              TEXT NOT NULL DEFAULT('en-ZA')
 );

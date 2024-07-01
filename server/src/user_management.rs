@@ -5,10 +5,10 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use tabled::Table;
 
-pub fn run_command(cfg: Config, command: UserCommand) {
+pub fn run_command(cfg: Config, command: UserCommand) -> anyhow::Result<()> {
     let manager = SqliteConnectionManager::file(cfg.database_path);
-    let pool = Pool::new(manager).unwrap();
-    set_up_db(&pool.get().unwrap());
+    let pool = Pool::new(manager)?;
+    set_up_db(&*pool.get()?)?;
     let db = DbImpl(pool);
 
     match command {
@@ -47,4 +47,6 @@ pub fn run_command(cfg: Config, command: UserCommand) {
             println!("Logged out all users")
         }
     }
+
+    Ok(())
 }

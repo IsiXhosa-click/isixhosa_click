@@ -1,9 +1,9 @@
-import { LiveSearch, formatResult } from "/live_search.js";
+import { LiveSearch } from "/live_search.js";
 import { addFormData } from "/submit/util.js";
 
 let current_linked_word_id = 0;
 
-function removeLinkedWord(button_id, this_id) {
+function removeLinkedWord(translations, button_id, this_id) {
     let button = document.getElementById(button_id);
     let button_div = button.parentElement;
     let list_div = button_div.parentElement;
@@ -12,11 +12,11 @@ function removeLinkedWord(button_id, this_id) {
 
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
     if (delete_buttons.length === 0) {
-        addLinkedWord(this_id)
+        addLinkedWord(translations, this_id)
     }
 }
 
-function createLinkedWordSearch(preset_word, this_id) {
+function createLinkedWordSearch(translations, preset_word, preset_rendered, this_id) {
     let input = document.createElement("input");
 
     let popover_container = document.createElement("div");
@@ -39,21 +39,20 @@ function createLinkedWordSearch(preset_word, this_id) {
         popover_container.hidden = false;
     }
 
-    input.placeholder = "Search for a linked word...";
+    input.placeholder = translations["linked-words.search"];
     input.className = "word_select_search";
     input.type = "text";
     input.name = `linked_words[${current_linked_word_id}][other]`;
     input.autocomplete = "off";
-    input.setAttribute("aria-label", "Search for a word to link");
+    input.setAttribute("aria-label", translations["linked-words.search"]);
     input.setAttribute("data-lpignore", "true");
     input.addEventListener("focus", selectFocusIn);
     input.addEventListener("blur", selectFocusOut);
 
     if (preset_word != null) {
-        let last_choice = formatResult(preset_word);
-        input.value = last_choice;
+        input.value = preset_rendered;
         input.setAttribute("data-last_search", preset_word.xhosa);
-        input.setAttribute("data-last_choice", last_choice);
+        input.setAttribute("data-last_choice", preset_rendered);
         input.setAttribute("data-selected_word_id", preset_word.id);
         input.setAttribute("data-selected_is_suggestion", preset_word.is_suggestion);
     }
@@ -113,13 +112,14 @@ function createLinkedWordSearch(preset_word, this_id) {
         function() {},
         createLinkedWordContainer,
         r => r.id != this_id,
-        true // Include own suggestions
+        true, // Include own suggestions
+        translations
     );
 
     return { input: input, popover: popover_container, search: search };
 }
 
-export function addLinkedWord(this_word_id, link_type, other, suggestion_id, existing_id) {
+export function addLinkedWord(translations, this_word_id, link_type, other, other_rendered, suggestion_id, existing_id) {
     current_linked_word_id += 1;
     let list = document.getElementById("linked_words");
     let item = document.createElement("li");
@@ -132,11 +132,9 @@ export function addLinkedWord(this_word_id, link_type, other, suggestion_id, exi
     let delete_button = document.createElement("button");
     delete_button.type = "button";
 
-    let icon = document.createElement("span");
-    icon.className = "material-icons";
-    icon.innerText = "delete";
+    let icon = document.getElementById("delete-button-template").content.cloneNode(true);
     delete_button.appendChild(icon);
-    delete_button.setAttribute("aria-label", "delete");
+    delete_button.setAttribute("aria-label", translations["delete"]);
 
     delete_button.id = `linked_word-${current_linked_word_id}`;
     delete_button.classList.add("delete_linked_word", "delete_button");
@@ -154,12 +152,12 @@ export function addLinkedWord(this_word_id, link_type, other, suggestion_id, exi
     type_select.name = `linked_words[${current_linked_word_id}][link_type]`;
 
     const types_list = [
-        { value: "", text: "Choose how the words are related" },
-        { value: "plural_or_singular", text: "Singular or plural form" },
-        { value: "alternate_use", text: "Alternate use" },
-        { value: "antonym", text: "Antonym" },
-        { value: "related", text: "Related meaning" },
-        { value: "confusable", text: "Confusable" },
+        { value: "", text: `    ${translations["linked-words.choose"]}` },
+        { value: "plural_or_singular", text: translations["linked-words.plurality"] },
+        { value: "alternate_use", text: translations["linked-words.alternate"] },
+        { value: "antonym", text: translations["linked-words.antonym"] },
+        { value: "related", text: translations["linked-words.related"] },
+        { value: "confusable", text: translations["linked-words.confusable"] },
     ];
 
     for (let type of types_list) {
@@ -186,8 +184,8 @@ export function addLinkedWord(this_word_id, link_type, other, suggestion_id, exi
 
     let linked_word = document.createElement("div");
     linked_word.className = "word_select_container";
-    let { input, popover, search } = createLinkedWordSearch(other, this_word_id);
-    delete_button.addEventListener("click", function() { removeLinkedWord(this.id, this_word_id) });
+    let { input, popover, search } = createLinkedWordSearch(translations, other, other_rendered, this_word_id);
+    delete_button.addEventListener("click", function() { removeLinkedWord(translations, this.id, this_word_id) });
     linked_word.appendChild(input);
     linked_word.appendChild(popover);
     select_input_container.appendChild(linked_word);
@@ -195,12 +193,20 @@ export function addLinkedWord(this_word_id, link_type, other, suggestion_id, exi
     let delete_buttons = document.getElementsByClassName("delete_linked_word");
 }
 
-export function addLinkedWords(linked_words, this_id) {
+export function addLinkedWords(translations, linked_words, this_id) {
     for (let linked_word of linked_words) {
-        addLinkedWord(this_id, linked_word.link_type, linked_word.other, linked_word.suggestion_id, linked_word.existing_id)
+        addLinkedWord(
+            translations,
+            this_id,
+            linked_word.link_type,
+            linked_word.other,
+            linked_word.other_rendered_plaintext,
+            linked_word.suggestion_id,
+            linked_word.existing_id
+        )
     }
 
     if (linked_words.length === 0) {
-        addLinkedWord(this_id)
+        addLinkedWord(translations, this_id)
     }
 }
