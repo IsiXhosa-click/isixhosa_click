@@ -65,7 +65,7 @@ impl SuggestedWord {
         fields(results),
         skip(db)
     )]
-    pub fn fetch_all_full(db: &impl ModeratorAccessDb, i18n_info: I18nInfo) -> Vec<SuggestedWord> {
+    pub fn fetch_all_full(db: &impl ModeratorAccessDb, i18n_info: &I18nInfo) -> Vec<SuggestedWord> {
         const SELECT_SUGGESTIONS: &str = "
             SELECT
                 suggestion_id, suggesting_user, existing_word_id, changes_summary,
@@ -84,11 +84,8 @@ impl SuggestedWord {
             .map(|row| {
                 let mut w = SuggestedWord::from_row_fetch_original(row, db);
                 w.examples = SuggestedExample::fetch_all_for_suggestion(db, w.suggestion_id);
-                w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(
-                    db,
-                    i18n_info.clone(),
-                    w.suggestion_id,
-                );
+                w.linked_words =
+                    SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, w.suggestion_id);
 
                 Ok(w)
             })
@@ -138,13 +135,13 @@ impl SuggestedWord {
     #[instrument(name = "Fetch full suggested word", fields(found), skip(db))]
     pub fn fetch_full(
         db: &impl UserAccessDb,
-        i18n_info: I18nInfo,
+        i18n_info: &I18nInfo,
         id: u64,
     ) -> Option<SuggestedWord> {
         let mut word = SuggestedWord::fetch_alone(db, id);
         if let Some(w) = word.as_mut() {
             w.examples = SuggestedExample::fetch_all_for_suggestion(db, id);
-            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, id);
+            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, &i18n_info, id);
         }
 
         Span::current().record("found", word.is_some());
@@ -603,11 +600,11 @@ impl SuggestedLinkedWord {
         level = "trace",
         name = "Fetch all suggested linked words for suggested word",
         fields(results),
-        skip(db)
+        skip(db, _i18n_info)
     )]
     pub fn fetch_all_for_suggestion(
         db: &impl UserAccessDb,
-        _i18n_info: I18nInfo,
+        _i18n_info: &I18nInfo,
         suggested_word_id: u64,
     ) -> Vec<SuggestedLinkedWord> {
         const SELECT_SUGGESTION: &str = "

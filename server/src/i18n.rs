@@ -74,3 +74,14 @@ pub fn load(site: String, config: &Config) -> SiteContext {
         host: config.host.clone(),
     }
 }
+
+/// Like From<T> but provides i18n context
+pub trait FromWithI18n<T> {
+    fn from_with_i18n(original: T, i18n: &I18nInfo) -> Self;
+}
+
+impl<T> FromWithI18n<T> for T {
+    fn from_with_i18n(original: T, _i18n: &I18nInfo) -> T {
+        original
+    }
+}

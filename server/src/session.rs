@@ -1,4 +1,5 @@
-use crate::search::{IncludeResults, TantivyClient};
+use crate::i18n::I18nInfo;
+use crate::search::{IncludeResults, JsWordHit, TantivyClient};
 use crate::spawn_send_interval;
 use futures::stream::SplitSink;
 use futures::SinkExt;
@@ -8,8 +9,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use warp::ws::{self, WebSocket};
 use xtra::prelude::*;
-use isixhosa_common::format::DisplayHtml;
-use crate::i18n::I18nInfo;
 
 pub struct LiveSearchSession {
     pub sender: SplitSink<WebSocket, ws::Message>,
@@ -99,34 +98,16 @@ impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
 
                     #[derive(Serialize)]
                     struct Reply {
-                        results: Vec<ReplyWord>,
+                        results: Vec<JsWordHit>,
                         state: String,
-                    }
-
-                    #[derive(Serialize)]
-                    struct ReplyWord {
-                        id: u64,
-                        html: String,
-
-                        // Used by duplicate search
-                        english: String,
-                        xhosa: String,
                     }
 
                     let reply = Reply {
                         results: self
                             .tantivy
-                            .search(query.search, self.include, false)
+                            .search(query.search, self.include, false, self.i18n_info.clone())
                             .await
-                            .unwrap()
-                            .into_iter()
-                            .map(|hit| ReplyWord {
-                                id: hit.id,
-                                html: hit.to_html(&self.i18n_info).to_string(),
-                                english: hit.english,
-                                xhosa: hit.xhosa,
-                            })
-                            .collect(),
+                            .unwrap(),
                         state: query.state,
                     };
 
@@ -139,9 +120,14 @@ impl Handler<Result<ws::Message, warp::Error>> for LiveSearchSession {
                         return;
                     }
 
-                    let results = self
+                    let results: Vec<JsWordHit> = self
                         .tantivy
-                        .search(query.to_owned(), IncludeResults::AcceptedOnly, false)
+                        .search(
+                            query.to_owned(),
+                            IncludeResults::AcceptedOnly,
+                            false,
+                            self.i18n_info.clone(),
+                        )
                         .await
                         .unwrap();
                     serde_json::to_string(&results).unwrap()

@@ -151,16 +151,10 @@ async fn submit_word_page(
             suggestion_id,
             existing_id,
             ..
-        } => WordFormTemplate::fetch_from_db(
-            &db,
-            i18n_info.clone(),
-            existing_id,
-            Some(suggestion_id),
-        )
-        .unwrap_or_default(),
+        } => WordFormTemplate::fetch_from_db(&db, &i18n_info, existing_id, Some(suggestion_id))
+            .unwrap_or_default(),
         SubmitFormAction::EditExisting(id) => {
-            WordFormTemplate::fetch_from_db(&db, i18n_info.clone(), Some(id), None)
-                .unwrap_or_default()
+            WordFormTemplate::fetch_from_db(&db, &i18n_info, Some(id), None).unwrap_or_default()
         }
         SubmitFormAction::SubmitNewWord => WordFormTemplate::default(),
     })

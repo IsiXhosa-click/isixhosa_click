@@ -144,7 +144,7 @@ impl<L: Loader + 'static> I18nInfo<L> {
             "linked-words.confusable",
             "examples.source",
             "examples.target",
-            "delete"
+            "delete",
         ]
         .into_iter()
         .map(|key| (key, self.ctx.site_i18n.lookup(&self.user_language, key)))

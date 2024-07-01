@@ -73,7 +73,7 @@ impl WordAssociatedEdits {
     )]
     pub fn fetch_all(
         db: &impl ModeratorAccessDb,
-        i18n_info: I18nInfo,
+        i18n_info: &I18nInfo,
     ) -> Vec<(WordHit, WordAssociatedEdits)> {
         let example_suggestions = SuggestedExample::fetch_all_for_existing_words(db);
         let example_deletions = ExampleDeletionSuggestion::fetch_all(db);
@@ -224,9 +224,9 @@ async fn moderation_template(
             auth: user.into(),
             i18n_info: i18n_info.clone(),
             previous_success,
-            word_suggestions: SuggestedWord::fetch_all_full(&db, i18n_info.clone()),
+            word_suggestions: SuggestedWord::fetch_all_full(&db, &i18n_info),
             word_deletions: WordDeletionSuggestion::fetch_all(&db),
-            word_associated_edits: WordAssociatedEdits::fetch_all(&db, i18n_info),
+            word_associated_edits: WordAssociatedEdits::fetch_all(&db, &i18n_info),
         })
     })
     .await
@@ -271,7 +271,7 @@ async fn accept_suggested_word(
 ) -> bool {
     let db = db.clone();
     spawn_blocking_child(move || {
-        SuggestedWord::fetch_full(&db, i18n_info, suggestion)
+        SuggestedWord::fetch_full(&db, &i18n_info, suggestion)
             .unwrap()
             .accept_whole_word_suggestion(&db, tantivy);
     })

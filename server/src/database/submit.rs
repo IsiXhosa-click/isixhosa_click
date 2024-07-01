@@ -2,13 +2,14 @@ use crate::auth::FullUser;
 use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
 use crate::database::WordId;
 use crate::database::WordOrSuggestionId;
-use crate::i18n::I18nInfo;
+use crate::i18n::{FromWithI18n, I18nInfo};
 use crate::search::{TantivyClient, WordDocument};
 use crate::serialization::{deserialize_checkbox, false_fn};
 use crate::spawn_blocking_child;
 use futures::executor::block_on;
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::UserAccessDb;
+use isixhosa_common::format::DisplayHtml;
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, ExistingWord, WordHit};
 use rusqlite::types::{ToSqlOutput, Value};
@@ -121,7 +122,7 @@ pub async fn submit_suggestion(
     spawn_blocking_child(move || {
         let conn = db.get().unwrap();
 
-        let orig = WordFormTemplate::fetch_from_db(&db, i18n_info.clone(), w.existing_id, None)
+        let orig = WordFormTemplate::fetch_from_db(&db, &i18n_info, w.existing_id, None)
             .unwrap_or_default();
         let use_submitted = w.existing_id.is_none();
 
@@ -159,7 +160,7 @@ pub async fn submit_suggestion(
         ];
 
         let orig_suggestion =
-            WordFormTemplate::fetch_from_db(&db, i18n_info.clone(), None, w.suggestion_id);
+            WordFormTemplate::fetch_from_db(&db, &i18n_info, None, w.suggestion_id);
 
         let any_changes = match orig_suggestion.as_ref() {
             Some(orig_suggestion) => w.has_any_changes_in_word(orig_suggestion),
@@ -209,7 +210,7 @@ pub async fn submit_suggestion(
         process_linked_words(
             &mut w,
             &db,
-            i18n_info,
+            &i18n_info,
             suggesting_user,
             suggested_word_id_if_new,
             &changes_summary,
@@ -241,7 +242,7 @@ pub async fn submit_suggestion(
 fn process_linked_words(
     w: &mut WordSubmission,
     db: &impl UserAccessDb,
-    i18n_info: I18nInfo,
+    i18n_info: &I18nInfo,
     suggesting_user: NonZeroU64,
     suggested_word_id_if_new: Option<i64>,
     changes_summary: &str,
@@ -347,9 +348,7 @@ fn process_linked_words(
     match (w.suggestion_id, w.existing_id) {
         // Editing a new suggested word
         (Some(suggested), None) => {
-            for prev in
-                SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info.clone(), suggested)
-            {
+            for prev in SuggestedLinkedWord::fetch_all_for_suggestion(db, &i18n_info, suggested) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))
@@ -612,14 +611,14 @@ impl WordFormTemplate {
     #[instrument(name = "Fetch word form template", skip(db))]
     pub fn fetch_from_db(
         db: &impl UserAccessDb,
-        i18n_info: I18nInfo,
+        i18n: &I18nInfo,
         existing: Option<u64>,
         suggested: Option<u64>,
     ) -> Option<Self> {
         match (existing, suggested) {
             (Some(existing), Some(suggestion)) => {
-                let suggested_word = SuggestedWord::fetch_full(db, i18n_info.clone(), suggestion)?;
-                let mut template = WordFormTemplate::from(suggested_word);
+                let suggested_word = SuggestedWord::fetch_full(db, i18n, suggestion)?;
+                let mut template = WordFormTemplate::from_with_i18n(suggested_word, i18n);
                 template.examples.extend(
                     ExistingExample::fetch_all_for_word(db, existing)
                         .into_iter()
@@ -628,25 +627,25 @@ impl WordFormTemplate {
                 template.linked_words.extend(
                     ExistingLinkedWord::fetch_all_for_word(db, existing)
                         .into_iter()
-                        .map(Into::into),
+                        .map(|l| LinkedWordTemplate::from_with_i18n(l, i18n)),
                 );
                 Some(template)
             }
             (_, Some(suggestion)) => {
-                let suggested_word = SuggestedWord::fetch_full(db, i18n_info, suggestion)?;
-                Some(WordFormTemplate::from(suggested_word))
+                let suggested_word = SuggestedWord::fetch_full(db, i18n, suggestion)?;
+                Some(WordFormTemplate::from_with_i18n(suggested_word, i18n))
             }
             (Some(existing), None) => {
                 let existing_word = ExistingWord::fetch_full(db, existing)?;
-                Some(WordFormTemplate::from(existing_word))
+                Some(WordFormTemplate::from_with_i18n(existing_word, i18n))
             }
             _ => None,
         }
     }
 }
 
-impl From<SuggestedWord> for WordFormTemplate {
-    fn from(w: SuggestedWord) -> Self {
+impl FromWithI18n<SuggestedWord> for WordFormTemplate {
+    fn from_with_i18n(w: SuggestedWord, i18n: &I18nInfo) -> Self {
         let this_id = w.this_id();
         WordFormTemplate {
             english: w.english.current().clone(),
@@ -665,14 +664,14 @@ impl From<SuggestedWord> for WordFormTemplate {
             linked_words: w
                 .linked_words
                 .into_iter()
-                .map(|s| LinkedWordTemplate::from_suggested(s, this_id))
+                .map(|s| LinkedWordTemplate::from_suggested(s, this_id, i18n))
                 .collect(),
         }
     }
 }
 
-impl From<ExistingWord> for WordFormTemplate {
-    fn from(w: ExistingWord) -> Self {
+impl FromWithI18n<ExistingWord> for WordFormTemplate {
+    fn from_with_i18n(w: ExistingWord, i18n: &I18nInfo) -> Self {
         WordFormTemplate {
             english: w.english,
             xhosa: w.xhosa,
@@ -687,7 +686,11 @@ impl From<ExistingWord> for WordFormTemplate {
             note: w.note,
             is_informal: w.is_informal,
             examples: w.examples.into_iter().map(Into::into).collect(),
-            linked_words: w.linked_words.into_iter().map(Into::into).collect(),
+            linked_words: w
+                .linked_words
+                .into_iter()
+                .map(|e| LinkedWordTemplate::from_with_i18n(e, i18n))
+                .collect(),
         }
     }
 }
@@ -728,25 +731,33 @@ pub struct LinkedWordTemplate {
     pub existing_id: Option<u64>,
     pub link_type: WordLinkType,
     pub other: WordHit,
+    pub other_rendered_plaintext: String,
 }
 
 impl LinkedWordTemplate {
-    fn from_suggested(suggestion: SuggestedLinkedWord, this_id: WordOrSuggestionId) -> Self {
+    fn from_suggested(
+        suggestion: SuggestedLinkedWord,
+        this_id: WordOrSuggestionId,
+        i18n: &I18nInfo,
+    ) -> Self {
+        let other = suggestion.other(this_id).current().clone();
         LinkedWordTemplate {
             suggestion_id: Some(suggestion.suggestion_id),
             existing_id: suggestion.existing_linked_word_id,
             link_type: *suggestion.link_type.current(),
-            other: suggestion.other(this_id).current().clone(),
+            other_rendered_plaintext: other.to_plaintext(i18n).to_string(),
+            other,
         }
     }
 }
 
-impl From<ExistingLinkedWord> for LinkedWordTemplate {
-    fn from(link: ExistingLinkedWord) -> Self {
+impl FromWithI18n<ExistingLinkedWord> for LinkedWordTemplate {
+    fn from_with_i18n(link: ExistingLinkedWord, i18n: &I18nInfo) -> Self {
         LinkedWordTemplate {
             suggestion_id: None,
             existing_id: Some(link.link_id),
             link_type: link.link_type,
+            other_rendered_plaintext: link.other.to_plaintext(i18n).to_string(),
             other: link.other,
         }
     }

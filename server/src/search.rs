@@ -1,7 +1,9 @@
+use crate::i18n::{FromWithI18n, I18nInfo};
 use crate::spawn_blocking_child;
 use anyhow::{Context, Result};
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::{GetWithSentinelExt, WordOrSuggestionId};
+use isixhosa_common::format::DisplayHtml;
 use isixhosa_common::language::{NounClassExt, PartOfSpeech, Transitivity};
 use isixhosa_common::types::WordHit;
 use num_enum::TryFromPrimitive;
@@ -9,10 +11,12 @@ use ordered_float::OrderedFloat;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
+use serde::Serialize;
 use std::cmp::{max, Ordering};
 use std::collections::HashSet;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Debug, Formatter};
+use std::marker::PhantomData;
 use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -144,17 +148,23 @@ impl TantivyClient {
         )
         skip_all,
     )]
-    pub async fn search(
+    pub async fn search<Res>(
         &self,
         query: String,
         include: IncludeResults,
         duplicate: bool,
-    ) -> Result<Vec<WordHit>> {
+        i18n: I18nInfo,
+    ) -> Result<Vec<Res>>
+    where
+        Res: FromWithI18n<WordHit> + Send + Sync + 'static,
+    {
         self.searchers
-            .send(SearchRequest {
+            .send(SearchRequest::<Res> {
                 query,
                 include,
                 duplicate,
+                i18n,
+                _phantom: PhantomData,
             })
             .await
             .map_err(Into::into)
@@ -210,6 +220,30 @@ impl TantivyClient {
 
     pub async fn delete_word(&self, id: WordOrSuggestionId) {
         self.writer.send(DeleteWord(id)).await.unwrap()
+    }
+}
+
+/// A search result intended to be passed to the JS frontend
+#[derive(Serialize, Debug, Eq, PartialEq, Hash)]
+pub struct JsWordHit {
+    pub id: u64,
+    pub html: String,
+
+    // Used by duplicate search
+    pub is_suggestion: bool,
+    pub english: String,
+    pub xhosa: String,
+}
+
+impl FromWithI18n<WordHit> for JsWordHit {
+    fn from_with_i18n(hit: WordHit, i18n_info: &I18nInfo) -> Self {
+        JsWordHit {
+            id: hit.id,
+            html: hit.to_html(i18n_info).to_string(),
+            is_suggestion: hit.is_suggestion,
+            english: hit.english,
+            xhosa: hit.xhosa,
+        }
     }
 }
 
@@ -414,10 +448,30 @@ impl Actor for SearcherActor {
     async fn stopped(self) {}
 }
 
-pub struct SearchRequest {
+pub struct SearchRequest<Res> {
     query: String,
     include: IncludeResults,
     duplicate: bool,
+    // It isn't great that we have to pass this in. The reason for it is that with this,
+    // we can avoid getting results just to map them and collect again. But this introduces
+    // a coupling between I18n and searching that is not great. Really the best solution
+    // is to (TODO) use a WASM-based formatter that has its own i18n stuff
+    // This way, the server cares minimally about client-side localisation. It relays purely
+    // API data.
+    i18n: I18nInfo,
+    _phantom: PhantomData<fn() -> Res>,
+}
+
+impl<Res> SearchRequest<Res> {
+    fn into_result_type<TargetRes>(self) -> SearchRequest<TargetRes> {
+        SearchRequest {
+            query: self.query,
+            include: self.include,
+            duplicate: self.duplicate,
+            i18n: self.i18n,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 #[allow(clippy::enum_variant_names)]
@@ -442,7 +496,7 @@ impl SearcherActor {
         client: &TantivyClient,
         tokenizer: &mut TextAnalyzer,
         search_level: u8,
-        req: &SearchRequest,
+        req: &SearchRequest<WordHit>,
         out: &mut HashSet<WordHit>,
     ) {
         let mut tokenized = tokenizer.token_stream(&req.query);
@@ -518,14 +572,20 @@ impl SearcherActor {
     }
 }
 
-impl Handler<SearchRequest> for SearcherActor {
-    type Return = Vec<WordHit>;
+impl<Res> Handler<SearchRequest<Res>> for SearcherActor
+where
+    Res: FromWithI18n<WordHit> + Send + Sync + 'static,
+{
+    type Return = Vec<Res>;
 
     async fn handle(
         &mut self,
-        mut req: SearchRequest,
+        req: SearchRequest<Res>,
         _ctx: &mut xtra::Context<Self>,
-    ) -> Vec<WordHit> {
+    ) -> Vec<Res> {
+        // Internally we just search for WordHit
+        let mut req: SearchRequest<WordHit> = req.into_result_type();
+
         #[derive(PartialEq, Eq)]
         struct WordHitWithScore {
             hit: WordHit,
@@ -600,7 +660,13 @@ impl Handler<SearchRequest> for SearcherActor {
                     hit.english.to_lowercase() == req.query.to_lowercase()
                         || hit.xhosa.to_lowercase() == req.query.to_lowercase()
                 };
-                Ok::<_, anyhow::Error>(results.into_iter().filter(exact).collect())
+                Ok::<_, anyhow::Error>(
+                    results
+                        .into_iter()
+                        .filter(exact)
+                        .map(|hit| Res::from_with_i18n(hit, &req.i18n))
+                        .collect(),
+                )
             } else {
                 let _g =
                     info_span!("Sorting and ordering results", results = results.len()).entered();
@@ -615,7 +681,11 @@ impl Handler<SearchRequest> for SearcherActor {
 
                 debug_span!("Sorting list based on score").in_scope(|| results.sort());
 
-                Ok(results.into_iter().take(RESULTS).map(|s| s.hit).collect())
+                Ok(results
+                    .into_iter()
+                    .take(RESULTS)
+                    .map(|s| Res::from_with_i18n(s.hit, &req.i18n))
+                    .collect())
             }
         })
         .await

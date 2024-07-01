@@ -1,7 +1,7 @@
 //! This script is called daily to back up the database and sweep unused login tokens.
 
 use crate::i18n::{I18nInfo, EN_ZA};
-use crate::{set_up_db, Config, CliArgs};
+use crate::{set_up_db, CliArgs, Config};
 use anyhow::Result;
 use chrono::Utc;
 use fallible_iterator::FallibleIterator;

@@ -20,7 +20,7 @@
 
 use crate::auth::*;
 use crate::database::suggestion::SuggestedWord;
-use crate::search::{IncludeResults, TantivyClient};
+use crate::search::{IncludeResults, JsWordHit, TantivyClient};
 use crate::serialization::false_fn;
 use crate::session::LiveSearchSession;
 use anyhow::Result;
@@ -790,7 +790,12 @@ async fn query_search(
     _db: impl PublicAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let results = tantivy
-        .search(query.query.clone(), IncludeResults::AcceptedOnly, false)
+        .search(
+            query.query.clone(),
+            IncludeResults::AcceptedOnly,
+            false,
+            i18n_info.clone(),
+        )
         .await
         .unwrap();
 
@@ -822,7 +827,7 @@ async fn duplicate_search(
     query: DuplicateQuery,
     tantivy: Arc<TantivyClient>,
     _user: FullUser,
-    _i18n_info: I18nInfo,
+    i18n: I18nInfo,
     db: impl ModeratorAccessDb,
 ) -> Result<impl Reply, Rejection> {
     let suggestion = SuggestedWord::fetch_alone(&db, query.suggestion.get());
@@ -831,22 +836,22 @@ async fn duplicate_search(
     let res = match suggestion.filter(|w| w.word_id.is_none()) {
         Some(w) => {
             let english = tantivy
-                .search(w.english.current().clone(), include, true)
+                .search(w.english.current().clone(), include, true, i18n.clone())
                 .await
                 .unwrap();
             let xhosa = tantivy
-                .search(w.xhosa.current().clone(), include, true)
+                .search(w.xhosa.current().clone(), include, true, i18n)
                 .await
                 .unwrap();
 
-            let mut results = HashSet::with_capacity(english.len() + xhosa.len());
+            let mut results: HashSet<JsWordHit> =
+                HashSet::with_capacity(english.len() + xhosa.len());
             results.extend(english);
             results.extend(xhosa);
             // Exclude this suggestion and the original of this suggestion (the word being edited)
             results.retain(|res| {
                 let is_this_suggestion = res.id == query.suggestion.get() && res.is_suggestion;
                 let is_original = Some(res.id) == w.word_id && !res.is_suggestion;
-                dbg!(res, is_this_suggestion, is_original);
                 !(is_this_suggestion || is_original)
             });
             results
@@ -883,7 +888,7 @@ fn live_search(
             tantivy,
             include_suggestions_from_user,
             auth.has_permissions(Permissions::Moderator),
-            i18n_info
+            i18n_info,
         );
 
         let addr = xtra::spawn_tokio(actor, Mailbox::bounded(4));

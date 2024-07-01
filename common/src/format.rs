@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::i18n::{I18nInfo, TranslationKey};
+use crate::i18n_args;
 use crate::language::{NounClassExt, NounClassPrefixes};
 use crate::types::{PublicUserInfo, WordHit};
 use askama::{Html, MarkupDisplay};
@@ -7,9 +7,9 @@ use compact_str::CompactString;
 use fluent_templates::fluent_bundle::FluentValue;
 use fluent_templates::{ArcLoader, Loader};
 use isixhosa::noun::NounClass;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter, Write};
-use crate::i18n_args;
 
 pub fn escape(s: &str) -> MarkupDisplay<Html, &str> {
     MarkupDisplay::new_unsafe(s, Html)
@@ -256,7 +256,11 @@ fn prepare_grammar_info(s: &str) -> String {
     let mut trimmed = String::new();
 
     let first_printable = s.chars().position(is_not_isolator_or_whitespace).unwrap();
-    let last_printable = s.chars().count() - s.chars().rev().position(is_not_isolator_or_whitespace).unwrap();
+    let last_printable = s.chars().count()
+        - s.chars()
+            .rev()
+            .position(is_not_isolator_or_whitespace)
+            .unwrap();
 
     let mut last_printable_was_whitespace = false;
     for (i, c) in s.chars().enumerate() {
