@@ -149,10 +149,6 @@ input[type='radio'] {
     margin: 0;
 }
 
-input {
-    width: 100%;
-}
-
 input, textarea {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.9rem;
@@ -168,8 +164,6 @@ textarea {
 select {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.9rem;
-    width: 100%;
-    text-overflow: ellipsis;
 }
 
 .column_list {
