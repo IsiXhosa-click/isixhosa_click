@@ -65,6 +65,34 @@ macro_rules! i18n_args {
     };
 }
 
+#[macro_export]
+macro_rules! i18n_args_unescaped {
+    ($($arg:expr => $val:expr),*$(,)?) => {
+        {
+            #[allow(unused_imports)]
+            use ::fluent_templates::fluent_bundle::FluentValue;
+
+            #[allow(unused_mut)]
+            let mut hashmap = ::std::collections::HashMap::new();
+            $(
+                let val: FluentValue = $val.into();
+                let val = match val {
+                    FluentValue::String(s) => FluentValue::String(
+                        std::borrow::Cow::Owned(
+                            ::askama::MarkupDisplay::new_safe(s, ::askama::Html).to_string()
+                        )
+                    ),
+                    v => v,
+                };
+
+                hashmap.insert($arg.to_string(), val);
+            )*
+
+            hashmap
+        }
+    };
+}
+
 pub struct I18nInfo<L> {
     pub user_language: LanguageIdentifier,
     pub ctx: Arc<SiteContext<L>>,

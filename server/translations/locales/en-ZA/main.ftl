@@ -91,17 +91,7 @@ about = About
         <p>Thank you to the following people, without whom this project would not have been possible:</p>
 
         <ul>
-            <li>
-                <a href="https://ched.uct.ac.za/dot4d/implementation-dot4d-grantee-author-profiles/tim-low-statistics">
-                <strong>Tim Low,</strong></a>
-                for graciously allowing us to reproduce his isiXhosa statistics glossary on the site. Almost all
-                entries relating to statistics are from there. We are currently working on a better way to attribute
-                these words individually, but for now they should say "stats glossary" in the notes field.</li>
-            <li><strong>Dr Tessa Dowling,</strong> for her guidance and many corrections.</li>
-            <li><strong>Alexandra Bryant,</strong> for allowing us to use the glossary at the back of her
-                excellent book "Xhosa for Second-Language Learners".</li>
-            <li><strong>Cuan Dugmore,</strong> for giving us permission to use his word lists containing
-                thousands of words that he has collected over the years.</li>
+            { site.acknowledgements-text }
             <li><a href="https://sit.uct.ac.za/department-computer-science">The UCT Department of Computer Science</a>,
                 for hosting the site's server.</li>
             <li><a href="https://sit.uct.ac.za/contacts/craig-balfour"><strong>Craig Balfour,</strong></a> for his
@@ -307,7 +297,7 @@ no = no
 note = Note
 
 no-grammatical-info =
-    This word doesn't have any further information yet. You can help by <a href="{ -edit-url-start }{ $word }{ -edit-url-end }">editing this entry</a>.
+    This word doesn't have any further information yet. You can help by { $edit-link }editing this entry</a>.
 
 noun-class = Noun class
     .choose = Choose a noun class

@@ -79,10 +79,11 @@ about = Okumayelana naleli khasi
         <p>Sicela ukubonga laba bantu abalandelayo, ngaphandle kwabo, lulo hlelo belungeke lube yimpumelelo:</p>
 
         <ul>
-            <li><strong>u-uSolwazi uLanga Khumalo (uMzilikazi KaMashobana! Owawela iZambezi ngezikhali!),</strong>
-            ngokuba ahlahle umhlahlandlela wokuba kwakhiwe izinhlelo zesizindalwazi ezisiza ekuthuthukisweni kwezilimi zoluntu. Sithanda ukubonga futhi noSolwazi uMaria Keet ngokuba kube nguye futhi oqhamuka nemihlahlandlela yocwaningo yokuthuthukisa izilimi zabomdabu. Sicela ukubonga futhi umsebenzi ka-M.B. Kumalo owaqala ukuloba phansi amatemu ocwaningozilimi kanye nobucikomagama olimi lwesiZulu. Amanye amagama avela kulesi sichazamazwi athathelwe kuso isichazamazwi sika M.B. Kumalo. Lesi sichazamazwi sashicilelwa ngonyaka wezinkulungwane namakhulu ayisishiyagalolunye namashumi ayisishiyagalolunye nanhlanu </li>
-            <li><strong>u-Craig Balfour,</strong> ngokusiza ngokuba lolu hlelo lwesichazamazwi lukwazi ukuba lufakwe ngaphansi kwenhlokosiqoqelalwazi eNyuvesi yaseKapa.</li>
-            <li><strong>i-UCT Department of Computer Science</strong> ngokuthwala lo msebenzi wokufaka lesi sichazamazwi ngaphansi kwenhlokosiqoqelalwazi sabo abasikhokhela bona njengoMnyango.</li>
+            { site.acknowledgements-text }
+            <li><strong>u-Craig Balfour,</strong> ngokusiza ngokuba lolu hlelo lwesichazamazwi lukwazi ukuba lufakwe
+                ngaphansi kwenhlokosiqoqelalwazi eNyuvesi yaseKapa.</li>
+            <li><strong>i-UCT Department of Computer Science</strong> ngokuthwala lo msebenzi wokufaka lesi sichazamazwi
+                ngaphansi kwenhlokosiqoqelalwazi sabo abasikhokhela bona njengoMnyango.</li>
         </ul>
     .contact = Ukuxhumana
     .contact-text =
@@ -292,7 +293,7 @@ no = no
 note = Qhaphela
 
 no-grammatical-info =
-    Okwamanje leli gama alinayo imininingwane eyengeziwe. Ungasiza ngokuba  <a href="{ -edit-url-start }{ $word }{ -edit-url-end }">uhlele imininingwane </a>.
+    Okwamanje leli gama alinayo imininingwane eyengeziwe. Ungasiza ngokuba { $edit-link }uhlele imininingwane</a>.
 
 noun-class = Isigaba sebizo
     .in-word-result = isigaba

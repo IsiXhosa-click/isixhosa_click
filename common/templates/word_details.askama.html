@@ -175,7 +175,7 @@
 
                             {%- if !word.has_grammatical_information() -%}
                                 {%- let word_id = word.word_id -%}
-                                {%- let args = crate::i18n_args!("word" => word_id) -%}
+                                {%- let args = crate::i18n_args_unescaped!("edit-link" => format!("<a href=\"/word/{word_id}/edit\">")) -%}
                                 {{ self.t_with("no-grammatical-info", args)|safe }}
                             {%- endif -%}
                         </div>
