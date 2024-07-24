@@ -50,9 +50,11 @@ function createLinkedWordSearch(translations, preset_word, preset_rendered, this
     input.addEventListener("blur", selectFocusOut);
 
     if (preset_word != null) {
-        input.value = preset_rendered;
+        const div = document.createElement("div");
+        div.innerHTML = preset_rendered;
+        input.value = div.innerText;
         input.setAttribute("data-last_search", preset_word.xhosa);
-        input.setAttribute("data-last_choice", preset_rendered);
+        input.setAttribute("data-last_choice", div.innerText);
         input.setAttribute("data-selected_word_id", preset_word.id);
         input.setAttribute("data-selected_is_suggestion", preset_word.is_suggestion);
     }
