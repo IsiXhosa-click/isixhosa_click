@@ -1,24 +1,31 @@
+use crate::i18n::{I18nInfo, SiteContext, EN_ZA};
 use crate::serialization::{deserialize_checkbox, false_fn, qs_form};
 use crate::{spawn_blocking_child, spawn_send_interval, Config, DebugBoxedExt, DebugExt};
 use askama::Template;
 use cookie::time::OffsetDateTime;
 use cookie::{Cookie, Expiration, SameSite};
 use dashmap::DashMap;
+use fluent_templates::LanguageIdentifier;
+use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::db_impl::DbImpl;
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb};
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
+use ordered_float::OrderedFloat;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use sha2::Digest;
 use std::convert::Infallible;
 use std::fmt::{Debug, Display, Formatter};
 use std::num::NonZeroU64;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tabled::Tabled;
 use tracing::{debug, error, instrument, Span};
 use url::Url;
+use warp::http::header::ACCEPT_LANGUAGE;
 use warp::http::uri;
 use warp::path::FullPath;
 use warp::{
@@ -211,9 +218,12 @@ pub struct OpenIdState {
     pub csrf_token: String,
 }
 
+#[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct SignupForm {
     username: String,
+    #[serde_as(as = "DisplayFromStr")]
+    language: LanguageIdentifier,
     #[serde(default = "false_fn")]
     #[serde(deserialize_with = "deserialize_checkbox")]
     dont_display_name: bool,
@@ -242,6 +252,8 @@ pub struct FullUser {
     pub permissions: Permissions,
     #[tabled(rename = "Locked?")]
     pub locked: bool,
+    #[tabled(rename = "Language")]
+    pub language: LanguageIdentifier,
 }
 
 impl From<FullUser> for isixhosa_common::auth::User {
@@ -250,6 +262,7 @@ impl From<FullUser> for isixhosa_common::auth::User {
             user_id: user.id,
             username: user.username,
             permissions: user.permissions,
+            language: user.language,
         }
     }
 }
@@ -261,10 +274,11 @@ impl From<FullUser> for Auth {
     }
 }
 
-#[derive(Template)]
+#[derive(Template, I18nTemplate)]
 #[template(path = "sign_up.askama.html")]
 struct SignUpTemplate {
     auth: Auth,
+    i18n_info: I18nInfo,
     openid_query: OpenIdLoginQuery,
     previous_failure: Option<SignUpFailure>,
 }
@@ -275,9 +289,23 @@ enum SignUpFailure {
     NoEmail,
 }
 
+// Used in sign_up.askama.html
+impl Display for SignUpFailure {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            SignUpFailure::InvalidUsername => "invalid-username",
+            SignUpFailure::DidNotAgree => "did-not-agree",
+            SignUpFailure::NoEmail => "no-email",
+        };
+
+        f.write_str(s)
+    }
+}
+
 pub async fn auth(
     db: DbBase,
     cfg: &Config,
+    site_ctx: Arc<SiteContext>,
 ) -> impl Filter<Error = Rejection, Extract = impl Reply> + Clone {
     let redirect = Config::host_builder(&cfg.host, cfg.https_port)
         .path_and_query("/login/oauth2/code/oidc")
@@ -285,7 +313,7 @@ pub async fn auth(
         .unwrap()
         .to_string();
 
-    let issuer = url::Url::parse("https://accounts.google.com").unwrap();
+    let issuer = Url::parse("https://accounts.google.com").unwrap();
 
     let client = OidcActor::new(
         cfg.oidc_client.clone(),
@@ -315,13 +343,13 @@ pub async fn auth(
         .and(warp::query::<OpenIdLoginQuery>())
         .and(with_session())
         .and(with_client_host.clone())
-        .and(with_public_db(db.clone()))
+        .and(with_any_auth(db.clone(), site_ctx.clone()))
         .and_then(reply_login);
 
     let logout = warp::get()
         .and(warp::path("logout"))
         .and(warp::path::end())
-        .and(with_user_auth(db.clone()))
+        .and(with_user_auth(db.clone(), site_ctx.clone()))
         .and(warp::cookie::cookie(STAY_LOGGED_IN_COOKIE))
         .and_then(reply_logout);
 
@@ -332,10 +360,35 @@ pub async fn auth(
         .and(qs_form())
         .and(with_session())
         .and(with_client_host)
-        .and(with_public_db(db.clone()))
+        .and(with_any_auth(db.clone(), site_ctx.clone()))
         .and_then(signup_form_submit);
 
-    login.or(oidc_code).or(sign_up).or(logout).debug_boxed()
+    let settings_base = warp::path("settings")
+        .and(warp::path::end())
+        .and(with_user_auth(db.clone(), site_ctx));
+
+    let settings_page = warp::get().and(settings_base.clone()).and_then(settings);
+
+    let settings_submit = warp::post()
+        .and(settings_base.clone())
+        .and(qs_form())
+        .and_then(settings_form_submit);
+
+    let settings_fail = warp::post()
+        .and(settings_base)
+        .and_then(failed_to_submit_settings);
+
+    let settings = settings_page
+        .or(settings_submit)
+        .or(settings_fail)
+        .debug_boxed();
+
+    login
+        .or(oidc_code)
+        .or(sign_up)
+        .or(logout)
+        .or(settings)
+        .debug_boxed()
 }
 
 fn with_session() -> impl Filter<Extract = (SignInSessionId,), Error = Rejection> + Clone {
@@ -343,7 +396,7 @@ fn with_session() -> impl Filter<Extract = (SignInSessionId,), Error = Rejection
         if IN_PROGRESS_SIGN_INS.contains_key(&id) {
             Ok(id)
         } else {
-            Err(warp::reject::custom(Unauthorized {
+            Err(reject::custom(Unauthorized {
                 redirect: String::new(),
                 reason: UnauthorizedReason::InvalidCookie,
             }))
@@ -363,7 +416,7 @@ async fn reply_authorize(
     oidc_client: OpenIDClient,
     host_uri_builder: uri::Builder,
     redirect: LoginRedirectQuery,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl Reply, Infallible> {
     let redirect = redirect
         .redirect
         .and_then(|path| host_uri_builder.path_and_query(path).build().ok())
@@ -466,8 +519,10 @@ async fn reply_login(
     session_id: SignInSessionId,
     oidc_client: OpenIDClient,
     host_builder: uri::Builder,
+    _: Auth,
+    i18n_info: I18nInfo,
     db: impl PublicAccessDb,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl Reply, Infallible> {
     let request_token = request_token(oidc_client, &session_id, &openid_query).await;
     let mk_err = || {
         IN_PROGRESS_SIGN_INS.remove(&session_id);
@@ -500,9 +555,16 @@ async fn reply_login(
     let state: OpenIdState = serde_json::from_str(openid_query.state.as_ref().unwrap()).unwrap();
 
     let response = match FullUser::fetch_by_oidc_id(&db, token, oidc_id) {
-        Some(user) => reply_insert_session(db, session_id, user, host_builder, state.redirect)
-            .await
-            .into_response(),
+        Some(user) => reply_insert_session(
+            db,
+            i18n_info,
+            session_id,
+            user,
+            host_builder,
+            state.redirect,
+        )
+        .await
+        .into_response(),
         None => {
             IN_PROGRESS_SIGN_INS.insert(
                 session_id,
@@ -514,6 +576,7 @@ async fn reply_login(
 
             SignUpTemplate {
                 auth: Default::default(),
+                i18n_info,
                 openid_query,
                 previous_failure: None,
             }
@@ -526,14 +589,16 @@ async fn reply_login(
 
 // This is to make sure that we still get the cookie even with Same-Site set to strict
 // https://stackoverflow.com/questions/42216700/how-can-i-redirect-after-oauth2-with-samesite-strict-and-still-get-my-cookies
-#[derive(Template)]
+#[derive(Template, I18nTemplate)]
 #[template(path = "redirect.askama.html")]
 struct AuthRedirect {
     redirect_url: String,
+    i18n_info: I18nInfo,
 }
 
 async fn reply_insert_session(
     db: impl PublicAccessDb,
+    i18n_info: I18nInfo,
     session_id: SignInSessionId,
     user: FullUser,
     host_uri_builder: uri::Builder,
@@ -567,7 +632,10 @@ async fn reply_insert_session(
     IN_PROGRESS_SIGN_INS.remove(&session_id);
 
     warp::reply::with_header(
-        askama_warp::reply(&AuthRedirect { redirect_url }),
+        askama_warp::reply(&AuthRedirect {
+            redirect_url,
+            i18n_info,
+        }),
         warp::http::header::SET_COOKIE,
         authorization_cookie,
     )
@@ -578,8 +646,10 @@ async fn signup_form_submit(
     session_id: SignInSessionId,
     _oidc_client: OpenIDClient,
     host_uri_builder: uri::Builder,
+    _: Auth,
+    i18n_info: I18nInfo,
     db: impl PublicAccessDb,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl Reply, Infallible> {
     let userinfo = match IN_PROGRESS_SIGN_INS.get(&session_id).as_deref() {
         Some(SignInState::WaitingForSignUp { userinfo, .. }) => userinfo.clone(),
         _ => return Ok(warp::reply::with_status("", StatusCode::FORBIDDEN).into_response()),
@@ -588,6 +658,7 @@ async fn signup_form_submit(
     if !form.tou_agree || !form.license_agree {
         return Ok(SignUpTemplate {
             auth: Default::default(),
+            i18n_info,
             openid_query: form.openid_query,
             previous_failure: Some(SignUpFailure::DidNotAgree),
         }
@@ -602,6 +673,7 @@ async fn signup_form_submit(
     {
         return Ok(SignUpTemplate {
             auth: Default::default(),
+            i18n_info,
             openid_query: form.openid_query,
             previous_failure: Some(SignUpFailure::InvalidUsername),
         }
@@ -613,6 +685,7 @@ async fn signup_form_submit(
         None => {
             return Ok(SignUpTemplate {
                 auth: Default::default(),
+                i18n_info,
                 openid_query: form.openid_query,
                 previous_failure: Some(SignUpFailure::NoEmail),
             }
@@ -633,23 +706,30 @@ async fn signup_form_submit(
             !form.dont_display_name,
             email,
             Permissions::User,
+            form.language,
         )
     })
     .await
     .unwrap();
 
-    Ok(
-        reply_insert_session(db_clone, session_id, user, host_uri_builder, redirect_url)
-            .await
-            .into_response(),
+    Ok(reply_insert_session(
+        db_clone,
+        i18n_info,
+        session_id,
+        user,
+        host_uri_builder,
+        redirect_url,
     )
+    .await
+    .into_response())
 }
 
 async fn reply_logout(
     _user: FullUser, // This _user is important as it implicitly validates the given token
+    _i18n_info: I18nInfo,
     db: impl UserAccessDb,
     token: StaySignedInToken,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl Reply, Infallible> {
     let deleted_cookie = Cookie::build((STAY_LOGGED_IN_COOKIE, ""))
         .path("/")
         .http_only(true)
@@ -667,6 +747,81 @@ async fn reply_logout(
         .header(warp::http::header::SET_COOKIE, deleted_cookie)
         .body("")
         .unwrap())
+}
+
+#[derive(Template, I18nTemplate)]
+#[template(path = "settings.askama.html")]
+struct Settings {
+    auth: Auth,
+    user: FullUser,
+    i18n_info: I18nInfo,
+    previous_success: Option<bool>,
+}
+
+async fn settings(
+    user: FullUser,
+    i18n_info: I18nInfo,
+    _db: impl UserAccessDb,
+) -> Result<impl Reply, Infallible> {
+    Ok(Settings {
+        auth: user.clone().into(),
+        user,
+        i18n_info,
+        previous_success: None,
+    })
+}
+
+#[serde_as]
+#[derive(Deserialize, Debug)]
+struct SettingsForm {
+    username: String,
+    #[serde_as(as = "DisplayFromStr")]
+    language: LanguageIdentifier,
+    #[serde(default = "false_fn")]
+    #[serde(deserialize_with = "deserialize_checkbox")]
+    dont_display_name: bool,
+}
+
+async fn failed_to_submit_settings(
+    user: FullUser,
+    i18n_info: I18nInfo,
+    _db: impl UserAccessDb,
+) -> Result<impl Reply, Infallible> {
+    Ok(Settings {
+        auth: user.clone().into(),
+        user,
+        i18n_info,
+        previous_success: Some(false),
+    })
+}
+
+async fn settings_form_submit(
+    mut user: FullUser,
+    mut i18n_info: I18nInfo,
+    db: impl UserAccessDb,
+    form: SettingsForm,
+) -> Result<impl Reply, Infallible> {
+    spawn_blocking_child(move || {
+        i18n_info.user_language = form.language.clone();
+        let res = user.update_settings(&db, !form.dont_display_name, form.username, form.language);
+
+        let prev_success = match res {
+            Ok(_) => true,
+            Err(err) => {
+                error!("Error updating user settings: {err:#?}");
+                false
+            }
+        };
+
+        Ok(Settings {
+            auth: user.clone().into(),
+            user,
+            i18n_info,
+            previous_success: Some(prev_success),
+        })
+    })
+    .await
+    .unwrap()
 }
 
 #[derive(Debug)]
@@ -717,7 +872,7 @@ async fn extract_user(
                     span.record("fail_reason", reason.to_debug().as_str());
                     debug!("User locked");
 
-                    Err(warp::reject::custom(Unauthorized { reason, redirect }))
+                    Err(reject::custom(Unauthorized { reason, redirect }))
                 }
             } else {
                 let reason = UnauthorizedReason::NotLoggedIn;
@@ -725,7 +880,7 @@ async fn extract_user(
                 span.record("fail_reason", reason.to_debug().as_str());
                 debug!("Invalid token");
 
-                Err(warp::reject::custom(Unauthorized { reason, redirect }))
+                Err(reject::custom(Unauthorized { reason, redirect }))
             }
         } else {
             let reason = UnauthorizedReason::NotLoggedIn;
@@ -733,22 +888,65 @@ async fn extract_user(
             span.record("fail_reason", reason.to_debug().as_str());
             debug!("No token");
 
-            Err(warp::reject::custom(Unauthorized { reason, redirect }))
+            Err(reject::custom(Unauthorized { reason, redirect }))
         }
     })
     .await
     .unwrap()
 }
 
-fn with_public_db(
-    db: DbBase,
-) -> impl Filter<Extract = (impl PublicAccessDb,), Error = Infallible> + Clone {
-    warp::any().map(move || DbImpl(db.0.clone()))
+async fn extract_i18n_from_auth(
+    auth: Auth,
+    ctx: Arc<SiteContext>,
+    db: impl PublicAccessDb,
+    accept_lang: Option<String>,
+) -> Result<(Auth, I18nInfo, impl PublicAccessDb), Rejection> {
+    if let Some(user) = auth.user() {
+        let i18n = I18nInfo {
+            user_language: user.language.clone(),
+            ctx,
+        };
+        return Ok((auth, i18n, db));
+    }
+
+    // TODO select en appropriately if just en is given
+    let all = accept_language::intersection_with_quality(
+        accept_lang.as_deref().unwrap_or("en-ZA"),
+        ctx.supported_langs,
+    );
+
+    let best_lang = all
+        .iter()
+        .max_by_key(|(_lang, quality)| OrderedFloat(-quality))
+        .map(|(lang, _quality)| lang.as_str())
+        .unwrap_or("en-ZA");
+
+    let user_language = best_lang.parse().unwrap_or(EN_ZA);
+    let i18n = I18nInfo { user_language, ctx };
+
+    Ok((auth, i18n, db))
+}
+
+async fn extract_i18n_from_user<DB>(
+    user: FullUser,
+    ctx: Arc<SiteContext>,
+    db: DB,
+) -> Result<(FullUser, I18nInfo, DB), Rejection>
+where
+    DB: PublicAccessDb,
+{
+    let i18n = I18nInfo {
+        user_language: user.language.clone(),
+        ctx,
+    };
+
+    Ok((user, i18n, db))
 }
 
 pub fn with_any_auth(
     db: DbBase,
-) -> impl Filter<Extract = (Auth, impl PublicAccessDb), Error = Infallible> + Clone {
+    ctx: Arc<SiteContext>,
+) -> impl Filter<Extract = (Auth, I18nInfo, impl PublicAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
@@ -758,22 +956,32 @@ pub fn with_any_auth(
         .or(warp::any().map(Auth::default))
         .unify()
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
+        .and(warp::header::optional(ACCEPT_LANGUAGE.as_str()))
+        .and_then(move |auth, db, accept_lang| {
+            extract_i18n_from_auth(auth, ctx.clone(), db, accept_lang)
+        })
+        .untuple_one()
 }
 
 pub fn with_user_auth(
     db: DbBase,
-) -> impl Filter<Extract = (FullUser, impl UserAccessDb), Error = Rejection> + Clone {
+    ctx: Arc<SiteContext>,
+) -> impl Filter<Extract = (FullUser, I18nInfo, impl UserAccessDb), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
         .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))
         .and_then(move |path, cookie| extract_user(DbImpl(db.0.clone()), path, cookie))
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
+        .and_then(move |user, db| extract_i18n_from_user(user, ctx.clone(), db))
+        .untuple_one()
 }
 
 pub fn with_moderator_auth(
     db: DbBase,
-) -> impl Filter<Extract = (FullUser, impl ModeratorAccessDb), Error = Rejection> + Clone {
+    ctx: Arc<SiteContext>,
+) -> impl Filter<Extract = (FullUser, I18nInfo, impl ModeratorAccessDb), Error = Rejection> + Clone
+{
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
@@ -782,7 +990,7 @@ pub fn with_moderator_auth(
         .and_then(|redirect: String, token, db: DbBase| async move {
             match extract_user(DbImpl(db.0.clone()), redirect.clone(), token).await {
                 Ok(user) if user.permissions.contains(Permissions::Moderator) => Ok(user),
-                Ok(_unauthorized) => Err(warp::reject::custom(Unauthorized {
+                Ok(_unauthorized) => Err(reject::custom(Unauthorized {
                     reason: UnauthorizedReason::NoPermissions,
                     redirect,
                 })),
@@ -790,6 +998,8 @@ pub fn with_moderator_auth(
             }
         })
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
+        .and_then(move |user, db| extract_i18n_from_user(user, ctx.clone(), db))
+        .untuple_one()
 }
 
 pub fn with_administrator_auth(db: DbBase) -> impl Filter<Extract = (), Error = Rejection> + Clone {
@@ -800,7 +1010,7 @@ pub fn with_administrator_auth(db: DbBase) -> impl Filter<Extract = (), Error = 
         .and_then(|redirect: String, token, db: DbBase| async move {
             match extract_user(DbImpl(db.0.clone()), redirect.clone(), token).await {
                 Ok(user) if user.permissions.contains(Permissions::Administrator) => Ok(()),
-                Ok(_unauthorized) => Err(warp::reject::custom(Unauthorized {
+                Ok(_unauthorized) => Err(reject::custom(Unauthorized {
                     reason: UnauthorizedReason::NoPermissions,
                     redirect,
                 })),

@@ -10,7 +10,7 @@ use std::path::Path;
 pub fn import_zulu_lsp(cfg: Config, path: &Path) -> Result<()> {
     let conn = Connection::open(&cfg.database_path)?;
 
-    set_up_db(&conn);
+    set_up_db(&conn)?;
 
     let file = BufReader::new(File::open(path)?);
 

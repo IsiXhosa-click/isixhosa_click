@@ -1,9 +1,9 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>Offline - IsiXhosa.click</title>
+    {%- call macros::title("offline") -%}
     <meta name="robots" content="noindex">
     {%- call macros::meta() -%}
 </head>
@@ -12,21 +12,18 @@
     <nav class="menu" id="menu">
         <a id="site_name_container" href="/">
             <div id="site_icon"><img src="/icons/icon-192.png" width="40" height="40" alt="Site icon"></div>
-            <span id="site_name">IsiXhosa.click Live Dictionary</span>
+            <span id="site_name">{{ self.t("site") }}</span>
         </a>
     </nav>
 
     <div id="main_wrap">
-        <header><h1>You are currently offline</h1></header>
+        <header><h1>{{ self.t("offline.header") }}</h1></header>
 
         <main>
-            <p>
-                You are currently disconnected from the internet, or the website could not be reached. Try reconnect to
-                a network, or try again later.
-            </p>
+            <p>{{ self.t("offline.explanation") }}</p>
 
-            <p>Click the button below to reload this page.</p>
-            <button type="button">Reload</button>
+            <p>{{ self.t("offline.click-to-reload") }}</p>
+            <button type="button">{{ self.t("reload") }}</button>
         </main>
     </div>
 

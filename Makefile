@@ -8,7 +8,7 @@ common_src = common/Cargo.toml $(wildcard common/src/**) $(wildcard common/templ
 wordle_artifact_names := isixhosa_wordle.js isixhosa_wordle_bg.wasm
 wordle := $(foreach f, $(wordle_artifact_names), $(wasm_exported)/$(f))
 pwa := $(foreach f, $(pwa_artifact_names), $(wasm_exported)/$(f))
-site := default
+site := isixhosa
 
 ifeq ($(profile), release)
 	cargo_flags := --release
@@ -40,7 +40,7 @@ $(wasm_exported)/%_bg.wasm $(wasm_exported)/%.js: $(wasm_target)/%.wasm
 	wasm-bindgen --target web --no-typescript $< --out-dir $(dir $@)
 	wasm-opt $(this_wasm) -Oz -o $(this_wasm)
 
-$(isixhosa_server): $(common_src) Cargo.toml server/Cargo.toml $(wildcard server/static/**) $(wildcard server/src/**) $(wildcard server/templates/**)
+$(isixhosa_server): $(common_src) Cargo.toml server/Cargo.toml $(wildcard server/static/**) $(wildcard server/src/**) $(wildcard server/templates/**) $(wildcard macros/**)
 	cd server && cargo build $(cargo_flags)
 
 .SECONDARY: $(wasm_target)/%.wasm

@@ -12,7 +12,8 @@ export class LiveSearch {
         post_create_item,
         create_item_container,
         filter_fn,
-        include_own_suggestions
+        include_own_suggestions,
+        translations
     ) {
         this.input = input;
         this.last_value = "";
@@ -22,6 +23,7 @@ export class LiveSearch {
         this.post_create_item = post_create_item;
         this.create_item_container = create_item_container;
         this.filter_fn = filter_fn;
+        this.translations = translations
 
         this.id = next_id;
         next_id++;
@@ -91,7 +93,7 @@ export class LiveSearch {
         if (results.length === 0) {
             let p = document.createElement("p");
             p.className = "no_results";
-            let node = document.createTextNode("No results.");
+            let node = document.createTextNode(this.translations["search.no-results"]);
             p.appendChild(node);
             searcher.input.classList.remove("has_results");
 
@@ -100,8 +102,8 @@ export class LiveSearch {
             let container = searcher.create_container();
 
             results.forEach(function (result) {
-                let item = searcher.create_item(formatResult(result), result.id, result.is_suggestion);
-                formatResult(result, item);
+                let item = searcher.create_item(formatResult(searcher.translations, result), result.id, result.is_suggestion);
+                formatResult(searcher.translations, result, item);
 
                 let [item_container_parent, item_container_inner] = searcher.create_item_container(result.id, result.is_suggestion);
                 let append = item;
@@ -129,82 +131,12 @@ export class LiveSearch {
     }
 }
 
-export function formatResult(result, elt) {
-    let plural = "";
-    if (result.is_plural) {
-        plural = "plural ";
-    }
-
-    let informal = "";
-    if (result.is_informal) {
-        informal = "informal ";
-    }
-
-    let inchoative = "";
-    if (result.is_inchoative) {
-        inchoative = "inchoative ";
-    }
-
-    let transitive = "";
-    if (result.transitivity != null && result.transitivity !== "") {
-        transitive = result.transitivity + " ";
-    }
-
-    let part_of_speech = "";
-    if (result.part_of_speech === "adjective") {
-        part_of_speech = "adjective (isiphawuli)";
-    } else if (result.part_of_speech != null) {
-        part_of_speech = result.part_of_speech;
-    }
-
-    let grammar_info = `${inchoative}${informal}${transitive}${plural}${part_of_speech}`;
-    let has_bracketed_info = grammar_info !== "" || result.noun_class != null;
-    let text = `${result.english} - ${result.xhosa}`;
-
-    if (has_bracketed_info) {
-        text += ` (${grammar_info}`;
-    }
-
+export function formatResult(translations, result, elt) {
     if (elt != null) {
-        elt.innerText = text;
-
-        if (result.noun_class != null) {
-            let strong = document.createElement("strong");
-            strong.className = "noun_class_prefix";
-
-            if (!result.noun_class.selected_singular) {
-                strong.innerText = result.noun_class.plural;
-                elt.innerText += ` - class ${result.noun_class.singular}/`;
-                elt.appendChild(strong);
-            } else {
-                strong.innerText = result.noun_class.singular;
-                elt.innerText += ` - class `;
-                elt.appendChild(strong);
-
-                if (result.noun_class.plural != null) {
-                    elt.innerHTML += `/${result.noun_class.plural}`;
-                }
-            }
-        }
-
-        if (has_bracketed_info) {
-            elt.innerHTML += ")";
-        }
+        elt.innerHTML = result.html;
     } else {
-        let noun_class = "";
-        if (result.noun_class != null) {
-            if (result.noun_class.plural != null) {
-                noun_class = ` - class ${result.noun_class.singular}/${result.noun_class.plural}`;
-            } else {
-                noun_class = ` - class ${result.noun_class.singular}`;
-            }
-        }
-        text += noun_class;
-
-        if (has_bracketed_info) {
-            text += ")";
-        }
-
-        return text;
+        let div = document.createElement("div");
+        div.innerHTML = result.html;
+        return div.innerText;
     }
 }

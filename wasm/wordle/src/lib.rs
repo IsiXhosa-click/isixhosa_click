@@ -1,17 +1,24 @@
+mod i18n;
+
 use ascii::{AsciiChar, AsciiString, IntoAsciiString};
 use chrono::{Local, NaiveDate, TimeZone};
+use fluent_templates::{Loader, StaticLoader};
 use gloo::events::EventListener;
+use isixhosa_common::format::{DisplayHtml, HtmlFormatter};
+use isixhosa_common::i18n::{I18nInfo, SiteContext, TranslationKey};
+use isixhosa_common::i18n_args;
 use rand::prelude::*;
 use serde::Deserialize;
-use std::fmt::{self, Display, Formatter, Write};
+use std::fmt;
 use std::iter;
+use std::sync::Arc;
+use gloo::net::http::Request;
 use tinyvec::ArrayVec;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use yew::{function_component, html, Callback, Component, Context, Html, Properties};
 
 const SEED: u64 = 11530789889988543623;
-static CSV: &[u8] = include_bytes!("../words.csv");
 const WORD_LENGTH: usize = 6;
 const GUESSES: usize = 6;
 
@@ -97,6 +104,7 @@ struct Game {
     nth_wordle: u32,
     modal_open: bool,
     shared: bool,
+    host: String,
 }
 
 impl Game {
@@ -185,22 +193,25 @@ impl Game {
     }
 }
 
-impl Display for Game {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for Game {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         let guesses = self.guesses.len();
         let score = if self.state == GameState::Won {
-            &guesses as &dyn Display
+            guesses.to_string()
         } else {
-            &"X" as &dyn Display
+            "X".to_string()
         };
 
-        writeln!(
-            f,
-            "IsiXhosa Wordle v2 {} {}/{}",
-            self.nth_wordle + 1,
-            score,
-            GUESSES
+        f.write_text_with_args(
+            &TranslationKey::new("wordle.share-title"),
+            &i18n_args!(
+                "nth-wordle" => self.nth_wordle + 1,
+                "score" => score,
+                "guesses" => GUESSES,
+            ),
         )?;
+
+        f.write_raw_str("\n")?;
 
         for guess in self.guesses {
             let result = match self.evaluate_guess(&guess) {
@@ -209,22 +220,30 @@ impl Display for Game {
             };
 
             for char in result {
-                write!(f, "{}", char)?;
+                char.fmt(f)?;
             }
 
-            writeln!(f)?;
+            f.write_raw_str("\n")?;
         }
 
-        write!(f, "https://isixhosa.click/wordle/")
+        f.write_raw_str("https://")?;
+        f.write_raw_str(&self.host)?;
+        f.write_raw_str("/wordle")
     }
+}
+
+#[derive(Properties, PartialEq)]
+struct GameProperties {
+    i18n_info: I18nInfo<&'static StaticLoader>,
+    csv: String,
 }
 
 impl Component for Game {
     type Message = Message;
-    type Properties = ();
+    type Properties = GameProperties;
 
-    fn create(_ctx: &Context<Self>) -> Self {
-        let list: Vec<_> = csv::Reader::from_reader(CSV)
+    fn create(ctx: &Context<Self>) -> Self {
+        let list: Vec<_> = csv::Reader::from_reader(ctx.props().csv.as_bytes())
             .deserialize::<WordRecord>()
             .flatten()
             .collect();
@@ -321,17 +340,18 @@ impl Component for Game {
             nth_wordle: nth_wordle as u32,
             modal_open: false,
             shared: false,
+            host: ctx.props().i18n_info.ctx.host.clone(),
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Message) -> bool {
         match msg {
             Message::CloseModal => {
                 self.modal_open = false;
                 true
             }
             Message::Share => {
-                share(format!("{}", self));
+                share(self.to_plaintext(&ctx.props().i18n_info).to_string());
                 self.shared = true;
                 true
             }
@@ -365,6 +385,7 @@ impl Component for Game {
         }
     }
 
+    //noinspection RsCompileErrorMacro - For some reason it does not think it can find the icons/ dir
     fn view(&self, ctx: &Context<Self>) -> Html {
         let guesses_padded = self
             .guesses
@@ -393,9 +414,9 @@ impl Component for Game {
             .collect::<Html>();
 
         let message = if self.state == GameState::Won {
-            "Congratulations! A new wordle will be available tomorrow."
+            "wordle.victory"
         } else {
-            "Unlucky... try again tomorrow."
+            "wordle.loss"
         };
 
         let modal_classes = if self.modal_open {
@@ -404,15 +425,22 @@ impl Component for Game {
             "modal"
         };
 
-        let shared = if self.shared { "Copied!" } else { "" };
+        let shared = if self.shared {
+            "wordle.copied"
+        } else {
+            "empty-string"
+        };
 
         let on_key = ctx.link().callback(Message::Key);
         let on_share = ctx.link().callback(|_| Message::Share);
         let on_close = ctx.link().callback(|_| Message::CloseModal);
 
+        let i18n_info = &ctx.props().i18n_info;
+        let t = |key| i18n_info.t(&TranslationKey::new(key));
+
         html! {
             <>
-                <h1>{ "Xhosa Wordle (beta)" }</h1>
+                <h1>{ t("wordle.name") }</h1>
 
                 <div id="guesses">{ guesses }</div>
 
@@ -422,21 +450,24 @@ impl Component for Game {
 
                 <div id="wordle_modal" class={ modal_classes }>
                     <div class="column_list">
-                        <button id="close_modal" class="material-icons" onclick={ on_close }>{ "close" }</button>
-                        <p id="result">{ message }</p>
+
+                        <button id="close_modal" onclick={ on_close }>
+                            <SafeHtml html={ isixhosa_common::icon!("mdi:close") }/>
+                        </button>
+                        <p id="result">{ t(message) }</p>
 
                         <p id="todays_word">
-                            { "Today's word was " }
-                            <a href={ format!("/word/{}", self.word.word_id) } target="_blank" rel="noreferrer noopener">
+                            { t("wordle.word-was") }{ " " }
+                            <a lang={ t("target-language-code") } href={ format!("/word/{}", self.word.word_id) } target="_blank" rel="noreferrer noopener">
                                 { format!("{}.", self.word.text.to_ascii_lowercase()) }
                             </a>
                         </p>
 
                         <button id="share" onclick={ on_share }>
-                            { "Share with your friends" }
-                            <span class="material-icons">{ "share" }</span>
+                            { t("wordle.share") }
+                            <SafeHtml html={ isixhosa_common::icon!("material-symbols:share") }/>
                         </button>
-                        <p id="shared">{{ shared }}</p>
+                        <p id="shared">{ t(shared) }</p>
                     </div>
                 </div>
             </>
@@ -507,10 +538,37 @@ impl From<AsciiChar> for GuessLetter {
     }
 }
 
+#[wasm_bindgen(start)]
 fn main() {
+    console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
+}
+
+#[wasm_bindgen]
+pub async fn start_wordle(host: String, lang: &str) {
     let wrap = gloo::utils::document().get_element_by_id("main_wrap");
-    yew::start_app_in_element::<Game>(wrap.unwrap());
+    log::info!("Loading i18n");
+    let loader = i18n::load().await.unwrap();
+
+    let i18n_info = I18nInfo {
+        user_language: lang.parse().expect("Invalid locale"),
+        ctx: Arc::new(SiteContext {
+            site_i18n: loader,
+            supported_langs: &[],
+            host: host.to_string(),
+        }),
+    };
+
+    log::info!("Loading wordle csv");
+    let csv = Request::get("/wordle_words.csv")
+        .send()
+        .await
+        .expect("Failed to fetch wordle words!")
+        .text()
+        .await
+        .expect("Failed to fetch wordle words!");
+
+    yew::start_app_with_props_in_element::<Game>(wrap.unwrap(), GameProperties { i18n_info, csv });
 }
 
 #[derive(Deserialize, Debug)]
@@ -546,17 +604,17 @@ impl CharGuessResult {
     }
 }
 
-impl Display for CharGuessResult {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl<L: Loader + 'static> DisplayHtml<L> for CharGuessResult {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         use CharGuessResult::*;
 
         let emoji = match self {
-            Correct => '🟩',
-            WrongPlace => '🟨',
-            Incorrect => '⬛',
+            Correct => "🟩",
+            WrongPlace => "🟨",
+            Incorrect => "⬛",
         };
 
-        f.write_char(emoji)
+        f.write_raw_str(emoji)
     }
 }
 
@@ -567,22 +625,15 @@ enum GameState {
     Lost,
 }
 
-#[derive(Copy, Clone, Debug)]
-struct GuessResult {
-    typ: GameState,
-    result: [CharGuessResult; WORD_LENGTH],
+// Thanks to noxue: https://github.com/yewstack/yew/issues/1281#issuecomment-1032906972
+#[derive(Properties, PartialEq)]
+pub struct SafeHtmlProps {
+    pub html: String,
 }
 
-impl Display for GuessResult {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for c in self.result {
-            write!(f, "{}", c)?;
-        }
-
-        match self.typ {
-            GameState::Won => write!(f, "You have won the game!"),
-            GameState::Lost => write!(f, "You have lost the game, better luck next time!"),
-            GameState::Continue => Ok(()),
-        }
-    }
+#[function_component(SafeHtml)]
+pub fn safe_html(props: &SafeHtmlProps) -> Html {
+    let div = gloo::utils::document().create_element("div").unwrap();
+    div.set_inner_html(&props.html.clone());
+    Html::VRef(div.into())
 }

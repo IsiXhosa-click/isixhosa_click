@@ -1,5 +1,6 @@
 use crate::database::WordId;
 use crate::database::WordOrSuggestionId;
+use crate::i18n::I18nInfo;
 use fallible_iterator::FallibleIterator;
 use isixhosa_common::database::ModeratorAccessDb;
 use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, PublicUserInfo, WordHit};
@@ -221,6 +222,7 @@ impl LinkedWordDeletionSuggestion {
     fn try_from_row_populate_other(
         row: &Row<'_>,
         db: &impl ModeratorAccessDb,
+        _i18n_info: I18nInfo,
         skip_populating: u64,
     ) -> Result<Self, rusqlite::Error> {
         let suggestion_id = row.get::<&str, i64>("suggestion_id")? as u64;
@@ -240,7 +242,10 @@ impl LinkedWordDeletionSuggestion {
         fields(results),
         skip(db)
     )]
-    pub fn fetch_all(db: &impl ModeratorAccessDb) -> impl Iterator<Item = (WordId, Vec<Self>)> {
+    pub fn fetch_all(
+        db: &impl ModeratorAccessDb,
+        i18n_info: I18nInfo,
+    ) -> impl Iterator<Item = (WordId, Vec<Self>)> {
         const SELECT: &str =
             "SELECT linked_words.link_id, linked_words.link_type, linked_words.first_word_id,
                     linked_words.second_word_id, linked_word_deletion_suggestions.suggestion_id,
@@ -263,7 +268,12 @@ impl LinkedWordDeletionSuggestion {
                 let first_id = row.get::<&str, u64>("first_word_id")?;
                 Ok((
                     WordId(first_id),
-                    LinkedWordDeletionSuggestion::try_from_row_populate_other(row, db, first_id)?,
+                    LinkedWordDeletionSuggestion::try_from_row_populate_other(
+                        row,
+                        db,
+                        i18n_info.clone(),
+                        first_id,
+                    )?,
                 ))
             })
             .for_each(|(word_id, deletion)| {

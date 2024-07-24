@@ -1,14 +1,13 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>Wordle - IsiXhosa.click</title>
-    <meta name="og:title" content="Wordle - IsiXhosa.click"/>
-    {%- call macros::description("Xhosa Wordle on IsiXhosa.click!") -%}
-    <meta name="og:url" content="https://isixhosa.wordle/"/>
-    {%- call macros::meta() -%}
+    {%- call macros::title("wordle") -%}
+    {%- call macros::description("wordle.description") -%}
+    <meta name="og:url" content="https://{{ self.host() }}/wordle"/>
     <link rel="stylesheet" href="/wordle.css"/>
+    {%- call macros::meta() -%}
 </head>
 
 <body>
@@ -19,7 +18,7 @@
         </div>
 
         <script type="module">
-            import init from '/wasm/isixhosa_wordle.js';
+            import init, { start_wordle } from '/wasm/isixhosa_wordle.js';
 
             const supported = (() => {
                 try {
@@ -35,15 +34,16 @@
             })();
 
             if (supported) {
-                  init();
+                await (await init());
+                start_wordle('{{ self.host() }}', '{{ self.i18n_info.user_language }}');
             } else {
                 let msg = document.createElement("p");
-                msg.innerText = "WebAssembly is required to play. Sorry!";
+                msg.innerText = '{{ self.t("js-required.wasm") }}';
                 document.getElementById("main_wrap").appendChild(msg);
             }
         </script>
 
-        <noscript>JavaScript and WebAssembly are required to play. Sorry!</noscript>
+        <noscript>{{ self.t("js-required.both") }}</noscript>
     </div>
 </body>
 </html>

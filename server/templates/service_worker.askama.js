@@ -11,30 +11,44 @@ self.addEventListener("install", (event) => {
 
     event.waitUntil(
         (async () => {
-            const site_files_cache = await caches.open(STATIC_FILES_CACHE);
-            await site_files_cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
-            await site_files_cache.addAll(SITE_FILES.map((url) => new Request(url, { cache: 'reload' })));
+            await clearCaches();
 
-            const bin_files_cache = await caches.open(STATIC_BIN_FILES_CACHE);
-            await bin_files_cache.addAll(BIN_FILES.map((url) => new Request(url, { cache: 'reload' })));
+            if (!await caches.has(STATIC_FILES_CACHE)) {
+                console.log("Reloading static files cache");
+                const site_files_cache = await caches.open(STATIC_FILES_CACHE);
+                await site_files_cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
+                await site_files_cache.addAll(SITE_FILES.map((url) => new Request(url, { cache: 'reload' })));
+            } else {
+                console.log("Skipping static files cache");
+            }
+
+            if (!await caches.has(STATIC_BIN_FILES_CACHE)) {
+                console.log("Reloading static bin files cache");
+                const bin_files_cache = await caches.open(STATIC_BIN_FILES_CACHE);
+                await bin_files_cache.addAll(BIN_FILES.map((url) => new Request(url, { cache: 'reload' })));
+            } else {
+                console.log("Skipping static bin files cache");
+            }
         })()
     );
 });
 
+async function clearCaches() {
+    await caches.keys().then(function(cacheNames) {
+        return Promise.all(
+            cacheNames.filter(function(cacheName) {
+                return (cacheName !== STATIC_FILES_CACHE && cacheName !== STATIC_BIN_FILES_CACHE);
+            }).map(function(cacheName) {
+                console.log("Deleting " + cacheName);
+                return caches.delete(cacheName);
+            })
+        );
+    })
+}
+
 self.addEventListener("activate", function(event) {
     console.log("Activate!");
-    event.waitUntil(
-        caches.keys().then(function(cacheNames) {
-            return Promise.all(
-                cacheNames.filter(function(cacheName) {
-                    return (cacheName !== STATIC_FILES_CACHE && cacheName !== STATIC_BIN_FILES_CACHE);
-                }).map(function(cacheName) {
-                    console.log("Deleting " + cacheName);
-                    return caches.delete(cacheName);
-                })
-            );
-        })
-    );
+    event.waitUntil(clearCaches());
 });
 
 self.addEventListener("activate", (event) => {
@@ -69,9 +83,23 @@ self.addEventListener("fetch", (event) => {
         );
     } else {
         event.respondWith(
-            caches.match(event.request).then(function(response) {
-                return response || fetch(event.request);
-            })
+            caches.match(event.request)
+                .then(function(response) {
+                    // Return cached response
+                    if (response) {
+                        return response;
+                    } else {
+                        // Fall back to fetch from internet
+                        return fetch(event.request)
+                            .catch(function(err) {
+                                return caches.open(STATIC_FILES_CACHE)
+                                    .then(function(cache) {
+                                        console.error(`Error fetching: ${err}`);
+                                        return cache.match(OFFLINE_URL);
+                                    });
+                            });
+                    }
+                })
         );
     }
 });

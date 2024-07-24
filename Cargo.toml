@@ -2,6 +2,7 @@
 members = [
     "server",
     "common",
+    "macros",
 ]
 resolver = "2"
 

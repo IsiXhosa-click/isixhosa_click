@@ -2,7 +2,7 @@ import { addFormData } from "/submit/util.js";
 
 let current_example_id = 0;
 
-function removeExample(button_id) {
+function removeExample(translations, button_id) {
     let button = document.getElementById(button_id);
     let button_div = button.parentElement;
     let list_div = button_div.parentElement;
@@ -11,7 +11,7 @@ function removeExample(button_id) {
 
     let delete_buttons = document.getElementsByClassName("delete_example");
     if (delete_buttons.length === 0) {
-        addExample()
+        addExample(translations)
     }
 }
 
@@ -41,7 +41,7 @@ function textField(name, label_txt, val, english) {
     return div;
 }
 
-export function addExample(english, xhosa, suggestion_id, existing_id) {
+export function addExample(translations, english, xhosa, suggestion_id, existing_id) {
     current_example_id += 1;
     let list = document.getElementById("examples");
     let item = document.createElement("li");
@@ -54,13 +54,11 @@ export function addExample(english, xhosa, suggestion_id, existing_id) {
     let delete_button = document.createElement("button");
     delete_button.type = "button";
 
-    let icon = document.createElement("span");
-    icon.className = "material-icons";
-    icon.innerText = "delete";
+    let icon = document.getElementById("delete-button-template").content.cloneNode(true);
     delete_button.appendChild(icon);
-    delete_button.setAttribute("aria-label", "delete");
+    delete_button.setAttribute("aria-label", translations["delete"]);
 
-    delete_button.addEventListener("click", function() { removeExample(this.id) });
+    delete_button.addEventListener("click", function() { removeExample(translations, this.id) });
     delete_button.id = `example-${current_example_id}`;
     delete_button.classList.add("delete_example", "delete_button");
     let delete_div = document.createElement("div");
@@ -81,18 +79,18 @@ export function addExample(english, xhosa, suggestion_id, existing_id) {
     div.appendChild(sentence);
     sentence.classList.add("table_if_space");
 
-    sentence.appendChild(textField(`examples[${current_example_id}][english]`, "English example:", english, true));
-    sentence.appendChild(textField(`examples[${current_example_id}][xhosa]`, "Xhosa example:", xhosa, false));
+    sentence.appendChild(textField(`examples[${current_example_id}][english]`, `${translations["examples.source"]}:`, english, true));
+    sentence.appendChild(textField(`examples[${current_example_id}][xhosa]`, `${translations["examples.target"]}:`, xhosa, false));
 
     let delete_buttons = document.getElementsByClassName("delete_example");
 }
 
-export function addExamples(examples) {
+export function addExamples(translations, examples) {
     for (let example of examples) {
-        addExample(example.english, example.xhosa, example.suggestion_id, example.existing_id)
+        addExample(translations, example.english, example.xhosa, example.suggestion_id, example.existing_id)
     }
 
     if (examples.length === 0) {
-        addExample()
+        addExample(translations)
     }
 }

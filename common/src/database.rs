@@ -1,9 +1,11 @@
+use crate::i18n::I18nInfo;
 use crate::language::{
     ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType,
 };
-use crate::serialization::{DiscrimOutOfRange, SerAndDisplayWithDisplayHtml, WithDeleteSentinel};
+use crate::serialization::{DiscrimOutOfRange, WithDeleteSentinel};
 use crate::types::{ExistingExample, ExistingLinkedWord, ExistingWord, PublicUserInfo, WordHit};
 use fallible_iterator::FallibleIterator;
+use fluent_templates::ArcLoader;
 use isixhosa::noun::NounClass;
 use num_enum::TryFromPrimitive;
 use r2d2::{Pool, PooledConnection};
@@ -238,6 +240,7 @@ impl ExistingLinkedWord {
     )]
     pub fn fetch(
         db: &impl PublicAccessDb,
+        _i18n_info: I18nInfo<ArcLoader>,
         id: u64,
         skip_populating: u64,
     ) -> Option<ExistingLinkedWord> {
@@ -371,15 +374,11 @@ impl WordHit {
             id: id.inner(),
             english: row.get("english")?,
             xhosa: row.get("xhosa")?,
-            part_of_speech: row
-                .get::<_, Option<PartOfSpeech>>("part_of_speech")?
-                .map(SerAndDisplayWithDisplayHtml),
+            part_of_speech: row.get("part_of_speech")?,
             is_plural: row.get("is_plural")?,
             is_inchoative: row.get("is_inchoative")?,
             is_informal: row.get("is_informal")?,
-            transitivity: row
-                .get_with_sentinel("transitivity")?
-                .map(SerAndDisplayWithDisplayHtml),
+            transitivity: row.get_with_sentinel("transitivity")?,
             is_suggestion: id.is_suggested(),
             noun_class: row
                 .get_with_sentinel("noun_class")?
@@ -513,9 +512,14 @@ impl ToSql for PartOfSpeech {
 
 impl ToSql for ConjunctionFollowedBy {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        Ok(ToSqlOutput::Borrowed(ValueRef::Text(
-            self.as_ref().as_bytes(),
-        )))
+        let text = match self {
+            ConjunctionFollowedBy::Indicative => "indicative mood",
+            ConjunctionFollowedBy::Subjunctive => "subjunctive mood",
+            ConjunctionFollowedBy::Participial => "participial mood",
+            ConjunctionFollowedBy::Custom(s) => s.as_ref(),
+        };
+
+        Ok(ToSqlOutput::Borrowed(ValueRef::Text(text.as_bytes())))
     }
 }
 

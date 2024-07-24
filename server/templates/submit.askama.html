@@ -1,12 +1,11 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>Submit a word - IsiXhosa.click</title>
-    <meta name="og:title" content="Submit a word - IsiXhosa.click"/>
-    <meta name="og:url" content="https://isixhosa.click/submit"/>
-    {%- call macros::description("Submit a word to the free, open, online IsiXhosa.click dictionary for Xhosa and English.") -%}
+    {%- call macros::title("submit") -%}
+    {%- call macros::description("submit.description") -%}
+    <meta name="og:url" content="https://{{ self.host() }}/submit"/>
     <link rel="stylesheet" href="/submit.css">
     {%- call macros::meta() -%}
 </head>
@@ -16,7 +15,7 @@
 
     <div id="main_wrap">
         <header>
-            <h1>Submit a word</h1>
+            <h1>{{ self.t("submit") }}</h1>
         </header>
 
         {%- match previous_success -%}
@@ -33,20 +32,13 @@
         <main>
             {%- match previous_success -%}
                 {%- when Some with (true) -%}
-                    <p>Word successfully submitted!</p>
+                    <p>{{ self.t("submit.submit-success") }}</p>
                 {%- when Some with (false) -%}
-                    <p>There was an error submitting the word.</p>
+                    <p>{{ self.t("submit.submit-fail") }}</p>
                 {%- when None -%}
             {%- endmatch -%}
 
-            <noscript>
-                <p>
-                    <strong>
-                        Javascript is required for this page to work properly due to the complex nature of the form.
-                        Apologies!
-                    </strong>
-                </p>
-            </noscript>
+            <noscript><p><strong>{{ self.t("js-required") }}</strong></p></noscript>
 
             {%- let route -%}
 
@@ -82,22 +74,25 @@
                 {%- endmatch -%}
 
                 <div>
-                    <p>Take a look at the <a href="/style_guide">style guide</a> before submitting a word.
-                    Required fields are marked with a <span class="required">*</span>.</p>
+                    <p>{{ self.t("submit.check-style")|safe }}
+                    {{ self.t("submit.required-field")|safe }}</p>
                 </div>
 
+                {%- let src_lang = self.t("source-language-code") -%}
+                {%- let target_lang = self.t("target-language-code") -%}
+
                 <fieldset class="contains_table">
-                    <legend>Translation</legend>
+                    <legend>{{ self.t("submit.translation") }}</legend>
 
                     <div class="table">
                         <div>
-                            <label for="english">English<span class="required">*</span>:</label>
+                            <label for="english">{{ self.t("source-language") }}<span class="required">*</span>:</label>
                             <div>
                                 <input type="text" id="english" name="english" autocomplete="off" spellcheck="true"
-                                 {#-#} value="{{ word.english }}" required>
+                                 {#-#} lang="{{ src_lang }}" value="{{ word.english }}" required>
                                 <div class="duplicates_container">
                                     <div class="duplicates_popover">
-                                        <div>Possible duplicates (hover)</div>
+                                        <div>{{ self.t("submit.possible-duplicates") }}</div>
                                         <div class="duplicates"></div>
                                     </div>
                                 </div>
@@ -105,13 +100,13 @@
                         </div>
 
                         <div>
-                            <label for="xhosa">Xhosa<span class="required">*</span>:</label>
+                            <label for="xhosa">{{ self.t("target-language") }}<span class="required">*</span>:</label>
                             <div>
                                 <input type="text" id="xhosa" name="xhosa" autocomplete="off" spellcheck="false"
-                                 {#-#} value="{{ word.xhosa }}" lang="xh" required>
+                                 {#-#} value="{{ word.xhosa }}" lang="{{ target_lang }}" required>
                                 <div class="duplicates_container">
                                     <div class="duplicates_popover">
-                                        <div>Possible duplicates (hover)</div>
+                                        <div>{{ self.t("submit.possible-duplicates") }}</div>
                                         <div class="duplicates"></div>
                                     </div>
                                 </div>
@@ -120,23 +115,21 @@
 
                         <div>
                             <label for="xhosa_tone_markings" tabindex="0"
-                                {#-#} data-descr="Xhosa with tone markings written out as diacritics. For instance:
-                                {#-#} &quot;bónákala&quot;."
-                            >
-                                Xhosa with tone markings:
+                                   {#-#} data-descr='{{ self.t("with-tone-markings.explanation") }}'>
+                                {{ self.t("with-tone-markings") }}
                             </label>
                             <input type="text" id="xhosa_tone_markings" name="xhosa_tone_markings" autocomplete="off"
-                             {#-#} spellcheck="false" value="{{ word.xhosa_tone_markings }}" lang="xh">
+                             {#-#} spellcheck="false" value="{{ word.xhosa_tone_markings }}" lang="{{ target_lang }}">
                         </div>
 
                         <div>
-                            <label for="is_informal">Informal or slang?</label>
+                            <label for="is_informal">{{ self.t("informal") }}</label>
                             <input type="checkbox" id="is_informal" name="is_informal"
                                 {%- if word.is_informal %} checked {%- endif -%}>
                         </div>
 
                         <div>
-                            <label for="note">Note:</label>
+                            <label for="note">{{ self.t("note") }}:</label>
                             <textarea id="note" name="note" autocomplete="off" spellcheck="true">
                                 {{- word.note -}}
                             </textarea>
@@ -145,22 +138,22 @@
                 </fieldset>
 
                 <fieldset class="contains_table">
-                    <legend>Part of speech</legend>
+                    <legend>{{ self.t("part-of-speech") }}</legend>
 
                     <div class="table">
                         <div>
-                            <label for="part_of_speech">Part of speech<span class="required">*</span>:</label>
+                            <label for="part_of_speech">{{ self.t("part-of-speech") }}<span class="required">*</span>:</label>
                             <select id="part_of_speech" name="part_of_speech" required>
-                                <option value="">Choose a part of speech</option>
-                                <option value="verb" id="verb_selected">Verb</option>
-                                <option value="noun" id="noun_selected">Noun</option>
-                                <option value="adverb">Adverb</option>
-                                <option value="relative">Relative (adjective)</option>
-                                <option value="adjective" disabled hidden>Adjective (isiphawuli)</option>
-                                <option value="interjection">Interjection</option>
-                                <option value="conjunction" id="conjunction_selected">Conjunction</option>
-                                <option value="preposition">Preposition</option>
-                                <option value="ideophone">Ideophone</option>
+                                <option value="">{{ self.t("part-of-speech.choose") }}</option>
+                                <option value="verb" id="verb_selected">{{ self.t("verb.capitalised") }}</option>
+                                <option value="noun" id="noun_selected">{{ self.t("noun.capitalised") }}</option>
+                                <option value="adverb">{{ self.t("adverb.capitalised") }}</option>
+                                <option value="relative">{{ self.t("relative.capitalised") }}</option>
+                                <option value="adjective" disabled hidden>{{ self.t("adjective.capitalised") }}</option>
+                                <option value="interjection">{{ self.t("interjection.capitalised") }}</option>
+                                <option value="conjunction" id="conjunction_selected">{{ self.t("conjunction.capitalised") }}</option>
+                                <option value="preposition">{{ self.t("preposition.capitalised") }}</option>
+                                <option value="ideophone">{{ self.t("ideophone.capitalised") }}</option>
                             </select>
                         </div>
 
@@ -187,7 +180,7 @@
                         {#-  Noun options -#}
 
                         <div class="noun_option" hidden>
-                            <label for="is_plural">Plural?</label>
+                            <label for="is_plural">{{ self.t("submit.select-plural") }}</label>
                             <input type="checkbox" id="is_plural" name="is_plural"
                                 {%- if word.is_plural %} checked {%- endif -%}>
                         </div>
@@ -204,9 +197,9 @@
                         {%- endmatch -%}
 
                         <div class="noun_option" hidden>
-                            <label for="noun_class">Noun class<span class="required">*</span>:</label>
+                            <label for="noun_class">{{ self.t("noun-class") }}<span class="required">*</span>:</label>
                             <select id="noun_class" name="noun_class" class="required_if_enabled">
-                                <option value="">Choose a noun class</option>
+                                <option value="">{{ self.t("noun-class.choose") }}</option>
                                 <option value="Class1Um">um (aba)</option>
                                 <option value="Aba">aba</option>
                                 <option value="U">u</option>
@@ -228,26 +221,22 @@
                         {#-  Verb options -#}
 
                         <div class="verb_option" hidden>
-                            <label for="infinitive">Infinitive form<span class="required">*</span>:</label>
+                            <label for="infinitive">{{ self.t("infinitive.form") }}<span class="required">*</span>:</label>
                             <input type="text" id="infinitive" name="infinitive" autocomplete="off" spellcheck="false"
-                                {#-#} value="{{ word.infinitive }}" class="required_if_enabled" lang="xh">
+                                {#-#} value="{{ word.infinitive }}" class="required_if_enabled" lang="{{ target_lang }}">
                         </div>
 
                         <div class="verb_option" hidden>
-                            <label for="is_inchoative" tabindex="0"
-                                {#-#} data-descr="An inchoative (stative) verb takes the perfect tense for present
-                                {#-#} tense meaning. For example, &quot;ndilambile&quot; means &quot;I am hungry&quot;
-                                {#-#} whereas &quot;ndiyalamba&quot; means &quot;I am getting hungry&quot;."
-                            >
-                                Inchoative?
+                            <label for="is_inchoative" tabindex="0" data-descr='{{ self.t("inchoative.explanation") }}' >
+                                {{ self.t("submit.select-inchoative") }}
                             </label>
                             <input type="checkbox" id="is_inchoative" name="is_inchoative"
                                 {%- if word.is_inchoative %} checked {%- endif -%}>
                         </div>
 
                         <div class="verb_option row_list" hidden>
-                            <span tabindex="0" data-descr="Whether the verb can take a direct object or not.">
-                                Transitivity<span class="required">*</span>:
+                            <span tabindex="0" data-descr='{{ self.t("transitivity.explanation") }}'>
+                                {{ self.t("transitivity") }}<span class="required">*</span>:
                             </span>
 
                             <div> {#- This is table-cell -#}
@@ -255,19 +244,19 @@
                                     <div>
                                          <input type="radio" id="either" name="transitivity" value="either" class="required_if_enabled"
                                             {%- if word.transitivity == Some(Transitivity::Ambitransitive)  %} checked {%- endif -%}>
-                                        <label for="either">Either</label>
+                                        <label for="either">{{ self.t("ambitransitive") }}</label>
                                     </div>
 
                                     <div>
                                          <input type="radio" id="transitive" name="transitivity" value="transitive" class="required_if_enabled"
                                             {%- if word.transitivity == Some(Transitivity::Transitive) %} checked {%- endif -%}>
-                                        <label for="transitive">Transitive only</label>
+                                        <label for="transitive">{{ self.t("transitive.explicit") }}</label>
                                     </div>
 
                                     <div>
                                         <input type="radio" id="intransitive" name="transitivity" value="intransitive" class="required_if_enabled"
                                             {%- if word.transitivity == Some(Transitivity::Intransitive) %} checked {%- endif -%}>
-                                        <label for="intransitive" id="intransitive_label">Intransitive only</label>
+                                        <label for="intransitive" id="intransitive_label">{{ self.t("intransitive.explicit") }}</label>
                                     </div>
                                 </div>
                             </div>
@@ -279,76 +268,81 @@
 
                         <div class="conjunction_option" hidden>
                             <label for="followed_by" tabindex="0"
-                                {#-#} data-descr="The verbial mood or construction the conjunction is followed by."
+                                {#-#} data-descr='{{ self.t("followed-by.explanation") }}'
                             >
-                                Followed by:
+                                {{ self.t("followed-by") }}:
                             </label>
                             <input type="text" autocomplete="off" spellcheck="false" list="followed_by_list"
-                                {#-#} value="{{ word.followed_by.to_plaintext()|safe }}" name="followed_by"
+                                {#-#} value="{{ word.followed_by.to_plaintext(i18n_info)|safe }}" name="followed_by"
                                 {#-#} id="followed_by">
 
                             {#- Hidden is due to dumb table stuff -#}
                             <datalist id="followed_by_list" hidden>
-                              <option value="Indicative mood">
-                              <option value="Subjunctive mood">
-                              <option value="Participial mood">
+                              <option value='{{ self.t("followed-by.indicative") }}'>
+                              <option value='{{ self.t("followed-by.subjunctive") }}'>
+                              <option value='{{ self.t("followed-by.participial") }}'>
                             </datalist>
                         </div>
                     </div>
                 </fieldset>
 
                 <fieldset>
-                    <legend>Example sentences</legend>
+                    <legend>{{ self.t("examples") }}</legend>
 
                     <ul id="examples" class="bare_list spaced_list">
-                        <li><button id="add_example" type="button">Add another</button></li>
+                        <li><button id="add_example" type="button">{{ self.t("submit.add-example") }}</button></li>
                     </ul>
                 </fieldset>
 
                 <fieldset>
-                    <legend>Linked words</legend>
+                    <legend>{{ self.t("linked-words") }}</legend>
 
                     <ul id="linked_words" class="bare_list spaced_list">
-                        <li><button id="add_linked_word" type="button">Add another</button></li>
+                        <li><button id="add_linked_word" type="button">{{ self.t("submit.add-linked-word") }}</button></li>
                     </ul>
                 </fieldset>
 
                 <div class="column_list spaced_flex_list">
                     {%- if existing_id.is_some() -%}
                         <div>
-                            <label for="changes_summary">Changes made and why<span class="required">*</span>:</label>
+                            <label for="changes_summary">{{ self.t("changes") }}<span class="required">*</span>:</label>
                             <textarea id="changes_summary" name="changes_summary" autocomplete="off" spellcheck="true"
-                                {#-#} placeholder="Briefly explain the changes you made and why." required></textarea>
+                                {#-#} placeholder='{{ self.t("changes.explanation") }}' required></textarea>
                         </div>
                     {%- endif -%}
 
                     <div>
                         <input type="checkbox" id="tou_agree" name="tou_agree" required>
                         <label for="tou_agree">
-                            I agree to submit this entry under the <a href="https://creativecommons.org/licenses/by-sa/4.0/">
-                            Creative Commons 4.0 (or later) Attribution ShareAlike License</a>, subject to the Terms of
-                            Service, and certify that I have the permission to do so.<span class="required">*</span>
+                            {{ self.t("license-agreement")|safe -}}
+                            <span class="required">*</span>
                         </label>
                     </div>
 
                     <button type="submit" id="submit_button">
                         {%- match action -%}
                             {%- when SubmitFormAction::SubmitNewWord -%}
-                                Suggest word
+                                {{ self.t("submit.submit-new") }}
                             {%- when SubmitFormAction::EditSuggestion with { suggestion_id: _, existing_id: _, suggestion_anchor_ord: _ } -%}
-                                Submit edit to suggestion
+                                {{ self.t("submit.submit-edit-suggestion") }}
                             {%- when SubmitFormAction::EditExisting with (_) -%}
-                                Suggest edit to word
-                        {%- endmatch -%}
+                                {{ self.t("submit.submit-edit") }}
+                            {%- endmatch -%}
                     </button>
                 </div>
             </form>
+
+            <template id="delete-button-template">
+                {{ crate::icon!("mdi:delete")|safe }}
+            </template>
 
             <script type="module">
                 import { addExample, addExamples } from "/submit/example.js";
                 import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
                 import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
                 import { addDuplicateSearchFor } from "/submit/duplicate.js";
+
+                let translations = {{ self.i18n_info.js_translations()|json|safe }};
 
                 window.addEventListener("DOMContentLoaded", function() {
                     for (let input of document.getElementsByTagName("input")) {
@@ -376,16 +370,16 @@
                 window.addEventListener("load", function() {
                     {%- let this_word_id = self.this_word_id_js() -%}
 
-                    addExamples({{ word.examples|json|safe }});
-                    addLinkedWords({{ word.linked_words|json|safe }}, {{ this_word_id }});
+                    addExamples(translations, {{ word.examples|json|safe }});
+                    addLinkedWords(translations, {{ word.linked_words|json|safe }}, {{ this_word_id }});
                     partOfSpeechChange(); /* Refresh part of speech sections */
-                    addDuplicateSearchFor("english", {{ this_word_id }});
-                    addDuplicateSearchFor("xhosa", {{ this_word_id }});
+                    addDuplicateSearchFor(translations, "english", {{ this_word_id }});
+                    addDuplicateSearchFor(translations, "xhosa", {{ this_word_id }});
 
                     document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
-                    document.getElementById("add_example").addEventListener("click", function() { addExample() });
+                    document.getElementById("add_example").addEventListener("click", function() { addExample(translations) });
                     document.getElementById("add_linked_word").addEventListener("click", function() {
-                        addLinkedWord({{ this_word_id }});
+                        addLinkedWord(translations, {{ this_word_id }});
                     });
                     document.getElementById("submit_word").addEventListener("submit", function() {
                         for (let word of document.getElementsByClassName("word_select_search")) {

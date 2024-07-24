@@ -18,7 +18,7 @@ a {
 
 td:first-child, th:first-child {
     box-sizing: border-box;
-    width: 8em;
+    width: 15em;
     padding-right: 0.5em;
 }
 
@@ -40,17 +40,6 @@ table {
     word-wrap: break-word;
 }
 
-#confirm_buttons {
-    display: flex;
-    flex-direction: row;
-    gap: 2rem;
-    justify-content: center;
-}
-
-#confirm_buttons > button {
-    width: 3rem;
-}
-
 #confirm_duplicates:empty {
     display: none;
 }
@@ -58,14 +47,6 @@ table {
 #confirm_duplicates > ol {
     margin: 0;
     padding: 0;
-}
-
-#confirm_duplicates::before {
-    content: "Possible duplicates:";
-}
-
-#confirm_duplicates:empty::before {
-    content: "";
 }
 
 #confirm_duplicates li::marker {

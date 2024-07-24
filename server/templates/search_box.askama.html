@@ -1,14 +1,14 @@
 {%- macro searchbox(start_query, has_results) -%}
-    <script type="module">import {LiveSearch} from "/live_search.js";
-
+    <script type="module">
+        import {LiveSearch} from "/live_search.js";
         window.addEventListener("DOMContentLoaded", function() {
             let input = document.createElement("input");
 
-            input.placeholder = "Type an English or Xhosa word";
+            input.placeholder = '{{ self.t("search.prompt") }}';
             input.className = "searchbox_input";
             input.type = "search";
             input.value = "{{ start_query }}";
-            input.setAttribute("aria-label", "Search for a word");
+            input.setAttribute("aria-label", '{{ self.t("search.header") }}');
             input.autofocus = true;
             input.focus();
             document.getElementById("searchbox").appendChild(input);
@@ -27,10 +27,7 @@
 
             function postCreateItem(span) {
                 let link = span.parentElement;
-                let goArrow = document.createElement("span");
-                goArrow.classList.add("material-icons", "go_arrow");
-                goArrow.innerText = "arrow_forward";
-                link.appendChild(goArrow);
+                link.insertAdjacentHTML('beforeend', `{{ crate::icon!("mdi:arrow-forward" class="go_arrow")|safe }}`);
             }
 
             function createItemContainer(id) {
@@ -51,18 +48,18 @@
                 postCreateItem,
                 createItemContainer,
                 r => true, /* filter */
-                false /* include own suggestions */
+                false, /* include own suggestions */
+                {{ self.i18n_info.js_translations()|json|safe }}
             );
         });
     </script>
 
     <noscript>
         <form id="search" action="/search" method="GET" role="search">
-
             <input type="search" id="query" name="query" value="{{ start_query }}" {#--#}
-                placeholder="Type an English or Xhosa word" autofocus spellcheck="false" aria-label="Search for a word" {#--#}
+                placeholder='{{ self.t("search.prompt") }}' autofocus spellcheck="false" aria-label='{{ self.t("search.header") }}' {#--#}
                 class="searchbox_input {% if has_results %} has_results {% endif -%}">
-            <button type="submit" class="screenreader_only">Search</button>
+            <button type="submit" class="screenreader_only">{{ self.t("search.do-search") }}</button>
         </form>
     </noscript>
 {%- endmacro -%}

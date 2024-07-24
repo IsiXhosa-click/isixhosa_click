@@ -1,9 +1,9 @@
 {%- import "macros.askama.html" as macros -%}
 
 <!DOCTYPE html>
-<html lang="en-ZA">
+<html lang="{{ self.lang() }}">
 <head>
-    <title>Sign up - IsiXhosa.click</title>
+    {%- call macros::title("sign-up") -%}
     <link rel="stylesheet" href="/signup.css">
     {%- call macros::meta() -%}
 </head>
@@ -12,28 +12,15 @@
     {%- call macros::navbar() -%}
     <div id="main_wrap">
         <header>
-            <h1>Sign up</h1>
+            <h1>{{ self.t("sign-up") }}</h1>
         </header>
 
         <main>
             {%- match previous_failure -%}
                 {%- when Some with (failure) -%}
                     <div class="error">
-                    An error occurred while signing up:
-                        {% match failure -%}
-                           {%- when SignUpFailure::InvalidUsername -%}
-                                invalid username. Usernames can only contain letters, numbers, spaces, underscores, and
-                                hyphens, and they must be at least 2 characters and no more than 128 characters.
-                           {%- when SignUpFailure::DidNotAgree -%}
-                                you must agree to the Terms of Use and Privacy Policy to create an account on
-                                IsiXhosa.Click.
-                           {%- when SignUpFailure::NoEmail -%}
-                                the account you signed in to is not connected to any verified email addresses. Your
-                                email is required in case IsiXhosa.click moderators or admins need to contact you about
-                                the status of your account or for legal reasons. Try to log in again with a different
-                                Google account.
-                        {%- endmatch -%}
-                        </div>
+                        {{ self.t_with("sign-up.error", crate::i18n_args!("reason" => failure.to_string())) }}
+                    </div>
                 {%- when None -%}
             {%- endmatch -%}
 
@@ -58,40 +45,46 @@
 
             <form action="/signup" method="post" enctype="application/x-www-form-urlencoded" class="column_list spaced_flex_list">
                 <div>
-                    <label for="username" tabindex="0"
-                        {#-#} data-descr="This is the name that others will see you by, and what you will be credited
-                        {#-#} with for your submissions."{#-#}
-                    >
-                        Display name<span class="required">*</span>:
+                    <label for="username" tabindex="0" data-descr='{{ self.t("username.explanation") }}'>
+                        {{ self.t("username") }}<span class="required">*</span>:
                     </label>
-                    <input type="text" id="username" name="username" placeholder="John Doe" spellcheck="false" required>
+                    <input type="text" id="username" name="username" placeholder='{{ self.t("username.placeholder") }}' spellcheck="false" required>
+                </div>
+
+                <div>
+                    <label for="language" tabindex="0" data-descr='{{ self.t("select-language.explanation") }}'>
+                        {{ self.t("select-language")|safe }}<span class="required">*</span>:
+                    </label>
+                    <select id="language" name="language" required>
+                        {%- for language in i18n_info.ctx.supported_languages() -%}
+                            <option value="{{ language.id }}" {% if language.id == crate::i18n::EN_ZA -%} selected {%- endif -%}>
+                                {{ language.flag }}
+                                {{ language.name }}
+                            </option>
+                        {%- endfor -%}
+                    </select>
                 </div>
 
                 <div>
                     <input type="checkbox" id="dont_display_name" name="dont_display_name">
                     <label for="dont_display_name">
-                        Do not publicly credit me or my display name for my submissions, on the word page or anywhere else.
-                        Note that if you select this option, you waive your right to be attributed for your edits - see the
-                        Terms of Service for more information.
+                        {{ self.t("username.do-not-credit") }}
                     </label>
                 </div>
 
                 <div>
                     <input type="checkbox" id="license_agree" name="license_agree" required>
                     <label for="license_agree">
-                        I agree that any content which I submit I will allow IsiXhosa.click to use subject to
-                        the <a href="/terms_of_use">terms of use</a> and under the
-                        <a href="https://creativecommons.org/licenses/by-sa/4.0/">
-                            Creative Commons 4.0 (or later) Attribution ShareAlike License.
-                        </a><span class="required">*</span>
+                        {{ self.t("license-agreement")|safe -}}
+                        <span class="required">*</span>
                     </label>
                 </div>
 
                 <div>
                     <input type="checkbox" id="tou_agree" name="tou_agree" required>
                     <label for="tou_agree">
-                        I agree to the <a href="/terms_of_use">terms of use and privacy policy</a> of IsiXhosa.click,
-                        and verify that I am over the age of 13.<span class="required">*</span>
+                        {{ self.t("sign-up.terms-of-use-agreement")|safe -}}
+                        <span class="required">*</span>
                     </label>
                 </div>
 
@@ -103,7 +96,7 @@
                     {%- when None -%}
                 {%- endmatch -%}
 
-                <div><button type="submit" id="sign_up_button">Sign up</button></div>
+                <div><button type="submit" id="sign_up_button">{{ self.t("sign-up") }}</button></div>
             </form>
         </main>
     </div>
