@@ -554,7 +554,7 @@ impl SearcherActor {
         let mut count = 0;
 
         let iter = searcher
-            .search(&query, &TopDocs::with_limit(RESULTS * 5)) // TODO unsure
+            .search(&query, &TopDocs::with_limit(RESULTS * 5))
             .unwrap()
             .into_iter()
             .map(|(_, doc_address)| {
