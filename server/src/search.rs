@@ -21,9 +21,9 @@ use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tantivy::collector::TopDocs;
+use tantivy::collector::{DocSetCollector, TopDocs};
 use tantivy::directory::MmapDirectory;
-use tantivy::query::{BooleanQuery, FuzzyTermQuery, Query, TermQuery};
+use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, Query, TermQuery};
 use tantivy::schema::{
     Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, Value, INDEXED, STORED,
 };
@@ -168,6 +168,10 @@ impl TantivyClient {
             })
             .await
             .map_err(Into::into)
+    }
+
+    pub async fn get_all_words(&self) -> Result<Vec<WordHit>> {
+        self.searchers.send(GetAllWords).await.map_err(Into::into)
     }
 
     #[instrument(name = "Reindex the database", skip_all)]
@@ -482,6 +486,8 @@ pub enum IncludeResults {
     AcceptedAndAllSuggestions,
 }
 
+pub struct GetAllWords;
+
 impl SearcherActor {
     #[instrument(
         name = "Search for a query in tantivy",
@@ -691,6 +697,35 @@ where
         .await
         .expect("Error executing search task")
         .unwrap() // TODO(error handling)
+    }
+}
+
+impl Handler<GetAllWords> for SearcherActor {
+    type Return = Vec<WordHit>;
+
+    async fn handle(&mut self, _msg: GetAllWords, _ctx: &mut xtra::Context<Self>) -> Vec<WordHit> {
+        let searcher = self.reader.searcher();
+        let client = self.client.clone();
+
+        // TODO(error handling)
+        spawn_blocking_child(move || {
+            let mut docs = searcher
+                .search(&AllQuery, &DocSetCollector)
+                .unwrap()
+                .into_iter()
+                .map(|doc_address| {
+                    searcher
+                        .doc(doc_address)
+                        .map_err(anyhow::Error::from)
+                        .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
+            docs.sort_by_cached_key(|a| a.english.to_lowercase());
+            docs
+        })
+        .await
+        .expect("Error executing search task")
     }
 }
 

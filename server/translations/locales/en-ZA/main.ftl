@@ -16,6 +16,9 @@ settings = Settings
     .failure = There was an error saving settings.
     .unsaved = You have unsaved changes.
 
+all-words = All words
+    .description = Browse all the words in the dictionary
+
 about = About
     .description = { site.short-name } is a free, open, online dictionary for { target-language } and { source-language }.
     .aim = Aim

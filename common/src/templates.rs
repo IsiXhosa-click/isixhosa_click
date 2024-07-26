@@ -2,7 +2,7 @@ use crate::auth::{Auth, Permissions};
 use crate::format::DisplayHtml;
 use crate::i18n::I18nInfo;
 use crate::language::*;
-use crate::types::ExistingWord;
+use crate::types::{ExistingWord, WordHit};
 use askama::Template;
 use fluent_templates::Loader;
 use isixhosa_click_macros::I18nTemplate;
@@ -34,4 +34,15 @@ impl Display for WordChangeMethod {
 
         f.write_str(s)
     }
+}
+
+#[derive(Template, I18nTemplate)]
+#[template(path = "all.askama.html")]
+pub struct AllWords<L>
+where
+    L: Loader + Send + Sync + 'static,
+{
+    pub auth: Auth,
+    pub i18n_info: I18nInfo<L>,
+    pub words: Vec<WordHit>,
 }

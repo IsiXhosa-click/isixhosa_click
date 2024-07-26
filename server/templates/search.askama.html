@@ -5,10 +5,9 @@
 
 <html lang="{{ self.lang() }}">
 <head>
-    <title>Live Dictionary - IsiXhosa.click</title>
-    <meta name="og:title" content="Search - IsiXhosa.click"/>
-    <meta name="og:url" content="https://isixhosa.click/search"/>
+    {%- call macros::title("search.title") -%}
     {%- call macros::description("search.description") -%}
+    <meta name="og:url" content="https://{{ self.host() }}/search"/>
     <link rel="stylesheet" href="/search.css">
     {%- call macros::meta() -%}
 </head>

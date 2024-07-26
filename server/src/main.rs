@@ -90,6 +90,7 @@ mod user_management;
 use crate::i18n::I18nInfo;
 use crate::i18n::EN_ZA;
 pub use config::Config;
+use isixhosa_common::templates::AllWords;
 
 const STATIC_LAST_CHANGED: &str = env!("STATIC_LAST_CHANGED");
 const STATIC_BIN_FILES_LAST_CHANGED: &str = env!("STATIC_BIN_FILES_LAST_CHANGED");
@@ -483,7 +484,7 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
         let duplicate_search = warp::path("duplicates")
             .and(path::end())
             .and(warp::query())
-            .and(with_tantivy)
+            .and(with_tantivy.clone())
             .and(with_moderator_auth(db.clone(), site_ctx.clone()))
             .and_then(duplicate_search);
 
@@ -596,6 +597,13 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
             .debug_boxed()
     };
 
+    let all_words = warp::get()
+        .and(warp::path("all"))
+        .and(path::end())
+        .and(with_tantivy)
+        .and(with_any_auth(db.clone(), site_ctx.clone()))
+        .and_then(all_words);
+
     let redirects = {
         let favico_redirect = warp::get()
             .and(warp::path("favicon.ico"))
@@ -637,6 +645,7 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
     );
 
     let routes = search
+        .or(all_words)
         .or(simple_templates)
         .or(redirects)
         .or(submit(db.clone(), tantivy.clone(), site_ctx.clone()))
@@ -895,6 +904,19 @@ fn live_search(
 
         tokio::spawn(stream.map(Ok).forward(addr.into_sink()));
         futures::future::ready(())
+    })
+}
+#[instrument(name = "Show all words", skip_all)]
+async fn all_words(
+    tantivy: Arc<TantivyClient>,
+    auth: Auth,
+    i18n_info: I18nInfo,
+    _db: impl PublicAccessDb,
+) -> Result<impl Reply, Rejection> {
+    Ok(AllWords {
+        auth,
+        i18n_info,
+        words: tantivy.get_all_words().await.unwrap(),
     })
 }
 

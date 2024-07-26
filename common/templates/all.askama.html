@@ -1,0 +1,33 @@
+{%- import "macros.askama.html" as macros -%}
+
+<!DOCTYPE html>
+
+<html lang="{{ self.lang() }}">
+<head>
+    {%- call macros::title("all-words") -%}
+    {%- call macros::description("all-words.description") -%}
+    <meta name="og:url" content="https://{{ self.host() }}/all-words"/>
+    {%- call macros::meta() -%}
+</head>
+
+<body>
+    {%- call macros::navbar() -%}
+    <div id="main_wrap">
+        <header id="main_header">
+            <h1>{{ self.t("all-words") }}</h1>
+        </header>
+
+        <main>
+            <ul>
+                {%- for word in words -%}
+                    <li>
+                        <a href="/word/{{ word.id }}">
+                            <span>{{ word.to_html(i18n_info)|safe }}</span>
+                        </a>
+                    </li>
+                {%- endfor -%}
+            </ul>
+        </main>
+    </div>
+</body>
+</html>
