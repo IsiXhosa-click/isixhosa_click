@@ -241,7 +241,7 @@ impl<L: Loader + 'static> DisplayHtml<L> for HyperlinkWrapper<'_> {
 }
 
 fn is_not_isolator_or_whitespace(c: char) -> bool {
-    !c.is_whitespace() && (c < '\u{2066}' || c > '\u{206f}')
+    !c.is_whitespace() && !('\u{2066}'..='\u{206f}').contains(&c)
 }
 
 /// Prepare a grammar info section (e.g `informal intransitive verb`) by:

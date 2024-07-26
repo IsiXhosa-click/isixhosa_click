@@ -45,9 +45,12 @@ pub async fn load() -> Result<&'static StaticLoader> {
 
         let raw = match raw {
             Ok(r) => r,
-            Err(_) => get_translation("en-ZA")
-                .await
-                .expect("Failed to fetch en-ZA site files"),
+            Err(_) => {
+                log::debug!("Falling back to en-ZA for {}", lang);
+                get_translation("en-ZA")
+                    .await
+                    .expect("Failed to fetch en-ZA site files")
+            },
         };
 
         let resource = FluentResource::try_new(raw)

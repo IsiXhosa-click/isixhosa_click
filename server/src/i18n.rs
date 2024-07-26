@@ -65,6 +65,7 @@ pub fn load(site: String, config: &Config) -> SiteContext {
     let supported: Vec<&'static str> = loader
         .locales()
         .map(|locale| &*locale.to_string().leak())
+        .chain(Some("en"))
         .collect();
     let supported = &*supported.leak();
 

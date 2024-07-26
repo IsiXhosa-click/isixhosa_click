@@ -1,5 +1,3 @@
-SHELL := /bin/bash
-
 profile := debug
 jaeger_debug := 0
 wasm_exported := server/static/wasm
@@ -40,7 +38,7 @@ $(wasm_exported)/%_bg.wasm $(wasm_exported)/%.js: $(wasm_target)/%.wasm
 	$(eval this_wasm := $(patsubst $(wasm_target)/%.wasm, $(dir $@)/%_bg.wasm, $<))
 	rm -f $(this_wasm) $(patsubst $(wasm_target)/%.wasm, $(dir $@)/%.js, $<)
 	wasm-bindgen --target web --no-typescript $< --out-dir $(dir $@)
-	if [ $(profile) = "release"]; then\
+	if [ $(profile) = "release" ]; then\
 		wasm-opt $(this_wasm) -Oz -o $(this_wasm);\
   	fi
 

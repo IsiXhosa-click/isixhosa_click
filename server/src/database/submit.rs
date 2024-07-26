@@ -348,7 +348,7 @@ fn process_linked_words(
     match (w.suggestion_id, w.existing_id) {
         // Editing a new suggested word
         (Some(suggested), None) => {
-            for prev in SuggestedLinkedWord::fetch_all_for_suggestion(db, &i18n_info, suggested) {
+            for prev in SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, suggested) {
                 if let Some(i) = linked_words
                     .iter()
                     .position(|new| new.suggestion_id == Some(prev.suggestion_id))

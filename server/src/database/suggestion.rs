@@ -141,7 +141,7 @@ impl SuggestedWord {
         let mut word = SuggestedWord::fetch_alone(db, id);
         if let Some(w) = word.as_mut() {
             w.examples = SuggestedExample::fetch_all_for_suggestion(db, id);
-            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, &i18n_info, id);
+            w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, id);
         }
 
         Span::current().record("found", word.is_some());

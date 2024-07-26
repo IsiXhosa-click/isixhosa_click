@@ -917,7 +917,7 @@ async fn extract_i18n_from_auth(
 
     let best_lang = all
         .iter()
-        .max_by_key(|(_lang, quality)| OrderedFloat(-quality))
+        .max_by_key(|(_lang, quality)| OrderedFloat(*quality))
         .map(|(lang, _quality)| lang.as_str())
         .unwrap_or("en-ZA");
 

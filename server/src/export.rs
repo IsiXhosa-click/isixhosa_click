@@ -44,7 +44,7 @@ pub fn restore(cfg: Config) -> Result<()> {
 pub fn run_daily_tasks(cfg: &Config, args: &CliArgs) -> Result<()> {
     let conn = Connection::open(&cfg.database_path)?;
     sweep_tokens(&conn)?;
-    export(&cfg, &args.site, &conn)
+    export(cfg, &args.site, &conn)
 }
 
 fn export(cfg: &Config, site: &str, src: &Connection) -> Result<()> {
