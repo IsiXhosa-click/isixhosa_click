@@ -1,0 +1,9 @@
+<ul>
+    {%- for word in words -%}
+        <li>
+            <a href="/word/{{ word.id }}">
+                <span>{{ word.to_html(i18n_info)|safe }}</span>
+            </a>
+        </li>
+    {%- endfor -%}
+</ul>

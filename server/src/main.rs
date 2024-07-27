@@ -915,8 +915,8 @@ async fn all_words(
 ) -> Result<impl Reply, Rejection> {
     Ok(AllWords {
         auth,
+        all_words: tantivy.get_all_words_html(i18n_info.clone()).await.expect("Failed to get all words cached HTML"),
         i18n_info,
-        words: tantivy.get_all_words().await.unwrap(),
     })
 }
 

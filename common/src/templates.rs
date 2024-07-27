@@ -44,5 +44,17 @@ where
 {
     pub auth: Auth,
     pub i18n_info: I18nInfo<L>,
+    /// We use a cache here for performance
+    pub all_words: String,
+}
+
+/// Inner part of the [`AllWords`] template which is regenerated only as needed
+#[derive(Template, I18nTemplate)]
+#[template(path = "all.list.askama.html")]
+pub struct AllWordsList<L>
+where
+    L: Loader + Send + Sync + 'static,
+{
     pub words: Vec<WordHit>,
+    pub i18n_info: I18nInfo<L>,
 }

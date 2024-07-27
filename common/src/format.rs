@@ -171,7 +171,7 @@ impl<L: Loader + 'static> DisplayHtml<L> for String {
 }
 
 impl<L: Loader + 'static> DisplayHtml<L> for PublicUserInfo {
-    fn fmt(&self, f: &mut HtmlFormatter<L>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
         f.write_raw_str(
             Some(&self.username[..])
                 .filter(|_| self.display_name)

@@ -6,4 +6,4 @@ set +m
 
 trap "kill -- -$!" EXIT
 
-eval $1
+eval "$@"

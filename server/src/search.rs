@@ -21,6 +21,7 @@ use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use askama::Template;
 use tantivy::collector::{DocSetCollector, TopDocs};
 use tantivy::directory::MmapDirectory;
 use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, Query, TermQuery};
@@ -31,8 +32,10 @@ use tantivy::tokenizer::TextAnalyzer;
 use tantivy::tokenizer::{LowerCaser, SimpleTokenizer};
 use tantivy::{doc, Searcher};
 use tantivy::{Index, IndexReader, IndexWriter, TantivyDocument, Term};
+use tokio::sync::RwLock;
 use tracing::{debug_span, info, info_span, instrument, Span};
 use xtra::prelude::*;
+use isixhosa_common::templates::{AllWordsList};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;
@@ -42,6 +45,8 @@ pub struct TantivyClient {
     tokenizer: TextAnalyzer,
     writer: Address<WriterActor>,
     searchers: Address<SearcherActor>,
+    /// Just the list portion of the 'all words' template (common/templates/all.askama.html)
+    all_words_html_cache: RwLock<Option<String>>,
 }
 
 impl Debug for TantivyClient {
@@ -81,6 +86,7 @@ impl TantivyClient {
             tokenizer,
             writer,
             searchers: searchers.clone(),
+            all_words_html_cache: RwLock::new(None),
         };
         let client = Arc::new(client);
 
@@ -170,8 +176,24 @@ impl TantivyClient {
             .map_err(Into::into)
     }
 
-    pub async fn get_all_words(&self) -> Result<Vec<WordHit>> {
-        self.searchers.send(GetAllWords).await.map_err(Into::into)
+    pub async fn get_all_words_html(&self, i18n_info: I18nInfo) -> Result<String> {
+        {
+            let all_words = self.all_words_html_cache.read().await;
+
+            if let Some(all_words) = &*all_words {
+                return Ok(all_words.clone());
+            }
+        }
+
+        let mut all_words = self.all_words_html_cache.write().await;
+        let words = self.searchers.send(GetAllWords).await?;
+        let rendered = AllWordsList { words, i18n_info }.render()?;
+        *all_words = Some(rendered.clone());
+        Ok(rendered)
+    }
+
+    async fn invalidate_all_words_cache(&self) {
+        *self.all_words_html_cache.write().await = None;
     }
 
     #[instrument(name = "Reindex the database", skip_all)]
@@ -212,17 +234,21 @@ impl TantivyClient {
         .unwrap();
 
         self.writer.send(ReindexWords(docs)).await.unwrap();
+        self.invalidate_all_words_cache().await;
     }
 
     pub async fn add_new_word(&self, word: WordDocument) {
+        self.invalidate_all_words_cache().await;
         self.writer.send(IndexWord(word)).await.unwrap()
     }
 
     pub async fn edit_word(&self, word: WordDocument) {
+        self.invalidate_all_words_cache().await;
         self.writer.send(EditWord(word)).await.unwrap()
     }
 
     pub async fn delete_word(&self, id: WordOrSuggestionId) {
+        self.invalidate_all_words_cache().await;
         self.writer.send(DeleteWord(id)).await.unwrap()
     }
 }
@@ -721,7 +747,7 @@ impl Handler<GetAllWords> for SearcherActor {
                         .unwrap()
                 })
                 .collect::<Vec<_>>();
-            docs.sort_by_cached_key(|a| a.english.to_lowercase());
+            docs.sort_by_cached_key(|a| (a.english.to_lowercase(), a.id));
             docs
         })
         .await
