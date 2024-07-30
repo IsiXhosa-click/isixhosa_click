@@ -25,7 +25,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tabled::Tabled;
-use tracing::{debug, error, instrument, Span};
+use tracing::{debug, error, instrument, Span, trace};
 use url::Url;
 use warp::http::header::ACCEPT_LANGUAGE;
 use warp::http::uri;
@@ -888,7 +888,7 @@ async fn extract_user(
             let reason = UnauthorizedReason::NotLoggedIn;
             span.record("success", false);
             span.record("fail_reason", reason.to_debug().as_str());
-            debug!("No token");
+            trace!("No token");
 
             Err(reject::custom(Unauthorized { reason, redirect }))
         }
