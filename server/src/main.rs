@@ -18,6 +18,7 @@
 // - grammar notes
 // - embedded blog (static site generator?) for transparency
 
+#![recursion_limit = "256"] // Warp does warp things
 use crate::auth::*;
 use crate::database::suggestion::SuggestedWord;
 use crate::search::{IncludeResults, JsWordHit, TantivyClient};
