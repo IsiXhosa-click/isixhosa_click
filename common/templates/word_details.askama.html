@@ -246,7 +246,7 @@
 
                                             <em>
                                                 {{ self.t_with("dataset.author", crate::i18n_args!("author" => dataset.author.clone())) }}
-                                                {%- if dataset.institution.is_some() -%}
+                                                {%- if dataset.institution.is_some() %}
                                                     {{ self.t_with("dataset.institution", crate::i18n_args!("institution" => dataset.institution.clone())) }}
                                                 {%- endif -%}
                                             </em>
