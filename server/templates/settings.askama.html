@@ -4,8 +4,7 @@
 <html lang="{{ self.lang() }}">
 <head>
     {%- call macros::title("settings") -%}
-        <link rel="stylesheet" href="/signup.css">
-    <link rel="stylesheet" href="/settings.css">
+    <link rel="stylesheet" href="/signup.css">
     {%- call macros::meta() -%}
 </head>
 
@@ -17,67 +16,9 @@
         </header>
 
         <main>
-            <script type="module">
-                window.addEventListener("DOMContentLoaded", function() {
-                    let all = Array.from(document.querySelectorAll(":required"));
-                    let changes = false;
-                    let chosen_submit = false;
-                    let unsaved_changes = document.getElementById("unsaved-changes");
-
-                    for (let elt of all) {
-                        let event = "change";
-                        if (elt instanceof HTMLInputElement || elt instanceof HTMLTextAreaElement) {
-                            event = "input";
-                        }
-
-                        let orig = elt.value;
-                        elt.setAttribute("data-orig", orig);
-
-                        elt.addEventListener(event, function() {
-                            changes = all.some(elt => elt.value !== elt.getAttribute("data-orig"));
-                            unsaved_changes.hidden = !changes;
-                        });
-                    }
-
-                    window.addEventListener("beforeunload", function(evt) {
-                        if (changes && !chosen_submit) {
-                            evt.preventDefault();
-                            evt.returnValue = true;
-                        }
-                    });
-
-                    /* Make the user confirm first */
-                    let form = document.getElementById("settings_form");
-                    document.getElementById("confirm_yes").onclick = function() {
-                        chosen_submit = true;
-                        form.submit();
-                    };
-
-                    document.getElementById("confirm_no").onclick = function() {
-                        chosen_submit = false;
-                        document.getElementById("confirm").classList.remove("open");
-                    };
-
-
-                    form.addEventListener("submit", function(evt) {
-                        document.getElementById("confirm").classList.add("open");
-                        evt.preventDefault();
-                        return false;
-                    })
-                });
-            </script>
-
             {%- match previous_success -%}
                 {%- when Some with (success) -%}
-                    <script type="module">
-                        /* HACK(restioson): stop F5 from resubmitting form */
-                        if (window.history.replaceState) {
-                            window.history.replaceState(null, null, window.location.href);
-                        }
-
-                        /* HACK(restioson): move user back to /settings */
-                        history.replaceState(null, null, window.location.origin + "/settings");
-                    </script>
+                    {%- call macros::fix_form_f5("/settings") -%}
 
                     {%- if success -%}
                         <p>{{ self.t("settings.success") }}</p>
@@ -110,29 +51,16 @@
                 </div>
 
                 <div>
-                    <input type="checkbox" id="dont_display_name" name="dont_display_name" value="{{ user.display_name }}" autocomplete="off">
+                    <input type="checkbox" id="dont_display_name" name="dont_display_name" autocomplete="off"
+                        {%- if !user.display_name %} checked {%- endif -%}>
                     <label for="dont_display_name">
                         {{ self.t("username.do-not-credit") }}
                     </label>
                 </div>
 
-                <div>
-                    <div id="unsaved-changes" hidden>{{ self.t("settings.unsaved") }}</div>
-                    <button type="submit" id="save-button">{{ self.t("settings.save") }}</button>
-                </div>
+                {%- call macros::submit_with_warn_unsaved("settings_form") -%}
             </form>
         </main>
-
-        <div id="confirm" class="modal">
-            <div class="column_list spaced_flex_list">
-                <div id="confirm_label">{{ self.t("settings.confirm") }}</div>
-
-                <div class="confirm_modal_buttons">
-                    <button id="confirm_yes">{{ self.t("yes.capital") }}</button>
-                    <button id="confirm_no">{{ self.t("no.capital") }}</button>
-                </div>
-            </div>
-        </div>
     </div>
 </body>
 </html>

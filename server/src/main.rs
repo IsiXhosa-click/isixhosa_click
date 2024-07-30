@@ -34,9 +34,9 @@ use fluent_templates::Loader;
 use futures::StreamExt;
 use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
-use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb};
+use isixhosa_common::database::{with_public_db, DbBase, ModeratorAccessDb, PublicAccessDb};
 use isixhosa_common::format::DisplayHtml;
-use isixhosa_common::types::{ExistingWord, WordHit};
+use isixhosa_common::types::{Dataset, ExistingWord, WordHit};
 use moderation::moderation;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_sdk::Resource;
@@ -63,8 +63,9 @@ use warp::filters::compression::gzip;
 use warp::filters::BoxedFilter;
 use warp::http::header::{CACHE_CONTROL, CONTENT_TYPE, LAST_MODIFIED};
 use warp::http::{HeaderValue, StatusCode, Uri};
+use warp::hyper::Body;
 use warp::path::FullPath;
-use warp::reject::{MethodNotAllowed, Reject};
+use warp::reject::MethodNotAllowed;
 use warp::reply::Response;
 use warp::{path, reply, Filter, Rejection, Reply};
 use warp_reverse_proxy as proxy;
@@ -72,6 +73,7 @@ use xtra::{Handler, Mailbox, WeakAddress};
 
 pub use isixhosa_common::{i18n_args, icon};
 
+mod admin;
 mod auth;
 mod config;
 mod database;
@@ -87,6 +89,7 @@ mod session;
 mod submit;
 mod user_management;
 
+use crate::admin::admin;
 use crate::i18n::I18nInfo;
 use crate::i18n::EN_ZA;
 pub use config::Config;
@@ -99,7 +102,7 @@ const STATIC_BIN_FILES_LAST_CHANGED: &str = env!("STATIC_BIN_FILES_LAST_CHANGED"
 #[command(name = "IsiXhosa.click")]
 #[command(about = "Online, live dictionary software", long_about = None)]
 struct CliArgs {
-    /// The site. Each site has a distinct database, export directory, and config file.
+    /// The site. Each site has a distinct database, export directory, and config.toml file.
     #[arg(short, long, required = true)]
     site: String,
     /// Whether to enable OpenTelemetry protocol (OTLP) trace exporting.
@@ -222,12 +225,6 @@ impl<T: Debug> DebugExt for T {
         format!("{:?}", self)
     }
 }
-
-#[derive(Debug)]
-struct TemplateError(askama::Error);
-
-impl Reject for TemplateError {}
-
 fn init_tracing(cli: &CliArgs) -> Result<()> {
     global::set_text_map_propagator(opentelemetry_jaeger_propagator::Propagator::new());
     let tracer = opentelemetry_otlp::new_pipeline()
@@ -381,7 +378,7 @@ async fn handle_error(err: Rejection) -> Result<Response, Rejection> {
 
 #[instrument("Set up database PRAGMAs and tables", skip_all)]
 pub fn set_up_db(conn: &Connection) -> Result<()> {
-    const CREATIONS: [&str; 12] = [
+    const CREATIONS: [&str; 15] = [
         include_str!("sql/users.sql"),
         include_str!("sql/words.sql"),
         include_str!("sql/user_attributions.sql"),
@@ -394,6 +391,9 @@ pub fn set_up_db(conn: &Connection) -> Result<()> {
         include_str!("sql/linked_word_suggestions.sql"),
         include_str!("sql/linked_word_deletion_suggestions.sql"),
         include_str!("sql/login_tokens.sql"),
+        include_str!("sql/datasets.sql"),
+        include_str!("sql/dataset_attributions.sql"),
+        include_str!("sql/dataset_attribution_suggestions.sql"),
     ];
 
     // See https://github.com/the-lean-crate/criner/discussions/5
@@ -604,6 +604,12 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
         .and(with_any_auth(db.clone(), site_ctx.clone()))
         .and_then(all_words);
 
+    let dataset_icons = warp::get()
+        .and(warp::path!["dataset" / u64 / "icon.png"])
+        .and(path::end())
+        .and(with_public_db(db.clone()))
+        .and_then(serve_dataset_icon);
+
     let redirects = {
         let favico_redirect = warp::get()
             .and(warp::path("favicon.ico"))
@@ -623,7 +629,9 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
             proxy::reverse_proxy_filter(String::new(), forward_url).with(warp::trace(|_info| {
                 tracing::info_span!("Forward jaeger request")
             }));
-        let proxy = with_administrator_auth(db.clone())
+        let proxy = with_administrator_auth(db.clone(), site_ctx.clone())
+            .map(|_, _, _| ())
+            .untuple_one()
             .and(forward)
             .recover(handle_error)
             .with(warp::trace(|info| {
@@ -648,11 +656,15 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
         .or(all_words)
         .or(simple_templates)
         .or(redirects)
+        .debug_boxed()
         .or(submit(db.clone(), tantivy.clone(), site_ctx.clone()))
         .or(moderation(db.clone(), tantivy.clone(), site_ctx.clone()))
+        .or(admin(db.clone(), site_ctx.clone()))
         .or(details(db.clone(), site_ctx.clone()))
         .or(edit(db.clone(), tantivy, site_ctx.clone()))
         .or(auth(db.clone(), &cfg, site_ctx.clone()).await)
+        .debug_boxed()
+        .or(dataset_icons)
         .or(static_files)
         .or(translations)
         .recover(handle_error)
@@ -915,9 +927,26 @@ async fn all_words(
 ) -> Result<impl Reply, Rejection> {
     Ok(AllWords {
         auth,
-        all_words: tantivy.get_all_words_html(i18n_info.clone()).await.expect("Failed to get all words cached HTML"),
+        all_words: tantivy
+            .get_all_words_html(i18n_info.clone())
+            .await
+            .expect("Failed to get all words cached HTML"),
         i18n_info,
     })
+}
+
+async fn serve_dataset_icon(
+    dataset_id: u64,
+    db: impl PublicAccessDb,
+) -> Result<impl Reply, Rejection> {
+    match Dataset::fetch_icon(&db, dataset_id) {
+        Some(data) => Ok(warp::http::Response::builder()
+            .status(200)
+            .header("Content-Type", "image/png")
+            .body(Body::from(data))
+            .unwrap()),
+        None => Err(warp::reject::not_found()),
+    }
 }
 
 fn spawn_send_interval<A, M>(addr: WeakAddress<A>, interval: Duration, msg: M)

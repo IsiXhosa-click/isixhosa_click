@@ -1,0 +1,73 @@
+{%- import "macros.askama.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="{{ self.lang() }}">
+<head>
+    {%- call macros::title("dataset.add") -%}
+    {%- call macros::meta() -%}
+    <link rel="stylesheet" href="/add_dataset.css">
+</head>
+
+<body>
+    {%- call macros::navbar() -%}
+    <div id="main_wrap">
+        <header>
+            <h1>{{ self.t("dataset.add") }}</h1>
+        </header>
+
+        <main>
+            <form id="add-dataset-form" action="/admin/settings/add_dataset" method="post" enctype="multipart/form-data" class="column_list spaced_flex_list">
+                <label for="name">
+                    {{ self.t("dataset-form.name") }}<span class="required">*</span>:
+                </label>
+                <input type="text" id="name" name="name" value='{{ dataset.name }}' required autocomplete="off">
+
+                <label for="author">
+                    {{ self.t("dataset-form.author") }}<span class="required">*</span>:
+                </label>
+                <input type="text" id="author" name="author" value='{{ dataset.author }}' required autocomplete="off">
+
+               <label for="license">
+                   {{ self.t("dataset-form.license") }}<span class="required">*</span>:
+               </label>
+               <input type="text" id="license" name="license" value='{{ dataset.license }}' required autocomplete="off">
+
+                <label for="institution">{{ self.t("dataset-form.institution") }}:</label>
+                <input type="text" id="institution" name="institution" value='{{ dataset.institution }}' autocomplete="off">
+
+                <label for="url">{{ self.t("dataset.url") }}:</label>
+                <input type="url" id="url" name="url" value='{{ dataset.url }}' spellcheck="false" autocomplete="off">
+
+                <label for="icon-input">{{ self.t("dataset.icon") }}</label>
+                <div id="icon-container">
+                    {%- match dataset.id -%}
+                        {%- when Some with (id) -%}
+                            <input type="hidden" name="id" value="{{ id }}">
+
+                            Current icon:
+                            <img width="100" height="100" alt='{{ self.t("dataset.icon") }}' {#-#}
+                                src="/dataset/{{ id }}/icon.png">
+                        {%- when None -%}
+                    {%- endmatch -%}
+
+                    <input type="file" id="icon-input" name="icon" accept="image/png,image/ico,image/jpeg,image/webp">
+                </div>
+
+                <label for="description">
+                   {{ self.t("dataset.description") }}<span class="required">*</span>:
+                </label>
+                <textarea id="description" name="description" autocomplete="off" spellcheck="true">
+                    {{- dataset.description -}}
+                </textarea>
+
+                {%- match dataset.id -%}
+                    {%- when Some with (id) -%}
+                        {%- call macros::submit_with_warn_unsaved("add-dataset-form") -%}
+                    {%- when None -%}
+                        <button type="submit">{{ self.t("dataset-form.submit") }}</button>
+                {%- endmatch -%}
+            </form>
+        </main>
+    </div>
+</body>
+</html>

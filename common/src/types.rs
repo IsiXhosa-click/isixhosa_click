@@ -46,6 +46,7 @@ pub struct ExistingWord {
     pub examples: Vec<ExistingExample>,
     pub linked_words: Vec<ExistingLinkedWord>,
     pub contributors: Vec<PublicUserInfo>,
+    pub datasets: Vec<Dataset>,
 }
 
 impl ExistingWord {
@@ -123,4 +124,16 @@ pub struct PublicUserInfo {
     pub id: NonZeroU64,
     pub username: String,
     pub display_name: bool,
+}
+
+/// An external dataset from which a word in the dictionary is sourced
+#[derive(Clone, Debug)]
+pub struct Dataset {
+    pub id: u64,
+    pub name: String,
+    pub description: String,
+    pub author: String,
+    pub license: String,
+    pub institution: Option<String>,
+    pub url: Option<String>,
 }

@@ -1,5 +1,5 @@
 use crate::database::WordId;
-use crate::database::{add_attribution, WordOrSuggestionId};
+use crate::database::{add_user_attribution, WordOrSuggestionId};
 use crate::i18n::I18nInfo;
 use crate::search::{TantivyClient, WordDocument};
 use crate::DebugExt;
@@ -12,10 +12,10 @@ use isixhosa_common::format::{DisplayHtml, HtmlFormatter, HyperlinkWrapper, Noun
 use isixhosa_common::i18n::TranslationKey;
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
 use isixhosa_common::serialization::WithDeleteSentinel;
-use isixhosa_common::types::{ExistingExample, ExistingWord, PublicUserInfo, WordHit};
+use isixhosa_common::types::{Dataset, ExistingExample, ExistingWord, PublicUserInfo, WordHit};
 use num_enum::TryFromPrimitive;
 use rusqlite::types::FromSql;
-use rusqlite::{params, OptionalExtension, Row};
+use rusqlite::{params, OptionalExtension, Params, Row};
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{self, Debug};
@@ -48,6 +48,7 @@ pub struct SuggestedWord {
 
     pub examples: Vec<SuggestedExample>,
     pub linked_words: Vec<SuggestedLinkedWord>,
+    pub datasets: Vec<DatasetAttributionSuggestion>,
 }
 
 impl SuggestedWord {
@@ -86,7 +87,8 @@ impl SuggestedWord {
                 w.examples = SuggestedExample::fetch_all_for_suggestion(db, w.suggestion_id);
                 w.linked_words =
                     SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, w.suggestion_id);
-
+                w.datasets =
+                    DatasetAttributionSuggestion::fetch_all_for_suggestion(db, w.suggestion_id);
                 Ok(w)
             })
             .collect()
@@ -142,6 +144,7 @@ impl SuggestedWord {
         if let Some(w) = word.as_mut() {
             w.examples = SuggestedExample::fetch_all_for_suggestion(db, id);
             w.linked_words = SuggestedLinkedWord::fetch_all_for_suggestion(db, i18n_info, id);
+            w.datasets = DatasetAttributionSuggestion::fetch_all_for_suggestion(db, id);
         }
 
         Span::current().record("found", word.is_some());
@@ -206,7 +209,7 @@ impl SuggestedWord {
             .unwrap();
         let id = id as u64;
 
-        add_attribution(db, &self.suggesting_user, WordId(id));
+        add_user_attribution(db, &self.suggesting_user, WordId(id));
 
         Span::current().record("accepted_id", id);
 
@@ -225,6 +228,11 @@ impl SuggestedWord {
         for mut example in self.examples.into_iter() {
             example.word_or_suggested_id = WordOrSuggestionId::existing(new_word_id);
             example.accept(db);
+        }
+
+        for mut dataset_attrib in self.datasets.into_iter() {
+            dataset_attrib.word_or_suggestion_id = WordOrSuggestionId::existing(new_word_id);
+            dataset_attrib.accept(db);
         }
 
         let old = WordOrSuggestionId::suggested(self.suggestion_id);
@@ -331,6 +339,7 @@ impl SuggestedWord {
             is_informal: MaybeEdited::from_row("is_informal", row, e.map(|e| e.is_plural)),
             examples: vec![],
             linked_words: vec![],
+            datasets: vec![],
         }
     }
 
@@ -515,7 +524,7 @@ impl SuggestedExample {
             .query_row(params, |row| row.get("example_id"))
             .unwrap();
 
-        add_attribution(db, &self.suggesting_user, WordId(word));
+        add_user_attribution(db, &self.suggesting_user, WordId(word));
         SuggestedExample::delete(db, self.suggestion_id);
 
         Span::current().record("accepted_id", id);
@@ -741,8 +750,8 @@ impl SuggestedLinkedWord {
             .query_row(params, |row| row.get("link_id"))
             .unwrap();
 
-        add_attribution(db, &self.suggesting_user, WordId(first));
-        add_attribution(db, &self.suggesting_user, WordId(second));
+        add_user_attribution(db, &self.suggesting_user, WordId(first));
+        add_user_attribution(db, &self.suggesting_user, WordId(second));
         SuggestedLinkedWord::delete(db, self.suggestion_id);
 
         Span::current().record("accepted_id", id);
@@ -891,6 +900,163 @@ impl SuggestedLinkedWord {
         } else {
             self.second.map(|pair| pair.1.clone())
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct DatasetAttributionSuggestion {
+    pub suggestion_id: u64,
+    pub word_or_suggestion_id: WordOrSuggestionId,
+    pub suggesting_user: PublicUserInfo,
+    pub dataset: Dataset,
+    pub changes_summary: String,
+    pub is_delete: bool,
+}
+
+impl TryFrom<&Row<'_>> for DatasetAttributionSuggestion {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(DatasetAttributionSuggestion {
+            suggestion_id: row.get("suggestion_id")?,
+            word_or_suggestion_id: WordOrSuggestionId::try_from(row)?,
+            suggesting_user: PublicUserInfo::try_from(row)?,
+            dataset: Dataset::try_from(row)?,
+            changes_summary: row.get("changes_summary")?,
+            is_delete: row.get("is_delete")?,
+        })
+    }
+}
+
+impl DatasetAttributionSuggestion {
+    fn fetch_with_filter(
+        db: &impl UserAccessDb,
+        where_clause: &'static str,
+        params: impl Params,
+    ) -> impl Iterator<Item = (WordOrSuggestionId, Vec<Self>)> {
+        let select = format!(
+            "SELECT datasets.dataset_id, datasets.name, datasets.description, datasets.description,
+                    datasets.author, datasets.license, datasets.institution, datasets.url,
+                    existing_word_id, suggested_word_id, suggestion_id, changes_summary, is_delete,
+                    users.username, users.display_name, dataset_attribution_suggestions.suggesting_user
+            FROM datasets
+            INNER JOIN users
+                ON dataset_attribution_suggestions.suggesting_user = users.user_id
+            INNER JOIN dataset_attribution_suggestions
+                ON datasets.dataset_id = dataset_attribution_suggestions.dataset_id
+                {where_clause};
+            "
+        );
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(&select).unwrap();
+        let suggestions = query.query(params).unwrap();
+
+        let mut map: HashMap<WordOrSuggestionId, Vec<Self>> = HashMap::new();
+
+        suggestions
+            .map(|row| {
+                Ok((
+                    WordOrSuggestionId::try_from(row)?,
+                    DatasetAttributionSuggestion::try_from(row)?,
+                ))
+            })
+            .for_each(|(word_id, suggestion)| {
+                map.entry(word_id)
+                    .or_insert_with(|| Vec::with_capacity(1))
+                    .push(suggestion);
+                Ok(())
+            })
+            .unwrap();
+
+        Span::current().record("results", map.len());
+
+        map.into_iter()
+    }
+
+    #[instrument(
+        name = "Fetch dataset attribution suggestion by id",
+        fields(suggestion_id),
+        skip(db)
+    )]
+    pub fn fetch_by_id(
+        db: &impl ModeratorAccessDb,
+        suggestion_id: u64,
+    ) -> Option<DatasetAttributionSuggestion> {
+        DatasetAttributionSuggestion::fetch_with_filter(
+            db,
+            "WHERE suggestion_id = ?1",
+            params![suggestion_id],
+        )
+        .next()?
+        .1
+        .into_iter()
+        .next()
+    }
+
+    #[instrument(
+        name = "Fetch all dataset attribution suggestions",
+        fields(results),
+        skip(db)
+    )]
+    pub fn fetch_all(
+        db: &impl ModeratorAccessDb,
+    ) -> impl Iterator<Item = (WordOrSuggestionId, Vec<Self>)> {
+        Self::fetch_with_filter(db, "", params![])
+    }
+
+    #[instrument(
+        name = "Fetch all dataset attribution suggestions for suggestion",
+        fields(results),
+        skip(db)
+    )]
+    pub fn fetch_all_for_suggestion(db: &impl UserAccessDb, suggestion: u64) -> Vec<Self> {
+        let params = params![suggestion];
+        let all = Self::fetch_with_filter(db, "WHERE suggested_word_id = ?1", params);
+
+        #[allow(clippy::let_and_return)] // Needed due to lifetime issues
+        let vec = all.map(|(_, word)| word).next().unwrap_or_default();
+        vec
+    }
+
+    #[instrument(
+        name = "Accept suggested dataset attribution",
+        fields(
+            suggestion_id = self.suggestion_id,
+        ),
+        skip_all,
+    )]
+    pub fn accept(self, db: &impl ModeratorAccessDb) {
+        const INSERT: &str =
+            "INSERT INTO dataset_attributions (dataset_id, word_id) VALUES (?1, ?2)
+                ON CONFLICT DO NOTHING;";
+        const DELETE: &str =
+            "DELETE FROM dataset_attributions WHERE dataset_id = ?1 AND word_id = ?2;";
+
+        let word_id = self.word_or_suggestion_id.into_existing().unwrap();
+        let sql = if self.is_delete { DELETE } else { INSERT };
+
+        db.get()
+            .unwrap()
+            .prepare(sql)
+            .unwrap()
+            .execute(params![self.dataset.id, word_id])
+            .unwrap();
+
+        add_user_attribution(db, &self.suggesting_user, WordId(word_id));
+        DatasetAttributionSuggestion::delete(db, self.suggestion_id);
+    }
+
+    #[instrument(name = "Delete suggested dataset attribution", fields(found), skip(db))]
+    pub fn delete(db: &impl ModeratorAccessDb, id: u64) -> bool {
+        const DELETE: &str =
+            "DELETE FROM dataset_attribution_suggestions WHERE suggestion_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let modified_rows = conn.prepare(DELETE).unwrap().execute(params![id]).unwrap();
+        let found = modified_rows == 1;
+        Span::current().record("found", found);
+        found
     }
 }
 

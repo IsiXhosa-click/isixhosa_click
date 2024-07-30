@@ -1,4 +1,4 @@
-use crate::auth::{Auth, Permissions};
+use crate::auth::Auth;
 use crate::format::DisplayHtml;
 use crate::i18n::I18nInfo;
 use crate::language::*;

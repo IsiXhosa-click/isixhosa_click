@@ -58,12 +58,13 @@ subtle = "2.5.0"
 fluent-templates = "0.9.4"
 unic-langid = "0.9.5"
 accept-language = "3.1.0"
+image = "0.25.2"
 
-# We are kind pinned to 0.25 of rusqlite (and versions of its friends) until genanki updates to 0.31
-rusqlite = { version = "0.25", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly
-r2d2_sqlite = "0.18.0"
+# We are kinda pinned to 0.25 of rusqlite (and versions of its friends) until genanki updates to 0.31
+rusqlite = { version = "0.32", features = ["bundled", "unlock_notify", "chrono", "backup"] } # bundled to give 3.35 assuredly
+r2d2_sqlite = "0.25.0"
 genanki-rs = "0.4.0"
-fallible-iterator = "0.2.0"
+fallible-iterator = "0.3.0"
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability
 

@@ -66,6 +66,7 @@
 :root {
     scroll-padding-top: 4rem;
     overflow-y: scroll;
+    height: 100%;
 }
 
 body {
@@ -75,6 +76,7 @@ body {
     margin: 0;
     font-family: 'Open Sans', sans-serif;
     box-sizing: border-box;
+    height: 100%;
 }
 
 p {
@@ -471,6 +473,41 @@ ul.examples > li > p {
 
 .confirm_modal_buttons > button {
     width: 3rem;
+}
+
+ul.bare_list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+ul.spaced_list > li + li {
+    margin-top: 1em;
+}
+
+ul.spaced_list:last-child {
+    margin-bottom: 0;
+}
+
+.unsaved-changes {
+    color: #b50000;
+    margin-bottom: 0.25em;
+}
+
+.error {
+    color: #b50000;
+}
+
+.icon-button {
+    display: flex;
+    align-self: center;
+    border: solid 1px lightgray;
+    background: white;
+    font-size: small;
+    border-radius: 5px;
+    color: #080808;
+    text-decoration: none;
+    padding: 0;
 }
 
 @media screen and (max-width: 800px) {

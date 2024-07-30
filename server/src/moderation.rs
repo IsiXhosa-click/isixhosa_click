@@ -6,7 +6,9 @@ use crate::database::deletion::{
     ExampleDeletionSuggestion, LinkedWordDeletionSuggestion, WordDeletionSuggestion,
 };
 use crate::database::submit::{submit_suggestion, WordSubmission};
-use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
+use crate::database::suggestion::{
+    DatasetAttributionSuggestion, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
+};
 use crate::i18n::I18nInfo;
 use crate::i18n::SiteContext;
 use crate::search::TantivyClient;
@@ -15,7 +17,7 @@ use crate::submit::edit_suggestion_page;
 use crate::{spawn_blocking_child, DebugBoxedExt};
 use askama::Template;
 use isixhosa_click_macros::I18nTemplate;
-use isixhosa_common::auth::{Auth, Permissions};
+use isixhosa_common::auth::Auth;
 use isixhosa_common::database::WordId;
 use isixhosa_common::database::{DbBase, ModeratorAccessDb, WordOrSuggestionId};
 use isixhosa_common::format::DisplayHtml;
@@ -56,13 +58,14 @@ impl ModerationTemplate {
     }
 }
 
-/// Edits that are associated to a word but not of the word itself, e.g examples
+/// Edits that are associated to a word but not of the word itself, e.g. examples
 #[derive(Default, Debug)]
 pub struct WordAssociatedEdits {
     example_suggestions: Vec<SuggestedExample>,
     example_deletion_suggestions: Vec<ExampleDeletionSuggestion>,
     linked_word_suggestions: Vec<SuggestedLinkedWord>,
     linked_word_deletion_suggestions: Vec<LinkedWordDeletionSuggestion>,
+    dataset_attribution_suggestions: Vec<DatasetAttributionSuggestion>,
 }
 
 impl WordAssociatedEdits {
@@ -77,6 +80,7 @@ impl WordAssociatedEdits {
     ) -> Vec<(WordHit, WordAssociatedEdits)> {
         let example_suggestions = SuggestedExample::fetch_all_for_existing_words(db);
         let example_deletions = ExampleDeletionSuggestion::fetch_all(db);
+        let dataset_attribution_suggestions = DatasetAttributionSuggestion::fetch_all(db);
         let linked_word_suggestions = SuggestedLinkedWord::fetch_all_for_existing_words(db);
         let linked_word_deletion_suggestions =
             LinkedWordDeletionSuggestion::fetch_all(db, i18n_info.clone());
@@ -89,6 +93,14 @@ impl WordAssociatedEdits {
 
         for (id, deletions) in example_deletions {
             map.entry(id).or_default().example_deletion_suggestions = deletions;
+        }
+
+        for (id, suggestions) in dataset_attribution_suggestions {
+            if let Some(id) = id.into_existing() {
+                map.entry(WordId(id))
+                    .or_default()
+                    .dataset_attribution_suggestions = suggestions;
+            }
         }
 
         for (id, suggestions) in linked_word_suggestions {
@@ -153,6 +165,7 @@ enum ActionTarget {
     ExampleDeletion(#[serde_as(as = "DisplayFromStr")] u64),
     LinkedWord(#[serde_as(as = "DisplayFromStr")] u64),
     LinkedWordDeletion(#[serde_as(as = "DisplayFromStr")] u64),
+    DatasetAttribution(#[serde_as(as = "DisplayFromStr")] u64),
 }
 
 pub fn moderation(
@@ -193,6 +206,7 @@ pub fn moderation(
 
     let other_failed = warp::any()
         .and(warp::any().map(|| {
+            error!("Some action failed on moderation page");
             Some(Success {
                 success: false,
                 method: None,
@@ -397,6 +411,31 @@ async fn reject_linked_word_deletion(db: &impl ModeratorAccessDb, suggestion: u6
     true
 }
 
+async fn accept_dataset_attribution_suggestion(
+    db: &impl ModeratorAccessDb,
+    suggestion: u64,
+) -> bool {
+    let db = db.clone();
+    spawn_blocking_child(move || {
+        DatasetAttributionSuggestion::fetch_by_id(&db, suggestion)
+            .unwrap()
+            .accept(&db)
+    })
+    .await
+    .unwrap();
+    true
+}
+
+async fn reject_dataset_attribution_suggestion(
+    db: &impl ModeratorAccessDb,
+    suggestion: u64,
+) -> bool {
+    let db = db.clone();
+    spawn_blocking_child(move || DatasetAttributionSuggestion::delete(&db, suggestion))
+        .await
+        .unwrap()
+}
+
 #[instrument(name = "Process moderation page action", skip(user, db, tantivy))]
 async fn process_one(
     tantivy: Arc<TantivyClient>,
@@ -454,6 +493,11 @@ async fn process_one(
             Method::Edit => edit_unsupported(),
             Method::Accept => accept_linked_word_deletion(&db, suggestion).await,
             Method::Reject => reject_linked_word_deletion(&db, suggestion).await,
+        },
+        ActionTarget::DatasetAttribution(suggestion) => match params.method {
+            Method::Edit => edit_unsupported(),
+            Method::Accept => accept_dataset_attribution_suggestion(&db, suggestion).await,
+            Method::Reject => reject_dataset_attribution_suggestion(&db, suggestion).await,
         },
     };
 

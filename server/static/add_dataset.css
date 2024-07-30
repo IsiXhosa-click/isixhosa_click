@@ -1,0 +1,38 @@
+#add-dataset-form {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+}
+
+#add-dataset-form > * {
+    grid-column: 1 / 3;
+}
+
+#add-dataset-form > :is(textarea, input, #icon-container) {
+    grid-column: 2 / 2;
+    max-width: 200px;
+}
+
+#add-dataset-form > label {
+    min-width: 0;
+    grid-column: 1 / 1;
+}
+
+#icon-container {
+    border-radius: 3px;
+    border: solid 1px lightgray;
+    padding: 5px;
+}
+
+#icon-input {
+    border: none;
+    max-width: 100%;
+}
+
+img::before {
+    content: ' ';
+    display: block;
+    position: absolute;
+    height: 100px;
+    width: 100px;
+    border: solid 1px red;
+}

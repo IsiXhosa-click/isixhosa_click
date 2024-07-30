@@ -10,8 +10,8 @@ pub mod submit;
 pub mod suggestion;
 pub mod user;
 
-#[instrument(name = "Add attribution", skip(db))]
-pub fn add_attribution(db: &impl ModeratorAccessDb, user: &PublicUserInfo, word: WordId) {
+#[instrument(name = "Add user attribution", skip(db))]
+pub fn add_user_attribution(db: &impl ModeratorAccessDb, user: &PublicUserInfo, word: WordId) {
     const INSERT: &str =
         "INSERT INTO user_attributions (user_id, word_id) VALUES (?1, ?2) ON CONFLICT DO NOTHING;";
 

@@ -104,20 +104,6 @@ textarea {
     justify-content: center;
 }
 
-ul.bare_list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-ul.spaced_list > li + li {
-    margin-top: 1em;
-}
-
-ul.spaced_list:last-child {
-    margin-bottom: 0;
-}
-
 .word_select_search {
     flex-grow: 1;
 }

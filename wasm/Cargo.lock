@@ -785,6 +785,7 @@ dependencies = [
 name = "isixhosa_common"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "askama",
  "compact_str",
  "fluent-templates",

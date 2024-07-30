@@ -25,11 +25,11 @@
                             <span lang="{{ src_lang }}">{{ word.english }}</span> - <span lang="{{ target_lang }}">{{ word.xhosa }}</span>
                         </h1>
 
-                        <button id="share_word" hidden aria-label='{{ self.t("share") }}'>
+                        <button id="share_word" hidden aria-label='{{ self.t("share") }}' class="icon-button">
                             {{ crate::icon!("material-symbols:share")|safe }}
                         </button>
 
-                        <a id="edit_word" title='{{ self.t("word.suggest-edit") }}' href="/word/{{ word.word_id }}/edit">
+                        <a id="edit_word" title='{{ self.t("word.suggest-edit") }}' href="/word/{{ word.word_id }}/edit" class="icon-button">
                             {{ crate::icon!("mdi:edit")|safe }}
                         </a>
 
@@ -37,8 +37,8 @@
                         <form action="/word/{{ word.word_id }}/delete" method="post" enctype="application/x-www-form-urlencoded"
                               onsubmit="return confirm('{{ confirm_delete }}')"
                         >
-                            <select name="method" hidden><option value="delete"></select>
-                            <button title='{{ self.t("word.suggest-delete") }}' type="submit">
+                            <input type="hidden" name="method" value="delete">
+                            <button title='{{ self.t("word.suggest-delete") }}' type="submit" class="icon-button">
                                 {{ crate::icon!("mdi:delete")|safe }}
                             </button>
                         </form>
@@ -46,16 +46,7 @@
 
                     {%- match previous_success -%}
                         {%- when Some with (prev) -%}
-                            <script>
-                                /* HACK(restioson): stop F5 from resubmitting form */
-                                if (window.history.replaceState) {
-                                    window.history.replaceState(null, null, window.location.href);
-                                }
-
-                                /* HACK(restioson): move user back to /word/id */
-                                history.replaceState(null, null, window.location.origin + "/word/{{ word.word_id }}");
-                            </script>
-
+                            {%- call macros::fix_form_f5(format!("/word/{}", self.word.word_id)) -%}
                             <p>{{ self.t_with("word.success-message", crate::i18n_args!("action" => prev.to_string())) }}<p>
                         {%- when None -%}
                     {%- endmatch -%}
@@ -222,11 +213,46 @@
                         {%- endif -%}
 
                         {%- if !word.contributors.is_empty() -%}
-                            <details>
+                            <details open>
                                 <summary>{{ self.t("contributors") }}</summary>
                                 <ul id="contributors">
                                     {%- for contributor in word.contributors -%}
                                         <li>{{ contributor.to_html(i18n_info)|safe }}</li>
+                                    {%- endfor -%}
+                                </ul>
+                            </details>
+                        {%- endif -%}
+
+                        {%- if !word.datasets.is_empty() -%}
+                            <details open>
+                                <summary tabindex="0" data-descr='{{ self.t("dataset.explanation") }}'>
+                                    {{ self.t("dataset.datasets") }}
+                                </summary>
+                                <ul id="datasets">
+                                    {%- for dataset in word.datasets -%}
+                                        <li>
+                                            <img src="/dataset/{{ dataset.id }}/icon.png" {#-#}
+                                                onerror="this.style.display = 'none';" alt="">
+
+                                            <h3>
+                                                {%- match dataset.url -%}
+                                                    {%- when Some with (url) -%}
+                                                         <a href="{{ url }}">{{ dataset.name }}</a>
+                                                    {%- when None -%}
+                                                        {{ dataset.name }}
+                                                {%- endmatch %}
+                                                 ({{ dataset.license }})
+                                            </h3>
+
+                                            <em>
+                                                {{ self.t_with("dataset.author", crate::i18n_args!("author" => dataset.author.clone())) }}
+                                                {%- if dataset.institution.is_some() -%}
+                                                    {{ self.t_with("dataset.institution", crate::i18n_args!("institution" => dataset.institution.clone())) }}
+                                                {%- endif -%}
+                                            </em>
+
+                                            <p>{{ dataset.description }}</p>
+                                        </li>
                                     {%- endfor -%}
                                 </ul>
                             </details>

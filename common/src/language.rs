@@ -292,6 +292,7 @@ pub enum WordLinkType {
     Confusable = 5,
 }
 
+#[allow(dead_code)] // In case we want to use field this later
 pub struct InvalidWordLinkType(String);
 
 impl FromStr for WordLinkType {

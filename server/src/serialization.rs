@@ -37,6 +37,7 @@ pub fn qs_form<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Erro
             serde_qs::Config::new(5, false)
                 .deserialize_bytes(&bytes)
                 .map_err(|err| {
+                    #[allow(dead_code)] // We DO want the Debug impl to count here
                     #[derive(Debug)]
                     struct DeserErr(serde_qs::Error);
 

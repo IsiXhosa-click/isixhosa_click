@@ -14,11 +14,12 @@
         <a href="/about">{{ self.t("about") }}</a>
         <a href="/submit">{{ self.t("submit") }}</a>
         <a href="/wordle">{{ self.t("wordle") }}</a>
-        {%- if auth.has_permissions(Permissions::Moderator) -%}
+        {%- if auth.has_moderator_permissions() -%}
             <a href="/moderation">{{ self.t("moderation") }}</a>
         {%- endif -%}
 
-        {%- if auth.has_permissions(Permissions::Administrator) -%}
+        {%- if auth.has_administrator_permissions() -%}
+            <a href="/admin/settings">{{ self.t("site-settings") }}</a>
             <a href="/admin/jaeger">{{ self.t("tracing") }}</a>
         {%-endif -%}
 
@@ -140,4 +141,41 @@
     {%- let desc = self.t(desc_key) -%}
     <meta name="og:description" content="{{ desc }}"/>
     <meta name="description" content="{{ desc }}"/>
+{%- endmacro -%}
+
+{%- macro submit_with_warn_unsaved(form_id) -%}
+    <script type="module">
+        import { warnUnsavedChanges } from "/form.js";
+        window.addEventListener("DOMContentLoaded", function() {
+            warnUnsavedChanges(document.getElementById("{{ form_id }}"));
+        })
+    </script>
+
+    <div>
+        <div class="unsaved-changes" hidden>{{ self.t("settings.unsaved") }}</div>
+        <button type="submit">{{ self.t("settings.save") }}</button>
+    </div>
+
+    <div class="confirm modal">
+        <div class="column_list spaced_flex_list">
+            <div>{{ self.t("settings.confirm") }}</div>
+
+            <div class="confirm_modal_buttons">
+                <button type="button" class="confirm_yes">{{ self.t("yes.capital") }}</button>
+                <button type="button" class="confirm_no">{{ self.t("no.capital") }}</button>
+            </div>
+        </div>
+    </div>
+{%- endmacro -%}
+
+{#- HACK(restioson) -#}
+{%- macro fix_form_f5(dest) -%}
+<script type="module">
+    if (window.history.replaceState) {
+        window.history.replaceState(null, null, window.location.href);
+    }
+
+    history.replaceState(null, null, window.location.origin + "{{ dest }}");
+</script>
+
 {%- endmacro -%}

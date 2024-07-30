@@ -12,17 +12,6 @@ td:first-child, th:first-child {
     padding: 0;
 }
 
-#word_header > a, #word_header button {
-    align-self: center;
-    border: solid 1px lightgray;
-    background: white;
-    font-size: small;
-    border-radius: 5px;
-    margin-top: 4px;
-    color: #080808;
-    text-decoration: none;
-}
-
 #word_header > h1 {
     flex-grow: 1;
 }
@@ -35,13 +24,13 @@ h2.caption {
     margin: 0 0 0.5em;
 }
 
-/* Comma separated list */
-ul#contributors {
+ul#contributors, ul#datasets {
     list-style: none;
     padding-left: 1em;
     margin-top: 0.5em;
 }
 
+/* Comma separated list */
 ul#contributors li {
     display: inline;
 }
@@ -49,3 +38,28 @@ ul#contributors li {
 ul#contributors li:not(:last-child):after {
     content: ", ";
 }
+
+ul#datasets {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+ul#datasets li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+}
+
+ul#datasets > li > * {
+    grid-column: 2 / 2;
+    margin: 0 0 5px;
+}
+
+ul#datasets img {
+    grid-column: 1 / 1;
+    grid-row: 1 / 20;
+    max-height: 100px;
+    width: 100px;
+    margin-right: 15px;
+}
+

@@ -37,28 +37,24 @@
 
             {%- match previous_success -%}
                 {%- when Some with (prev) -%}
-                    <script>
                         {%- if prev.success -%}
-                            /* HACK(restioson): stop F5 from resubmitting form */
-                            if (window.history.replaceState) {
-                                window.history.replaceState(null, null, window.location.href);
-                            }
-
-                            /* HACK(restioson): move user back to /moderation */
-                            history.replaceState(null, null, window.location.origin + "/moderation");
+                            {%- call macros::fix_form_f5("/moderation") -%}
 
                             {%- match prev.next_suggestion -%}
                                 {%- when Some with (next) -%}
-                                    window.addEventListener("DOMContentLoaded", function() {
-                                        location.replace("#suggestion_{{ next }}");
-                                    });
+                                    <script>
+                                        window.addEventListener("DOMContentLoaded", function() {
+                                            location.replace("#suggestion_{{ next }}");
+                                        });
+                                    </script>
                                 {%- when None -%}
                             {%- endmatch -%}
                         {%- else -%}
-                            /* Show the error */
-                            location.replace("#previous_success");
+                            <script>
+                                /* Show the error */
+                                location.replace("#previous_success");
+                            </script>
                         {%- endif -%}
-                    </script>
                 {% when other -%}
             {%- endmatch -%}
 
@@ -196,6 +192,28 @@
                     label,
                     "example_deletion",
                     del.suggestion_id,
+                    false,
+                    prompt
+                ) -%}
+            {%- endmacro -%}
+
+            {%- macro dataset_attrib_action(is_accept, label) -%}
+                {%- let prompt -%}
+                {%- let method -%}
+
+                {%- if is_accept -%}
+                    {%- let prompt = self.t_with("moderation.confirm-delete", crate::i18n_args!("item" => "dataset-attrib")) -%}
+                    {%- let method = "accept" -%}
+                {%- else -%}
+                    {%- let prompt = self.t("moderation.confirm-reject") -%}
+                    {%- let method = "reject" -%}
+                {%- endif -%}
+
+                {%- call action(
+                    method,
+                    label,
+                    "dataset_attribution",
+                    attrib.suggestion_id,
                     false,
                     prompt
                 ) -%}
@@ -366,6 +384,18 @@
                                     </div>
                                 {%- endif -%}
 
+                                {%- if !s.datasets.is_empty() -%}
+                                    <div>
+                                        <h2 class="caption">{{ self.t("moderation.dataset-attributions") }}</h2>
+
+                                        <ul>
+                                            {%- for attribution in s.datasets -%}
+                                                <li>{{ attribution.dataset.name }}</li>
+                                            {%- endfor -%}
+                                        </ul>
+                                    </div>
+                                {%- endif -%}
+
                                 <div class="row_list spaced_flex_list">
                                     {%- call word_suggestion_action("edit", self.t("moderation.edit")) -%}
                                     {%- call word_suggestion_action("accept", self.t("moderation.accept")) -%}
@@ -450,7 +480,7 @@
                                                 <li>
                                                     <h3>{{ self.t("source-language") }}</h3>
                                                     <p lang="{{ src_lang }}">{{ ex.english.to_html(i18n_info)|safe }}</p>
-                                                    <h3>{{ self.t("moderation.target-language") }}</h3>
+                                                    <h3>{{ self.t("target-language") }}</h3>
                                                     <p lang="{{ target_lang }}">{{ ex.xhosa.to_html(i18n_info)|safe }}</p>
 
                                                      <p>
@@ -481,6 +511,34 @@
                                                     <div class="row_list spaced_flex_list">
                                                         {%- call example_deletion_action(true, self.t("moderation.accept-deletion")) -%}
                                                         {%- call example_deletion_action(false, self.t("moderation.reject-deletion")) -%}
+                                                    </div>
+                                                </li>
+                                            {%- endfor -%}
+                                        </ul>
+                                    </div>
+                                {%- endif -%}
+
+                                {%- if !assoc.dataset_attribution_suggestions.is_empty() -%}
+                                    <div>
+                                        <h2 class="caption">{{ self.t("moderation.dataset-attributions") }}</h2>
+
+                                        <ul>
+                                            {%- for attrib in assoc.dataset_attribution_suggestions -%}
+                                                <li>
+                                                    {%- if attrib.is_delete -%}
+                                                        <del>{{ attrib.dataset.name }}</del>
+                                                    {%- else -%}
+                                                        <ins>{{ attrib.dataset.name }}</ins>
+                                                    {%- endif -%}
+
+                                                    <p>
+                                                        {{ self.t_with("moderation.suggested-by", crate::i18n_args!("username" => attrib.suggesting_user.username.clone()))|safe }}
+                                                    </p>
+                                                    <p><strong>{{ self.t("moderation.changes-summary") }}:</strong> {{ attrib.changes_summary}}</p>
+
+                                                    <div class="row_list spaced_flex_list">
+                                                        {%- call dataset_attrib_action(true, self.t("moderation.accept")) -%}
+                                                        {%- call dataset_attrib_action(false, self.t("moderation.reject")) -%}
                                                     </div>
                                                 </li>
                                             {%- endfor -%}

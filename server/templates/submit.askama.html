@@ -20,12 +20,7 @@
 
         {%- match previous_success -%}
             {%- when Some with (true) -%}
-                <script>
-                    /* HACK(restioson): stop F5 from resubmitting form */
-                    if (window.history.replaceState) {
-                        window.history.replaceState(null, null, window.location.href);
-                    }
-                </script>
+                {%- call macros::fix_form_f5("/submit") -%}
             {%- when other -%}
         {%- endmatch -%}
 
@@ -302,6 +297,25 @@
                     </ul>
                 </fieldset>
 
+                {%- if !datasets.is_empty() -%}
+                    <fieldset>
+                        <legend tabindex="0" data-descr='{{ self.t("dataset-form.explanation") }}'>
+                            {{ self.t("dataset.datasets") }}
+                        </legend>
+
+                         <label for="datasets">{{ self.t("dataset-form.explanation") }}</label>
+
+                        <select id="datasets" name="datasets[]" multiple size="{{ datasets.len() }}">
+                            {%- for dataset in datasets -%}
+                                <option value="{{ dataset.id }}"
+                                    {%- if word.datasets.contains(dataset.id) %} selected {% endif %}>
+                                    {{ dataset.name }}
+                                </option>
+                            {%- endfor -%}
+                        </select>
+                    </fieldset>
+                {%- endif -%}
+
                 <div class="column_list spaced_flex_list">
                     {%- if existing_id.is_some() -%}
                         <div>
@@ -337,6 +351,7 @@
             </template>
 
             <script type="module">
+                import { setupSelectMultiple } from "/submit/util.js";
                 import { addExample, addExamples } from "/submit/example.js";
                 import { partOfSpeechChange } from "/submit/part_of_speech_specific.js";
                 import { addLinkedWord, addLinkedWords } from "/submit/linked_word.js";
@@ -375,6 +390,7 @@
                     partOfSpeechChange(); /* Refresh part of speech sections */
                     addDuplicateSearchFor(translations, "english", {{ this_word_id }});
                     addDuplicateSearchFor(translations, "xhosa", {{ this_word_id }});
+                    setupSelectMultiple();
 
                     document.getElementById("part_of_speech").addEventListener("change", function() { partOfSpeechChange() });
                     document.getElementById("add_example").addEventListener("click", function() { addExample(translations) });

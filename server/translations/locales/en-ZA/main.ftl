@@ -16,6 +16,43 @@ settings = Settings
     .failure = There was an error saving settings.
     .unsaved = You have unsaved changes.
 
+site-settings = Site settings
+    .datasets = Manage datasets
+    .datasets-text =
+        Datasets are collections of content which entries in the dictionary could be sourced from. By adding
+        dataset attributions, you can attribute entries to their source properly and beautifully. The datasets that have
+        been included in the dictionary can be managed below.
+    .no-datasets = There are no datasets. Add one to get started.
+
+dataset = Dataset
+    .datasets = Datasets
+    .explanation = External datasets from which this entry has incorporated information.
+    .author = Authored by { $author }.
+    .institution = Associated with { $institution }.
+    .license = Available under { $license }.
+    .description = Description
+    .url = URL
+    .no-url = No external URL.
+    .add = Add dataset
+    .icon = Dataset icon
+
+dataset-form = (Things in the dataset form - this string isn't used)
+    .name = Dataset name
+    .explanation = Attribute this word to a certain dataset, if applicable.
+    .author = Authored by
+    .license = License
+    .institution = Institution
+    .no-institution = Not associated with any institution.
+    .submit = Add dataset
+    .edit = Edit dataset
+    .confirm-delete = Are you sure you want to delete this dataset?
+    .add-success = Successfully added dataset.
+    .add-fail = Failed to add dataset.
+    .delete-success = Successfully deleted dataset.
+    .delete-fail = Failed to delete dataset.
+
+unexpected-error = An unexpected error occurred.
+
 all-words = All words
     .description = Browse all the words in the dictionary
 
@@ -154,6 +191,7 @@ moderation = Moderation
     .possible-duplicates = Possible duplicates
     .suggestions = Suggestions
     .suggested-words = Suggested words
+    .dataset-attributions = Dataset attributions
     .deletion-suggestions = Deletion suggestions
     .reason = Reason
     .details = Details
@@ -193,6 +231,7 @@ moderation = Moderation
             [word] word
             [linked-word] linked word
             [example] example
+            [dataset-attrib] dataset attribution
            *[other] suggestion
         }?
     .confirm-reject = Are you sure you want to reject this suggestion?

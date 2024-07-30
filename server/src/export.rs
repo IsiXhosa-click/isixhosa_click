@@ -17,14 +17,14 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io;
 use std::io::{BufReader, BufWriter, Write};
 use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{fs, io};
 use tempdir::TempDir;
 
-// TODO(restore users)
+// TODO(restore users, datasets)
 pub fn restore(cfg: Config) -> Result<()> {
     let conn = Connection::open(&cfg.database_path)?;
 
@@ -54,7 +54,7 @@ fn export(cfg: &Config, site: &str, src: &Connection) -> Result<()> {
 
     {
         let backup = Backup::new(src, &mut dest)?;
-        backup.run_to_completion(5, Duration::from_millis(250), None)?;
+        backup.run_to_completion(5, Duration::from_millis(50), None)?;
     }
 
     write_words(cfg, site, &dest)?;
@@ -62,6 +62,8 @@ fn export(cfg: &Config, site: &str, src: &Connection) -> Result<()> {
     write_linked_words(cfg, &dest)?;
     write_users(cfg, &dest)?;
     write_contributions(cfg, &dest)?;
+    write_datasets(cfg, &dest)?;
+    write_dataset_attributions(cfg, &dest)?;
 
     let output = Command::new("git")
         .current_dir(&cfg.plaintext_export_path)
@@ -371,6 +373,50 @@ impl TryFrom<&Row<'_>> for UserRecord {
     }
 }
 
+#[derive(Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub struct DatasetAttributionRecord {
+    pub word_id: u64,
+    pub dataset_id: u64,
+}
+
+impl TryFrom<&Row<'_>> for DatasetAttributionRecord {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(DatasetAttributionRecord {
+            word_id: row.get("word_id")?,
+            dataset_id: row.get("dataset_id")?,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub struct DatasetRecord {
+    pub id: u64,
+    pub name: String,
+    pub description: String,
+    pub author: String,
+    pub license: String,
+    pub institution: Option<String>,
+    pub url: Option<String>,
+}
+
+impl TryFrom<&Row<'_>> for DatasetRecord {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(DatasetRecord {
+            id: row.get("dataset_id")?,
+            name: row.get("name")?,
+            description: row.get("description")?,
+            author: row.get("author")?,
+            license: row.get("license")?,
+            institution: row.get("institution")?,
+            url: row.get("url")?,
+        })
+    }
+}
+
 fn csv_writer(cfg: &Config, file: &str) -> Result<csv::Writer<BufWriter<File>>> {
     let path = cfg.plaintext_export_path.join(file);
     let writer = BufWriter::new(File::create(path)?);
@@ -613,6 +659,56 @@ fn write_users(cfg: &Config, conn: &Connection) -> Result<()> {
         .map(|row| UserRecord::try_from(row))
         .map_err(|e| -> anyhow::Error { e.into() })
         .for_each(|example| csv.serialize(example).map_err(Into::into))?;
+
+    Ok(())
+}
+
+fn write_datasets(cfg: &Config, conn: &Connection) -> Result<()> {
+    const SELECT: &str = "
+        SELECT dataset_id, name, description, author, license, institution, icon, url FROM datasets
+            ORDER BY dataset_id;
+    ";
+
+    let mut csv = csv_writer(cfg, "datasets.csv")?;
+
+    let icon_folder_path = cfg.plaintext_export_path.join("dataset_icons");
+    fs::create_dir_all(&icon_folder_path)?;
+
+    conn.prepare(SELECT)?
+        .query(params![])?
+        .map(|row| Ok((DatasetRecord::try_from(row)?, row.get("icon")?)))
+        .map_err(|e| -> anyhow::Error { e.into() })
+        .for_each(|(attrib, icon): (_, Option<Vec<u8>>)| {
+            if let Some(data) = icon {
+                let path = icon_folder_path.join(format!("{}.png", attrib.id));
+                let mut icon_writer = BufWriter::new(File::create(path)?);
+                icon_writer.write_all(&data)?;
+            }
+
+            csv.serialize(attrib)?;
+            Ok(())
+        })?;
+
+    Ok(())
+}
+
+fn write_dataset_attributions(cfg: &Config, conn: &Connection) -> Result<()> {
+    const SELECT: &str = "SELECT word_id, dataset_id FROM dataset_attributions;";
+
+    let mut csv = csv_writer(cfg, "dataset_attributions.csv")?;
+
+    let mut all: Vec<DatasetAttributionRecord> = conn
+        .prepare(SELECT)?
+        .query(params![])?
+        .map(|row| DatasetAttributionRecord::try_from(row))
+        .map_err(|e| -> anyhow::Error { e.into() })
+        .collect()?;
+
+    all.sort_unstable();
+
+    for attrib in all {
+        csv.serialize(attrib)?;
+    }
 
     Ok(())
 }

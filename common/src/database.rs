@@ -1,9 +1,15 @@
+use crate::database::db_impl::DbImpl;
 use crate::i18n::I18nInfo;
 use crate::language::{
     ConjunctionFollowedBy, NounClassExt, PartOfSpeech, Transitivity, WordLinkType,
 };
 use crate::serialization::{DiscrimOutOfRange, WithDeleteSentinel};
-use crate::types::{ExistingExample, ExistingLinkedWord, ExistingWord, PublicUserInfo, WordHit};
+use crate::types::{
+    Dataset, ExistingExample, ExistingLinkedWord, ExistingWord, PublicUserInfo, WordHit,
+};
+use anyhow::{Context, Result};
+use askama_warp::warp;
+use askama_warp::warp::Filter;
 use fallible_iterator::FallibleIterator;
 use fluent_templates::ArcLoader;
 use isixhosa::noun::NounClass;
@@ -14,6 +20,7 @@ use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, Value, 
 use rusqlite::{params, Row};
 use rusqlite::{OptionalExtension, ToSql};
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::num::NonZeroU64;
 use std::str::FromStr;
 use tracing::{instrument, Span};
@@ -43,6 +50,7 @@ pub mod db_impl {
 
     impl UserAccessDb for DbImpl {}
     impl ModeratorAccessDb for DbImpl {}
+    impl AdministratorAccessDb for DbImpl {}
 }
 
 pub trait PublicAccessDb: Clone + Send + Sync + 'static {
@@ -51,8 +59,16 @@ pub trait PublicAccessDb: Clone + Send + Sync + 'static {
 
 pub trait UserAccessDb: PublicAccessDb {}
 pub trait ModeratorAccessDb: UserAccessDb {}
+pub trait AdministratorAccessDb: ModeratorAccessDb {}
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub fn with_public_db(
+    db: DbBase,
+) -> impl Filter<Extract = (impl PublicAccessDb,), Error = Infallible> + Clone {
+    let db_clone = db.clone();
+    warp::any().map(move || DbImpl(db_clone.0.clone()))
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum WordOrSuggestionId {
     ExistingWord { existing_id: u64 },
@@ -300,6 +316,7 @@ impl ExistingWord {
             word.examples = ExistingExample::fetch_all_for_word(db, id);
             word.linked_words = ExistingLinkedWord::fetch_all_for_word(db, id);
             word.contributors = PublicUserInfo::fetch_public_contributors_for_word(db, id);
+            word.datasets = Dataset::fetch_all_for_word(db, id);
         }
 
         Span::current().record("found", word.is_some());
@@ -458,6 +475,149 @@ impl PublicUserInfo {
     }
 }
 
+impl Dataset {
+    pub fn update(
+        &mut self,
+        icon: Option<Vec<u8>>,
+        db: &impl AdministratorAccessDb,
+    ) -> Result<u64> {
+        Dataset::upsert(
+            db,
+            Some(self.id),
+            self.name.clone(),
+            self.description.clone(),
+            self.author.clone(),
+            self.license.clone(),
+            self.institution.clone(),
+            icon,
+            self.url.clone(),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn upsert(
+        db: &impl AdministratorAccessDb,
+        id: Option<u64>,
+        name: String,
+        description: String,
+        author: String,
+        license: String,
+        institution: Option<String>,
+        icon: Option<Vec<u8>>,
+        url: Option<String>,
+    ) -> Result<u64> {
+        const UPSERT: &str = "
+            INSERT INTO datasets
+                (dataset_id, name, description, author, license, institution, icon, url)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            ON CONFLICT(dataset_id) DO UPDATE SET
+                name = excluded.name,
+                description = excluded.description,
+                author = excluded.author,
+                license = excluded.license,
+                institution = excluded.institution,
+                icon = excluded.icon,
+                url = excluded.url
+            RETURNING dataset_id;
+        ";
+
+        let conn = db.get()?;
+        let mut query = conn.prepare(UPSERT)?;
+
+        let params = params![
+            id,
+            name,
+            description,
+            author,
+            license,
+            institution,
+            icon,
+            url
+        ];
+
+        query
+            .query_row(params, |row| row.get("dataset_id"))
+            .context("Failed to insert dataset")
+    }
+
+    pub fn fetch_by_id(db: &impl AdministratorAccessDb, id: u64) -> Option<Dataset> {
+        const SELECT: &str = "
+            SELECT
+                dataset_id, name, description, author, license, institution, url
+            FROM datasets
+            WHERE dataset_id = ?1;
+        ";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+
+        query
+            .query_row(params![id], |row| Dataset::try_from(row))
+            .optional()
+            .unwrap()
+    }
+
+    pub fn delete_by_id(db: &impl AdministratorAccessDb, id: u64) -> bool {
+        const SELECT: &str = "DELETE FROM datasets WHERE dataset_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+
+        query.execute(params![id]).unwrap() == 1
+    }
+
+    pub fn fetch_all(db: &impl PublicAccessDb) -> Vec<Dataset> {
+        const SELECT: &str = "
+            SELECT dataset_id, name, description, author, license, institution, url FROM datasets;
+        ";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+
+        #[allow(clippy::redundant_closure)] // lifetime issue
+        query
+            .query(params![])
+            .unwrap()
+            .map(|row| Dataset::try_from(row))
+            .collect()
+            .unwrap()
+    }
+
+    /// Fetch the icon, returning its (PNG) data
+    pub fn fetch_icon(db: &impl PublicAccessDb, dataset_id: u64) -> Option<Vec<u8>> {
+        const SELECT: &str = "SELECT icon FROM datasets WHERE dataset_id = ?1;";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+        query
+            .query_row(params![dataset_id], |row| row.get("icon"))
+            .unwrap()
+    }
+
+    pub fn fetch_all_for_word(db: &impl PublicAccessDb, word: u64) -> Vec<Dataset> {
+        const SELECT: &str = "
+            SELECT
+                datasets.dataset_id, datasets.name, datasets.description, datasets.author,
+                datasets.license, datasets.institution, datasets.url
+            FROM dataset_attributions
+            INNER JOIN datasets ON datasets.dataset_id = dataset_attributions.dataset_id
+            WHERE word_id = ?1;
+        ";
+
+        let conn = db.get().unwrap();
+        let mut query = conn.prepare(SELECT).unwrap();
+
+        #[allow(clippy::redundant_closure)] // lifetime issue
+        query
+            .query(params![word])
+            .unwrap()
+            .map(|row| Dataset::try_from(row))
+            .collect()
+            .unwrap()
+    }
+}
+
 impl TryFrom<&Row<'_>> for PublicUserInfo {
     type Error = rusqlite::Error;
 
@@ -466,6 +626,22 @@ impl TryFrom<&Row<'_>> for PublicUserInfo {
             id: NonZeroU64::new(row.get::<&str, u64>("suggesting_user")?).unwrap(),
             username: row.get("username")?,
             display_name: row.get("display_name")?,
+        })
+    }
+}
+
+impl TryFrom<&Row<'_>> for Dataset {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(Dataset {
+            id: row.get("dataset_id")?,
+            name: row.get("name")?,
+            description: row.get("description")?,
+            author: row.get("author")?,
+            license: row.get("license")?,
+            institution: row.get("institution")?,
+            url: row.get("url")?,
         })
     }
 }
@@ -492,6 +668,7 @@ impl TryFrom<&Row<'_>> for ExistingWord {
             examples: vec![],
             linked_words: vec![],
             contributors: vec![],
+            datasets: vec![],
         })
     }
 }

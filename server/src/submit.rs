@@ -9,10 +9,11 @@ use crate::serialization::qs_form;
 use crate::{spawn_blocking_child, DebugBoxedExt};
 use askama::Template;
 use isixhosa_click_macros::I18nTemplate;
-use isixhosa_common::auth::{Auth, Permissions};
+use isixhosa_common::auth::Auth;
 use isixhosa_common::database::{DbBase, UserAccessDb};
 use isixhosa_common::format::DisplayHtml;
 use isixhosa_common::language::{NounClassExt, Transitivity};
+use isixhosa_common::types::Dataset;
 use serde::Deserialize;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::sync::Arc;
@@ -27,6 +28,7 @@ struct SubmitTemplate {
     previous_success: Option<bool>,
     action: SubmitFormAction,
     word: WordFormTemplate,
+    datasets: Vec<Dataset>,
 }
 
 impl SubmitTemplate {
@@ -146,17 +148,22 @@ async fn submit_word_page(
 ) -> Result<impl Reply, Rejection> {
     let i18n_clone = i18n_info.clone();
     let db = db.clone();
-    let word = spawn_blocking_child(move || match action {
-        SubmitFormAction::EditSuggestion {
-            suggestion_id,
-            existing_id,
-            ..
-        } => WordFormTemplate::fetch_from_db(&db, &i18n_info, existing_id, Some(suggestion_id))
-            .unwrap_or_default(),
-        SubmitFormAction::EditExisting(id) => {
-            WordFormTemplate::fetch_from_db(&db, &i18n_info, Some(id), None).unwrap_or_default()
-        }
-        SubmitFormAction::SubmitNewWord => WordFormTemplate::default(),
+    let (word, datasets) = spawn_blocking_child(move || {
+        let template = match action {
+            SubmitFormAction::EditSuggestion {
+                suggestion_id,
+                existing_id,
+                ..
+            } => WordFormTemplate::fetch_from_db(&db, &i18n_info, existing_id, Some(suggestion_id))
+                .unwrap_or_default(),
+            SubmitFormAction::EditExisting(id) => {
+                WordFormTemplate::fetch_from_db(&db, &i18n_info, Some(id), None).unwrap_or_default()
+            }
+            SubmitFormAction::SubmitNewWord => WordFormTemplate::default(),
+        };
+
+        let datasets = Dataset::fetch_all(&db);
+        (template, datasets)
     })
     .await
     .unwrap();
@@ -167,6 +174,7 @@ async fn submit_word_page(
         previous_success,
         action,
         word,
+        datasets,
     })
 }
 
@@ -177,7 +185,7 @@ async fn submit_new_word_form(
     user: FullUser,
     i18n_info: I18nInfo,
     db: impl UserAccessDb,
-) -> Result<impl warp::Reply, Rejection> {
+) -> Result<impl Reply, Rejection> {
     submit::submit_suggestion(word, tantivy, &user, &db, i18n_info.clone()).await;
     submit_word_page(
         Some(true),

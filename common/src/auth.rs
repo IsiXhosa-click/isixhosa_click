@@ -66,6 +66,16 @@ impl Auth {
         }
     }
 
+    // used in templates (macros.askama.html)
+    pub fn has_moderator_permissions(&self) -> bool {
+        self.has_permissions(Permissions::Moderator)
+    }
+
+    // used in templates (macros.askama.html)
+    pub fn has_administrator_permissions(&self) -> bool {
+        self.has_permissions(Permissions::Administrator)
+    }
+
     pub fn has_permissions(&self, permissions: Permissions) -> bool {
         self.user()
             .map(|user| user.permissions.contains(permissions))

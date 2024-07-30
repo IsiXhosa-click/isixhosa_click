@@ -1,5 +1,7 @@
 use crate::auth::FullUser;
-use crate::database::suggestion::{SuggestedExample, SuggestedLinkedWord, SuggestedWord};
+use crate::database::suggestion::{
+    DatasetAttributionSuggestion, SuggestedExample, SuggestedLinkedWord, SuggestedWord,
+};
 use crate::database::WordId;
 use crate::database::WordOrSuggestionId;
 use crate::i18n::{FromWithI18n, I18nInfo};
@@ -11,11 +13,13 @@ use isixhosa::noun::NounClass;
 use isixhosa_common::database::UserAccessDb;
 use isixhosa_common::format::DisplayHtml;
 use isixhosa_common::language::{ConjunctionFollowedBy, PartOfSpeech, Transitivity, WordLinkType};
-use isixhosa_common::types::{ExistingExample, ExistingLinkedWord, ExistingWord, WordHit};
+use isixhosa_common::types::{Dataset, ExistingExample, ExistingLinkedWord, ExistingWord, WordHit};
 use rusqlite::types::{ToSqlOutput, Value};
 use rusqlite::{params, ToSql};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{serde_as, NoneAsEmptyString};
+use std::collections::HashSet;
+use std::iter;
 use std::num::NonZeroU64;
 use std::sync::Arc;
 use tracing::{debug_span, instrument, Span};
@@ -222,6 +226,13 @@ pub async fn submit_suggestion(
             suggested_word_id_if_new,
             &changes_summary,
         );
+        process_datasets(
+            &mut w,
+            &db,
+            suggesting_user,
+            suggested_word_id_if_new,
+            &changes_summary,
+        )
     })
     .await
     .unwrap();
@@ -589,6 +600,100 @@ fn process_examples(
     span.record("skipped", skipped);
 }
 
+pub fn process_datasets(
+    w: &mut WordSubmission,
+    db: &impl UserAccessDb,
+    suggesting_user: NonZeroU64,
+    suggested_word_id_if_new: Option<i64>,
+    changes_summary: &str,
+) {
+    const INSERT_SUGGESTION: &str = "
+        INSERT INTO dataset_attribution_suggestions
+            (dataset_id, suggesting_user, changes_summary, existing_word_id, suggested_word_id, is_delete)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6);
+    ";
+
+    // Delete a given suggestion from the DB - not the same as _suggesting_ a deletion
+    const DELETE_SUGGESTION: &str = "
+        DELETE FROM dataset_attribution_suggestions
+            WHERE dataset_id = ?1 AND suggested_word_id = ?2;
+    ";
+
+    let suggested_datasets: HashSet<u64> = w.datasets.iter().copied().collect();
+
+    let conn = db.get().unwrap();
+    let mut insert_suggestion = conn.prepare(INSERT_SUGGESTION).unwrap();
+    let mut delete_suggestion = conn.prepare(DELETE_SUGGESTION).unwrap();
+
+    match suggested_word_id_if_new {
+        // This is part of a suggestion for a new word
+        Some(suggested_id) => {
+            let current =
+                DatasetAttributionSuggestion::fetch_all_for_suggestion(db, suggested_id as u64)
+                    .into_iter()
+                    .map(|d| d.dataset.id)
+                    .collect();
+
+            let add = suggested_datasets.difference(&current);
+            let remove = current.difference(&suggested_datasets);
+
+            // We add suggest datasets not already present in the suggestion...
+            for dataset in add {
+                insert_suggestion
+                    .execute(params![
+                        dataset,
+                        suggesting_user,
+                        changes_summary,
+                        None::<u64>,
+                        suggested_id,
+                        false // This is _not_ a deletion
+                    ])
+                    .unwrap();
+            }
+
+            // ... and just delete the suggestions for those that do not appear in the updated edit
+            for dataset in remove {
+                delete_suggestion
+                    .execute(params![dataset, suggested_id])
+                    .unwrap();
+            }
+        }
+        // This is part of an edit to an existing word
+        None => {
+            let current = w
+                .existing_id
+                .map(|id| Dataset::fetch_all_for_word(db, id))
+                .unwrap()
+                .into_iter()
+                .map(|d| d.id)
+                .collect();
+
+            // We suggest add datasets which are not in the current existing word...
+            let add = suggested_datasets
+                .difference(&current)
+                .zip(iter::repeat(false));
+
+            // ...and suggest deleting those that are not in the updated edit
+            let remove = current
+                .difference(&suggested_datasets)
+                .zip(iter::repeat(true));
+
+            for (dataset, is_delete) in remove.chain(add) {
+                insert_suggestion
+                    .execute(params![
+                        dataset,
+                        suggesting_user,
+                        changes_summary,
+                        w.existing_id.unwrap(),
+                        None::<u64>,
+                        is_delete
+                    ])
+                    .unwrap();
+            }
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct WordFormTemplate {
     pub english: String,
@@ -605,6 +710,7 @@ pub struct WordFormTemplate {
     pub is_informal: bool,
     pub examples: Vec<ExampleTemplate>,
     pub linked_words: Vec<LinkedWordTemplate>,
+    pub datasets: Vec<u64>,
 }
 
 impl WordFormTemplate {
@@ -666,6 +772,7 @@ impl FromWithI18n<SuggestedWord> for WordFormTemplate {
                 .into_iter()
                 .map(|s| LinkedWordTemplate::from_suggested(s, this_id, i18n))
                 .collect(),
+            datasets: w.datasets.into_iter().map(|d| d.dataset.id).collect(),
         }
     }
 }
@@ -691,6 +798,7 @@ impl FromWithI18n<ExistingWord> for WordFormTemplate {
                 .into_iter()
                 .map(|e| LinkedWordTemplate::from_with_i18n(e, i18n))
                 .collect(),
+            datasets: w.datasets.into_iter().map(|d| d.id).collect(),
         }
     }
 }
@@ -875,6 +983,8 @@ pub struct WordSubmission {
     examples: Vec<ExampleSubmission>,
     #[serde(default)]
     linked_words: LinkedWordList,
+    #[serde(default)]
+    datasets: Vec<u64>,
 }
 
 impl WordSubmission {

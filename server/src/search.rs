@@ -1,10 +1,12 @@
 use crate::i18n::{FromWithI18n, I18nInfo};
 use crate::spawn_blocking_child;
 use anyhow::{Context, Result};
+use askama::Template;
 use isixhosa::noun::NounClass;
 use isixhosa_common::database::{GetWithSentinelExt, WordOrSuggestionId};
 use isixhosa_common::format::DisplayHtml;
 use isixhosa_common::language::{NounClassExt, PartOfSpeech, Transitivity};
+use isixhosa_common::templates::AllWordsList;
 use isixhosa_common::types::WordHit;
 use num_enum::TryFromPrimitive;
 use ordered_float::OrderedFloat;
@@ -21,7 +23,6 @@ use std::num::NonZeroU64;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use askama::Template;
 use tantivy::collector::{DocSetCollector, TopDocs};
 use tantivy::directory::MmapDirectory;
 use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, Query, TermQuery};
@@ -35,7 +36,6 @@ use tantivy::{Index, IndexReader, IndexWriter, TantivyDocument, Term};
 use tokio::sync::RwLock;
 use tracing::{debug_span, info, info_span, instrument, Span};
 use xtra::prelude::*;
-use isixhosa_common::templates::{AllWordsList};
 
 const TANTIVY_WRITER_HEAP: usize = 128 * 1024 * 1024;
 const RESULTS: usize = 10;

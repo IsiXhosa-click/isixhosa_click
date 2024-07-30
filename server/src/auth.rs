@@ -9,7 +9,9 @@ use fluent_templates::LanguageIdentifier;
 use isixhosa_click_macros::I18nTemplate;
 use isixhosa_common::auth::{Auth, Permissions};
 use isixhosa_common::database::db_impl::DbImpl;
-use isixhosa_common::database::{DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb};
+use isixhosa_common::database::{
+    AdministratorAccessDb, DbBase, ModeratorAccessDb, PublicAccessDb, UserAccessDb,
+};
 use openid::{Client, Discovered, DiscoveredClient, Options, StandardClaims, Token, Userinfo};
 use ordered_float::OrderedFloat;
 use rand::Rng;
@@ -909,7 +911,6 @@ async fn extract_i18n_from_auth(
         return Ok((auth, i18n, db));
     }
 
-    // TODO select en appropriately if just en is given
     let all = accept_language::intersection_with_quality(
         accept_lang.as_deref().unwrap_or("en-ZA"),
         ctx.supported_langs,
@@ -963,18 +964,36 @@ pub fn with_any_auth(
         .untuple_one()
 }
 
-pub fn with_user_auth(
+fn with_permissioned_auth(
     db: DbBase,
     ctx: Arc<SiteContext>,
-) -> impl Filter<Extract = (FullUser, I18nInfo, impl UserAccessDb), Error = Rejection> + Clone {
+    permissions: Permissions,
+) -> impl Filter<Extract = (FullUser, I18nInfo, DbImpl), Error = Rejection> + Clone {
     let db_clone = db.clone();
     warp::path::full()
         .map(|path: FullPath| path.as_str().to_owned())
         .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))
-        .and_then(move |path, cookie| extract_user(DbImpl(db.0.clone()), path, cookie))
+        .and(warp::any().map(move || db.clone()))
+        .and_then(move |redirect: String, token, db: DbBase| async move {
+            match extract_user(DbImpl(db.0.clone()), redirect.clone(), token).await {
+                Ok(user) if user.permissions.contains(permissions) => Ok(user),
+                Ok(_unauthorized) => Err(reject::custom(Unauthorized {
+                    reason: UnauthorizedReason::NoPermissions,
+                    redirect,
+                })),
+                Err(e) => Err(e),
+            }
+        })
         .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
         .and_then(move |user, db| extract_i18n_from_user(user, ctx.clone(), db))
         .untuple_one()
+}
+
+pub fn with_user_auth(
+    db: DbBase,
+    ctx: Arc<SiteContext>,
+) -> impl Filter<Extract = (FullUser, I18nInfo, impl UserAccessDb), Error = Rejection> + Clone {
+    with_permissioned_auth(db, ctx, Permissions::User)
 }
 
 pub fn with_moderator_auth(
@@ -982,40 +1001,13 @@ pub fn with_moderator_auth(
     ctx: Arc<SiteContext>,
 ) -> impl Filter<Extract = (FullUser, I18nInfo, impl ModeratorAccessDb), Error = Rejection> + Clone
 {
-    let db_clone = db.clone();
-    warp::path::full()
-        .map(|path: FullPath| path.as_str().to_owned())
-        .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))
-        .and(warp::any().map(move || db.clone()))
-        .and_then(|redirect: String, token, db: DbBase| async move {
-            match extract_user(DbImpl(db.0.clone()), redirect.clone(), token).await {
-                Ok(user) if user.permissions.contains(Permissions::Moderator) => Ok(user),
-                Ok(_unauthorized) => Err(reject::custom(Unauthorized {
-                    reason: UnauthorizedReason::NoPermissions,
-                    redirect,
-                })),
-                Err(e) => Err(e),
-            }
-        })
-        .and(warp::any().map(move || DbImpl(db_clone.0.clone())))
-        .and_then(move |user, db| extract_i18n_from_user(user, ctx.clone(), db))
-        .untuple_one()
+    with_permissioned_auth(db, ctx, Permissions::Moderator)
 }
 
-pub fn with_administrator_auth(db: DbBase) -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    warp::path::full()
-        .map(|path: FullPath| path.as_str().to_owned())
-        .and(warp::cookie::optional(STAY_LOGGED_IN_COOKIE))
-        .and(warp::any().map(move || db.clone()))
-        .and_then(|redirect: String, token, db: DbBase| async move {
-            match extract_user(DbImpl(db.0.clone()), redirect.clone(), token).await {
-                Ok(user) if user.permissions.contains(Permissions::Administrator) => Ok(()),
-                Ok(_unauthorized) => Err(reject::custom(Unauthorized {
-                    reason: UnauthorizedReason::NoPermissions,
-                    redirect,
-                })),
-                Err(e) => Err(e),
-            }
-        })
-        .untuple_one()
+pub fn with_administrator_auth(
+    db: DbBase,
+    ctx: Arc<SiteContext>,
+) -> impl Filter<Extract = (FullUser, I18nInfo, impl AdministratorAccessDb), Error = Rejection> + Clone
+{
+    with_permissioned_auth(db, ctx, Permissions::Administrator)
 }

@@ -19,3 +19,6 @@ lto = "fat"
 
 [profile.dev.package.argon2]
 opt-level = 3
+
+[patch.crates-io]
+genanki-rs = { git = "https://github.com/Restioson/genanki-rs" }

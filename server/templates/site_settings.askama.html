@@ -1,0 +1,98 @@
+{%- import "macros.askama.html" as macros -%}
+
+<!DOCTYPE html>
+<html lang="{{ self.lang() }}">
+<head>
+    {%- call macros::title("site-settings") -%}
+    {%- call macros::meta() -%}
+    <link rel="stylesheet" href="/site_settings.css">
+</head>
+
+<body>
+    {%- call macros::navbar() -%}
+    <div id="main_wrap">
+        <header>
+            <h1>{{ self.t("site-settings") }}</h1>
+        </header>
+
+        <main>
+            {%- call macros::fix_form_f5("/admin/settings") -%}
+            {%- match previous_success -%}
+                {%- when Ok with (Action::AddDataset) -%}
+                    <p>{{ self.t("dataset-form.add-success") }}</p>
+                {%- when Ok with (Action::DeleteDataset) -%}
+                     <p>{{ self.t("dataset-form.delete-success") }}</p>
+                {%- when Ok with (Action::None) -%}
+                {%- when Err with (Action::AddDataset) -%}
+                     <p class="error">{{ self.t("dataset-form.add-fail") }}</p>
+                {%- when Err with (Action::DeleteDataset) -%}
+                     <p class="error">{{ self.t("dataset-form.delete-fail") }}</p>
+                {%- when Err with (Action::None) -%}
+                     <p class="error">{{ self.t("unexpected-error") }}</p>
+            {%- endmatch -%}
+
+            <h2>
+                {{ self.t("site-settings.datasets") }}
+            </h2>
+
+            <p>{{ self.t("site-settings.datasets-text") }}</p>
+
+            <ul id="datasets" class="bare_list">
+                {%- for dataset in datasets -%}
+                    <li>
+                        <img width="100" height="100" alt='{{ self.t("dataset.icon") }}' {#-#}
+                                    src="/dataset/{{ dataset.id }}/icon.png">
+
+                        <h3>{{ dataset.name }}</h3>
+                        <a class="edit-button icon-button" title='{{ self.t("dataset-form.edit") }}' href="/admin/settings/dataset/{{ dataset.id }}/edit">
+                            {{ crate::icon!("mdi:edit")|safe }}
+                        </a>
+
+                        {%- let confirm_delete = self.t("dataset-form.confirm-delete") -%}
+                        <form action="/admin/settings/dataset/{{ dataset.id }}/delete" method="post" enctype="application/x-www-form-urlencoded"
+                              onsubmit="return confirm('{{ confirm_delete }}')" class="delete-button"
+                        >
+                            <input type="hidden" name="method" value="delete">
+                            <button title='{{ self.t("dataset-form.confirm-delete") }}' type="submit" class="icon-button">
+                                {{ crate::icon!("mdi:delete")|safe }}
+                            </button>
+                        </form>
+
+                        <p>{{ self.t_with("dataset.author", crate::i18n_args!("author" => dataset.author.clone())) }}</p>
+
+                        <p>
+                            {%- if dataset.institution.is_some() -%}
+                                {{ self.t_with("dataset.institution", crate::i18n_args!("institution" => dataset.institution.clone())) }}
+                            {%- else -%}
+                                {{ self.t("dataset-form.no-institution") }}
+                            {%- endif -%}
+                        </p>
+
+                        <p>
+                            {{ self.t_with("dataset.license", crate::i18n_args!("license" => dataset.license.clone())) }}
+                        </p>
+
+                        <p>
+                            {%- match dataset.url -%}
+                                {%- when Some with (url) -%}
+                                    {{ self.t("dataset.url") }}: <a href="{{ url }}">{{ url }}</a>
+                                {%- when None -%}
+                                    {{ self.t("dataset.no-url") }}
+                            {%- endmatch -%}
+                        </p>
+
+                        <h4>{{ self.t("dataset.description") }}</h4>
+                        <p>{{ dataset.description }}</p>
+                    </li>
+                {%- endfor -%}
+            </ul>
+
+            {%- if datasets.is_empty() -%}
+                <p>{{ self.t("site-settings.no-datasets") }}</p>
+            {%- endif -%}
+
+            <p><a href="/admin/settings/add_dataset">{{ self.t("dataset.add") }}</a></p>
+        </main>
+    </div>
+</body>
+</html>
