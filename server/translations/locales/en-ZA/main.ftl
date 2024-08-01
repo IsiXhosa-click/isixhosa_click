@@ -131,11 +131,18 @@ about = About
         <p>Thank you to the following people, without whom this project would not have been possible:</p>
 
         <ul>
-            { site.acknowledgements-text }
-            <li><a href="https://sit.uct.ac.za/department-computer-science">The UCT Department of Computer Science</a>,
-                for hosting the site's server.</li>
+            <li>The <a href="https://sadilar.org"><strong>South African Centre for Digital Language Resources (SADiLaR)
+                </strong></a> for their valuable collaboration and for partially funding the project during the
+                <a href="https://escalator.sadilar.org/oer-project/isixhosa-click/">2022 DH OER Champions grant project
+                </a>.
+            </li>
+            <li>The <a href="https://sit.uct.ac.za/department-computer-science"><strong>UCT Department of Computer Science</strong></a>,
+                for hosting the site's server and partially funding the project.</li>
             <li><a href="https://sit.uct.ac.za/contacts/craig-balfour"><strong>Craig Balfour,</strong></a> for his
                 assistance in setting up the server at UCT.</li>
+            <li><a href="https://www.mthulibuthelezi.com/"><strong>Mthuli Buthelezi</strong></a>, for translating the
+                user interface of the website into isiZulu as well as other valuable collaborative efforts.</li>
+            { site.acknowledgements-text }
         </ul>
     .contact = Contact
     .contact-text =
