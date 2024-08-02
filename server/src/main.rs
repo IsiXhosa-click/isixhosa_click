@@ -314,7 +314,8 @@ async fn minify_and_cache<R: Reply>(reply: R) -> Result<impl Reply, Rejection> {
             response
         };
 
-        if starts_with(mime, &["text", "application/javascript"]) && !mime.to_lowercase().contains("charset=utf-8")
+        if starts_with(mime, &["text", "application/javascript"])
+            && !mime.to_lowercase().contains("charset=utf-8")
         {
             let new_content_type =
                 HeaderValue::from_str(&format!("{}; charset=UTF-8", mime)).unwrap();
@@ -944,7 +945,7 @@ async fn serve_dataset_icon(
         Some(data) => Ok(warp::http::Response::builder()
             .status(200)
             .header("Content-Type", "image/png")
-            .header("Cache-Control", "max-age=29030400")
+            .header("Cache-Control", "public, max-age=29030400")
             .body(Body::from(data))
             .unwrap()),
         None => Err(warp::reject::not_found()),

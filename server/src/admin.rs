@@ -110,7 +110,7 @@ async fn add_dataset_from_data(form: FormData, db: &impl AdministratorAccessDb) 
             dataset.author,
             dataset.license,
             str_opt(dataset.institution),
-            icon_bytes,
+            icon_bytes.or_else(|| dataset.id.and_then(|id| Dataset::fetch_icon(&db_clone, id))),
             str_opt(dataset.url),
         )
     })

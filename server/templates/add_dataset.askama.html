@@ -44,7 +44,7 @@
                         {%- when Some with (id) -%}
                             <input type="hidden" name="id" value="{{ id }}">
 
-                            Current icon:
+                            {{ self.t("dataset-form.current-icon") }}:
                             <img width="100" height="100" alt='{{ self.t("dataset.icon") }}' {#-#}
                                 src="/dataset/{{ id }}/icon.png">
                         {%- when None -%}

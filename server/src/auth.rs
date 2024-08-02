@@ -25,7 +25,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tabled::Tabled;
-use tracing::{debug, error, instrument, Span, trace};
+use tracing::{debug, error, instrument, trace, Span};
 use url::Url;
 use warp::http::header::ACCEPT_LANGUAGE;
 use warp::http::uri;

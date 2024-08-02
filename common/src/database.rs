@@ -476,24 +476,6 @@ impl PublicUserInfo {
 }
 
 impl Dataset {
-    pub fn update(
-        &mut self,
-        icon: Option<Vec<u8>>,
-        db: &impl AdministratorAccessDb,
-    ) -> Result<u64> {
-        Dataset::upsert(
-            db,
-            Some(self.id),
-            self.name.clone(),
-            self.description.clone(),
-            self.author.clone(),
-            self.license.clone(),
-            self.institution.clone(),
-            icon,
-            self.url.clone(),
-        )
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn upsert(
         db: &impl AdministratorAccessDb,

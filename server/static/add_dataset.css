@@ -23,6 +23,10 @@
     padding: 5px;
 }
 
+#icon-container img {
+    display: inline-block;
+}
+
 #icon-input {
     border: none;
     max-width: 100%;

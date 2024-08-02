@@ -50,6 +50,7 @@ dataset-form = (Things in the dataset form - this string isn't used)
     .add-fail = Failed to add dataset.
     .delete-success = Successfully deleted dataset.
     .delete-fail = Failed to delete dataset.
+    .current-icon = Current icon
 
 unexpected-error = An unexpected error occurred.
 
