@@ -91,6 +91,37 @@ about = About
 
         <p>Please note that all contributions to the dictionary must be either your own, or reproduced with permission
             of the copyright holder under the { site.license-short } license.</p>
+    .publications = Publications and articles
+    .publications-text =
+        If you'd like to learn more about the project, take a look at the following publications and articles:
+        <ul>
+            <li>
+                <a href="https://escalator.sadilar.org/oer-project/isixhosa-click/">
+                    IsiXhosa.click's profile on SADiLaR's ESCALATOR site
+                </a>
+            </li>
+            <li>
+                <a href="https://ched.uct.ac.za/dot4d/implementation-student-led-initiatives/isixhosaclick">
+                    IsiXhosa.click's profile on UCT's DOT4D site
+                </a>
+            </li>
+            <li>
+                <a href="https://sadilar.org/en/isixhosa-click-student-led-project-makes-isixhosa-vocabulary-easily-accessible/">
+                    "isiXhosa.click: student-led project makes isiXhosa vocabulary easily accessible"
+                </a>, by Birgit Ottermann
+            </li>
+            <li>
+                <a href="https://www.afrilex.co.za/_files/ugd/bd0c6e_369dc939341044a6b4671d36d459717c.pdf#%5B%7B%22num%22%3A123%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C64%2C756%2C0%5D">
+                    "IsiXhosa.click: online, open, user-friendly, and searchable isiXhosa-English dictionary software"
+                </a>, by Cael Marquard (presented at <a href="https://afrilex.co.za">AfriLex</a> 2024)
+            </li>
+            <li>
+                <a href="https://www.afrilex.co.za/_files/ugd/bd0c6e_369dc939341044a6b4671d36d459717c.pdf#%5B%7B%22num%22%3A77%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C64%2C172%2C0%5D">
+                    "Using computational tools and a corpus lexicography framework in developing an isiZulu LSP
+                    Dictionary"
+                </a>, by Mthuli Buthelezi and Cael Marquard (presented at <a href="https://afrilex.co.za">AfriLex</a> 2024)
+            </li>
+        </ul>
     .terms-of-use = Terms of use and privacy policy
     .terms-of-use-text =
         The terms of use and privacy policy of { site.short-name } are currently available <a href="/terms_of_use">here.</a>
