@@ -7,10 +7,10 @@ preferred-citation:
     given-names: "Cael"
     orcid: "https://orcid.org/0009-0003-9420-6199"
   title: "IsiXhosa.click: online, open, user-friendly, and searchable isiXhosa-English dictionary software"
-  booktitle: "African Association for Lexicography - 28th International Conference"
-  address: "Pretoria, South Africa"
-  organization: "African Association for Lexicography"
-  date: 2024-07-02
+  conference:
+    name: "African Association for Lexicography - 28th International Conference"
+    address: "Pretoria, South Africa"
+  institution: "African Association for Lexicography"
   url: "https://www.afrilex.co.za/_files/ugd/bd0c6e_369dc939341044a6b4671d36d459717c.pdf"
   month: 07
   year: 2024
