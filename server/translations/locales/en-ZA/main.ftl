@@ -97,12 +97,17 @@ about = About
         <ul>
             <li>
                 <a href="https://escalator.sadilar.org/oer-project/isixhosa-click/">
-                    IsiXhosa.click's profile on SADiLaR's ESCALATOR site
+                    Our profile on SADiLaR's ESCALATOR site
                 </a>
             </li>
             <li>
                 <a href="https://ched.uct.ac.za/dot4d/implementation-student-led-initiatives/isixhosaclick">
-                    IsiXhosa.click's profile on UCT's DOT4D site
+                    Our profile on UCT's DOT4D site
+                </a>
+            </li>
+            <li>
+                <a href="https://rising.globalvoices.org/languages/2024/09/23/isixhosa-click/">
+                    Our profile on Rising Voices
                 </a>
             </li>
             <li>
