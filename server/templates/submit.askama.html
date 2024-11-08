@@ -144,7 +144,9 @@
                                 <option value="noun" id="noun_selected">{{ self.t("noun.capitalised") }}</option>
                                 <option value="adverb">{{ self.t("adverb.capitalised") }}</option>
                                 <option value="relative">{{ self.t("relative.capitalised") }}</option>
-                                <option value="adjective" disabled hidden>{{ self.t("adjective.capitalised") }}</option>
+                                <option value="adjective" {%- if !auth.has_administrator_permissions() -%} disabled hidden {%- endif -%}>
+                                    {{ self.t("adjective.capitalised") }}
+                                </option>
                                 <option value="interjection">{{ self.t("interjection.capitalised") }}</option>
                                 <option value="conjunction" id="conjunction_selected">{{ self.t("conjunction.capitalised") }}</option>
                                 <option value="preposition">{{ self.t("preposition.capitalised") }}</option>
