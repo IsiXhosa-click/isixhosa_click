@@ -65,7 +65,7 @@
 
 :root {
     scroll-padding-top: 4rem;
-    overflow-y: scroll;
+    overflow-y: auto;
     height: 100%;
 }
 
