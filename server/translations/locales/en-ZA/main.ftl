@@ -401,6 +401,7 @@ no-grammatical-info =
 noun-class = Noun class
     .choose = Choose a noun class
     .in-word-result = class
+    .class-number = Class { $number }
 infinitive = Infinitive
     .form = Infinitive form
 
