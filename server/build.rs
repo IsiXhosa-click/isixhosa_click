@@ -19,7 +19,7 @@ fn get_last_changed(path: &str, name_pat: &str) -> String {
 fn main() {
     println!("cargo:rerun-if-changed=static/");
 
-    let static_exts = ["png", "svg", "woff2", "ico"]
+    let static_exts = ["png", "svg", "woff2", "ico", "pdf"]
         .map(|ext| format!("-name '*.{ext}'"))
         .join(" -o ");
     let static_pat = format!("\\( {static_exts} \\)");

@@ -66,7 +66,9 @@ about = About
         To search for a word, start typing either the { source-language } or the { target-language } word in the search bar to show
         live search results. You can click on a word to find more information about the word, such as
         examples and related words. The dictionary currently has <strong>{ $word-count } entries.</strong>
-        You can also download the words as an <a href="{ site.anki-url }">Anki flashcard deck</a>.
+        You can also download the words as an <a href="{ site.anki-url }">Anki flashcard deck</a>. Backups for the
+        database are available as a collection of CSV files <a href="https://github.com/IsiXhosa-click/database/">in a
+        GitHub repository</a>.
     .submitting-edits = Submitting edits
     .submitting-edits-text =
         <p>If you'd like to help the project, submitting new words and editing old ones would be greatly appreciated!
@@ -95,6 +97,14 @@ about = About
     .publications-text =
         If you'd like to learn more about the project, take a look at the following publications and articles:
         <ul>
+            <li>
+                <a href="/uct-language-indaba-2024-poster.pdf">A poster describing the project</a>
+                    (originally presented at the
+                    <a href="https://ched.uct.ac.za/multilingualism-education-project/events/uct-language-indaba">
+                        UCT Language Indaba
+                    </a>
+                )
+            </li>
             <li>
                 <a href="https://escalator.sadilar.org/oer-project/isixhosa-click/">
                     Our profile on SADiLaR's ESCALATOR site
@@ -165,7 +175,7 @@ about = About
         </p>
     .acknowledgements = Acknowledgements
     .acknowledgements-text =
-        <p>Thank you to the following people, without whom this project would not have been possible:</p>
+        <p>Thank you to the following people and organisations, without whom this project would not have been possible:</p>
 
         <ul>
             <li>The <a href="https://sadilar.org"><strong>South African Centre for Digital Language Resources (SADiLaR)
@@ -179,6 +189,9 @@ about = About
                 assistance in setting up the server at UCT.</li>
             <li><a href="https://www.mthulibuthelezi.com/"><strong>Mthuli Buthelezi</strong></a>, for translating the
                 user interface of the website into isiZulu as well as other valuable collaborative efforts.</li>
+            <li><a href="http://meteck.org/"><strong>Prof Maria Keet</strong></a> and the
+                <a href="https://www.nrf.ac.za/">NRF-funded</a>
+                <a href="http://meteck.org/KeBoNa/index.html">KeBoNa project</a>, of which she is the PI.</li>
             { site.acknowledgements-text }
         </ul>
     .contact = Contact
