@@ -1,2 +1,19 @@
 source-language-code = en-ZA
 target-language-code = xh
+
+noun-class-prefix = Class prefixes are defined here
+    .class1 = um
+    .class2 = aba
+    .class1a = u
+    .class2a = oo
+    .class3 = um
+    .class4 = imi
+    .class5 = i(li)
+    .class6 = ama
+    .class7 = isi
+    .class8 = izi
+    .class9 = i(n)
+    .class10 = i(z)i(n)
+    .class11 = ulu
+    .class14 = ubu
+    .class15 = uku

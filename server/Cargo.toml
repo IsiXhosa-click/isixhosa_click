@@ -7,7 +7,7 @@ license = "AGPL-3.0-or-later"
 
 [dependencies]
 isixhosa_common = { path = "../common", features = ["server"], version = "*" }
-isixhosa = { version = "0.2.0", features = ["with-serde-1", "with-num_enum-0_7"] }
+isixhosa = { version = "0.3.1", features = ["with-serde-1", "with-num_enum-0_7", "with-strum-0_26"] }
 isixhosa_click_macros = { path = "../macros", version = "*" }
 serde = { version = "1", features = ["derive"] }
 serde_qs = "0.13.0"
@@ -67,4 +67,4 @@ genanki-rs = "0.4.0"
 fallible-iterator = "0.3.0"
 
 smallvec = ">=1.6.1" # for rustsqlite - fixes vulnerability
-
+strum = "0.26.3"
