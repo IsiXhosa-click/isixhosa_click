@@ -746,6 +746,7 @@ impl Handler<GetAllWords> for SearcherActor {
                         .and_then(|doc| WordHit::try_deserialize(&client.schema_info, doc))
                         .unwrap()
                 })
+                .filter(|hit| !hit.is_suggestion)
                 .collect::<Vec<_>>();
             docs.sort_by_cached_key(|a| (a.english.to_lowercase(), a.id));
             docs
