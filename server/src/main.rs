@@ -82,7 +82,7 @@ mod details;
 mod edit;
 mod export;
 mod i18n;
-mod import_zulu;
+mod import;
 mod moderation;
 mod search;
 mod serialization;
@@ -126,6 +126,11 @@ enum Commands {
     /// Import a dictionary file in the format of the isiZulu LSP
     ImportZuluLSP {
         /// The path of the dictionary file
+        path: PathBuf,
+    },
+    /// Import a dictionary file in the format of the isiNdebele bird terminology list. This is a
+    /// CSV format with alternate translations given separated by slashes.
+    ImportNdebeleBirdTerminology {
         path: PathBuf,
     },
     /// Commands relating to user management
@@ -175,7 +180,8 @@ fn main() -> Result<()> {
             .block_on(server(cfg, cli)),
         Commands::Backup => export::run_daily_tasks(&cfg, &cli),
         Commands::Restore => export::restore(cfg),
-        Commands::ImportZuluLSP { path } => import_zulu::import_zulu_lsp(cfg, &path),
+        Commands::ImportZuluLSP { path } => import::zulu_lsp::import_zulu_lsp(cfg, &path),
+        Commands::ImportNdebeleBirdTerminology { path } => import::isindebele_birds::import_isindebele_birds(cfg, &path),
         Commands::User(command) => user_management::run_command(cfg, command.command),
     }
 }

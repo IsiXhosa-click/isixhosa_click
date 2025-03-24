@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = { version = "0.2.92" }
+wasm-bindgen = { version = "0.2.100" }
 isixhosa_common = { path = "../../common" }
 askama = { version = "0.12.1", features = ["serde-json"] }
 serde-wasm-bindgen = "0.6.5"

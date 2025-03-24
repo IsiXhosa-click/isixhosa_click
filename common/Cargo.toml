@@ -9,7 +9,7 @@ iconify = { version = "0.3.1", features = ["offline"] }
 askama = { version = "0.12.1", features = ["serde-json"], default-features = false }
 askama_warp = { version = "0.13.0", optional = true }
 serde = { version = "1.0.133", default-features = false }
-isixhosa = { version = "0.2.0", features = ["with-num_enum-0_7", "with-serde-1"] }
+isixhosa = { version = "0.3.1", features = ["with-num_enum-0_7", "with-serde-1"] }
 num_enum = { version = "0.7.2", default-features = false }
 compact_str = "0.7.1"
 rusqlite = { version = "0.32", optional = true , features = ["chrono"] }

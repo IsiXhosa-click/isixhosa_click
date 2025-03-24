@@ -212,27 +212,27 @@ impl FromStr for Transitivity {
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct NounClassPrefixes {
     pub selected_singular: bool,
-    pub singular: Cow<'static, str>,
-    pub plural: Option<Cow<'static, str>>,
+    pub singular: NounClass,
+    pub plural: Option<NounClass>,
 }
 
 impl NounClassPrefixes {
     fn from_singular_plural(
         selected_singular: bool,
-        singular: &'static str,
-        plural: &'static str,
+        singular: NounClass,
+        plural: NounClass,
     ) -> Self {
         NounClassPrefixes {
             selected_singular,
-            singular: Cow::Borrowed(singular),
-            plural: Some(Cow::Borrowed(plural)),
+            singular,
+            plural: Some(plural),
         }
     }
 
-    fn singular_class(singular: &'static str) -> Self {
+    fn singular_class(singular: NounClass) -> Self {
         NounClassPrefixes {
             selected_singular: true,
-            singular: Cow::Borrowed(singular),
+            singular,
             plural: None,
         }
     }
@@ -251,15 +251,15 @@ impl NounClassExt for NounClass {
         let singular = NounClassPrefixes::singular_class;
 
         match self {
-            Class1Um | Aba => both(*self == Class1Um, "um", "aba"),
-            U | Oo => both(*self == U, "u", "oo"),
-            Class3Um | Imi => both(*self == Class3Um, "um", "imi"),
-            Ili | Ama => both(*self == Ili, "i(li)", "ama"),
-            Isi | Izi => both(*self == Isi, "isi", "izi"),
-            In | Izin => both(*self == In, "i(n)", "i(z)in"),
-            Ulu => singular("ulu"),
-            Ubu => singular("ubu"),
-            Uku => singular("uku"),
+            Class1Um | Aba => both(*self == Class1Um, Class1Um, Aba),
+            U | Oo => both(*self == U, U, Oo),
+            Class3Um | Imi => both(*self == Class3Um, Class3Um, Imi),
+            Ili | Ama => both(*self == Ili, Ili, Ama),
+            Isi | Izi => both(*self == Isi, Isi, Izi),
+            In | Izin => both(*self == In, In, Izin),
+            Ulu => singular(Ulu),
+            Ubu => singular(Ubu),
+            Uku => singular(Uku),
         }
     }
 

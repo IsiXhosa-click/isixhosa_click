@@ -42,15 +42,17 @@ impl<'a, L: Loader + 'static> HtmlFormatter<'a, L> {
         write!(self.fmt, "{}", raw)
     }
 
-    fn write_noun_class_prefix(&mut self, prefix: &str, strong: bool) -> fmt::Result {
-        let prefix = escape(prefix);
+    fn write_noun_class_prefix(&mut self, prefix: &NounClass, strong: bool) -> fmt::Result {
+        let key = TranslationKey(Cow::Owned(format!(
+            "noun-class-prefix.class{}",
+            prefix.to_number()
+        )));
         if !self.plain_text && strong {
-            write!(
-                self.fmt,
-                "<strong class=\"noun_class_prefix\">{prefix}</strong>",
-            )
+            self.write_unescaped_str("<strong class=\"noun_class_prefix\">")?;
+            self.write_text(&key)?;
+            self.write_unescaped_str("</strong>")
         } else {
-            write!(self.fmt, "{prefix}")
+            self.write_text(&key)
         }
     }
 
@@ -216,6 +218,20 @@ impl<L: Loader + 'static, T: DisplayHtml<L>> DisplayHtml<L> for NounClassInHit<T
         f.write_text(&TranslationKey::new("word-hit.class"))?;
         f.write_raw_str(" ")?;
         self.0.fmt(f)
+    }
+}
+
+pub struct NounClassSelect(pub NounClass);
+
+impl<L: Loader + 'static> DisplayHtml<L> for NounClassSelect {
+    fn fmt(&self, f: &mut HtmlFormatter<L>) -> fmt::Result {
+        f.write_text_with_args(
+            &TranslationKey::new("noun-class.class-number"),
+            &i18n_args!("number" => self.0.to_number()),
+        )?;
+
+        f.write_raw_str(" - ")?;
+        f.write_noun_class_prefix(&self.0, false)
     }
 }
 

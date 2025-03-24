@@ -197,21 +197,11 @@
                             <label for="noun_class">{{ self.t("noun-class") }}<span class="required">*</span>:</label>
                             <select id="noun_class" name="noun_class" class="required_if_enabled">
                                 <option value="">{{ self.t("noun-class.choose") }}</option>
-                                <option value="Class1Um">um (aba)</option>
-                                <option value="Aba">aba</option>
-                                <option value="U">u</option>
-                                <option value="Oo">oo</option>
-                                <option value="Class3Um">um (imi)</option>
-                                <option value="Imi">imi</option>
-                                <option value="Ili">i(li)</option>
-                                <option value="Ama">ama</option>
-                                <option value="Isi">isi</option>
-                                <option value="Izi">izi</option>
-                                <option value="In">i(n)</option>
-                                <option value="Izin">i(z)i(n)</option>
-                                <option value="Ulu">ulu</option>
-                                <option value="Ubu">ubu</option>
-                                <option value="Uku">uku</option>
+                                {% for class in isixhosa::noun::NounClass::iter() %}
+                                    <option value="{{ class.to_number() }}">
+                                    {{ isixhosa_common::format::NounClassSelect(class.clone()).to_html(i18n_info)|safe }}
+                                    </option>
+                                {%- endfor -%}
                             </select>
                         </div>
 
