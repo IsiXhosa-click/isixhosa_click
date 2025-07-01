@@ -1,3 +1,4 @@
+use crate::import::{force_reindex, get_db_for_import, insert_word, link_words_alt_use};
 use crate::Config;
 use anyhow::{Context, Result};
 use itertools::Itertools;
@@ -5,7 +6,6 @@ use rusqlite::Connection;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use crate::import::{force_reindex, get_db_for_import, insert_word, link_words_alt_use};
 
 pub fn import_zulu_lsp(cfg: Config, path: &Path) -> Result<()> {
     let conn = get_db_for_import(&cfg)?;
@@ -37,7 +37,6 @@ fn process_line(conn: &Connection, line: String) -> Result<()> {
 
     Ok(())
 }
-
 
 /// Extract all the terms contained in the word and strip them of whitespace
 fn process_word(word: &str) -> impl Iterator<Item = &str> + Clone {

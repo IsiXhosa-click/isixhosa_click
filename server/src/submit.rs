@@ -17,9 +17,9 @@ use isixhosa_common::types::Dataset;
 use serde::Deserialize;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::sync::Arc;
+use strum::IntoEnumIterator;
 use tracing::instrument;
 use warp::{body, path, Filter, Rejection, Reply};
-use strum::IntoEnumIterator;
 
 #[derive(Template, I18nTemplate, Debug)]
 #[template(path = "submit.askama.html")]

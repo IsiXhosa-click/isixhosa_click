@@ -135,6 +135,10 @@ enum Commands {
     },
     /// Commands relating to user management
     User(UserCommandArgs),
+    ImportMedicalGlossary {
+        path: PathBuf,
+        dataset_id: i64,
+    },
 }
 
 #[derive(Parser)]
@@ -181,7 +185,12 @@ fn main() -> Result<()> {
         Commands::Backup => export::run_daily_tasks(&cfg, &cli),
         Commands::Restore => export::restore(cfg),
         Commands::ImportZuluLSP { path } => import::zulu_lsp::import_zulu_lsp(cfg, &path),
-        Commands::ImportNdebeleBirdTerminology { path } => import::isindebele_birds::import_isindebele_birds(cfg, &path),
+        Commands::ImportNdebeleBirdTerminology { path } => {
+            import::isindebele_birds::import_isindebele_birds(cfg, &path)
+        }
+        Commands::ImportMedicalGlossary { path, dataset_id } => {
+            import::medical_glossary::import_medical_glossary(cfg, &path, dataset_id)
+        }
         Commands::User(command) => user_management::run_command(cfg, command.command),
     }
 }
@@ -560,7 +569,7 @@ async fn server(cfg: Config, args: CliArgs) -> Result<()> {
                     .map(ToOwned::to_owned)
                     .unwrap_or_else(|_| {
                         let relative_to_site = relative_to_src
-                            .strip_prefix(&format!("translations/site-specific/{}/", &args.site))
+                            .strip_prefix(format!("translations/site-specific/{}/", &args.site))
                             .expect("Couldn't find site-specific translations");
                         Path::new("translations").join(relative_to_site)
                     });
