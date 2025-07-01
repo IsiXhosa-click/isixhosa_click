@@ -2027,7 +2027,9 @@ checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
 
 [[package]]
 name = "isixhosa"
-version = "0.3.1"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cfe66bb3825456403114a6d81e74a7dc578479a024d22025992618f644d80f7"
 dependencies = [
  "num_enum",
  "serde",

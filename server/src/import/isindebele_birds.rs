@@ -1,12 +1,12 @@
+use crate::import::{force_reindex, get_db_for_import, insert_word, link_words_alt_use};
+use crate::Config;
+use csv::StringRecord;
+use itertools::Itertools;
+use rusqlite::Connection;
 use std::fs::File;
 use std::io::BufReader;
 use std::iter;
 use std::path::Path;
-use csv::StringRecord;
-use itertools::Itertools;
-use rusqlite::Connection;
-use crate::Config;
-use crate::import::{force_reindex, get_db_for_import, insert_word, link_words_alt_use};
 
 pub fn import_isindebele_birds(cfg: Config, path: &Path) -> anyhow::Result<()> {
     let conn = get_db_for_import(&cfg)?;
