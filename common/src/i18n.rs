@@ -208,7 +208,7 @@ impl<T: ToTranslationKey> ToTranslationKey for &T {
 }
 
 impl ToTranslationKey for &str {
-    fn translation_key(&self) -> TranslationKey {
+    fn translation_key(&self) -> TranslationKey<'_> {
         TranslationKey(Cow::Borrowed(self))
     }
 }
